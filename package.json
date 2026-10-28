@@ -1,0 +1,12 @@
+{
+  "name": "dmhs-erp",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Deccan Mission High School ERP - Phase 1 Foundation",
+  "scripts": {
+    "dev:frontend": "cd frontend && npm run dev",
+    "build:frontend": "cd frontend && npm run build",
+    "test:frontend": "cd frontend && npm run test",
+    "test:backend": "cd backend && python -m pytest -v"
+  }
+}

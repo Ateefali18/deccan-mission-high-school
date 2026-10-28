@@ -1,0 +1,61 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg-page: #F4F6FA;
+    --bg-card: #FFFFFF;
+    --bg-elevated: #F8FAFC;
+    --text-primary: #182235;
+    --text-secondary: #526174;
+    --border-color: #D9E0E9;
+    --gold: #C6A45A;
+    --gold-hover: #D5B76D;
+    --gold-pressed: #AD8A40;
+  }
+
+  .dark {
+    --bg-page: #101827;
+    --bg-card: #1C293B;
+    --bg-elevated: #243449;
+    --text-primary: #F1F5F9;
+    --text-secondary: #C1CBD8;
+    --border-color: #39485B;
+    --gold: #C6A45A;
+    --gold-hover: #D5B76D;
+    --gold-pressed: #AD8A40;
+  }
+
+  body {
+    background-color: var(--bg-page);
+    color: var(--text-primary);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    min-height: 100vh;
+    margin: 0;
+    padding: 0;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  /* Consistent accessible focus ring */
+  *:focus-visible {
+    outline: 2px solid #C6A45A;
+    outline-offset: 2px;
+  }
+}
+
+/* Scrollbar customization */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(198, 164, 90, 0.3);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(198, 164, 90, 0.6);
+}
