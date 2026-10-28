@@ -8,6 +8,9 @@ from app.api.v1.endpoints import (
     teachers,
     dashboards,
     search,
+    attendance,
+    timetable,
+    ai,
     health,
 )
 
@@ -22,3 +25,6 @@ api_router.include_router(students.router, prefix="/students", tags=["Students"]
 api_router.include_router(teachers.router, prefix="/teachers", tags=["Teachers"])
 api_router.include_router(dashboards.router, prefix="/dashboards", tags=["Dashboards"])
 api_router.include_router(search.router, prefix="/search", tags=["Global Search"])
+api_router.include_router(attendance.router, prefix="/attendance", tags=["Attendance"])
+api_router.include_router(timetable.router, prefix="/timetable", tags=["Timetable"])
+api_router.include_router(ai.router, prefix="/ai", tags=["AI Assistant"])

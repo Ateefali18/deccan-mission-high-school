@@ -403,4 +403,104 @@ export const api = {
       return supabaseService.notices.create(payload);
     },
   },
+
+  ai: {
+    query: async (question: string, conversation_id?: number) => {
+      return request<{
+        answer: string;
+        data?: any;
+        source: string;
+        route?: string;
+        filters?: Record<string, any>;
+        conversation_id?: number;
+      }>("/ai/query", {
+        method: "POST",
+        body: JSON.stringify({ question, conversation_id }),
+      });
+    },
+    getConversations: async () => {
+      return request<Array<{ id: number; title: string; created_at: string }>>("/ai/conversations");
+    },
+  },
+
+  attendance: {
+    submit: async (data: {
+      academic_year_id: number;
+      class_id: number;
+      section_id: number;
+      session_date: string;
+      period_number?: number;
+      records: Array<{ student_id: number; status: string; remarks?: string }>;
+    }) => {
+      return request<any>("/attendance/sessions", {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+    },
+    getStudentSummary: async (studentId: number | string, academicYearId?: number | string) => {
+      const q = academicYearId ? `?academic_year_id=${academicYearId}` : "";
+      return request<{
+        student_id: number;
+        total_sessions: number;
+        present_count: number;
+        late_count: number;
+        absent_count: number;
+        excused_count: number;
+        attendance_percentage: number;
+        is_low_attendance: boolean;
+      }>(`/attendance/students/${studentId}/summary${q}`);
+    },
+    getLowAttendance: async (threshold: number = 75.0, classId?: number) => {
+      const q = new URLSearchParams({ threshold: threshold.toString() });
+      if (classId) q.append("class_id", classId.toString());
+      return request<Array<{
+        student_id: number;
+        admission_number: string;
+        full_name: string;
+        attendance_percentage: number;
+        absent_count: number;
+        total_sessions: number;
+      }>>(`/attendance/low-attendance?${q.toString()}`);
+    },
+  },
+
+  timetable: {
+    getNextPeriod: async () => {
+      return request<{
+        status: string;
+        message: string;
+        current_period?: {
+          period_number: number;
+          subject: string;
+          room: string;
+          start_time: string;
+          end_time: string;
+        };
+        next_period?: {
+          period_number: number;
+          subject: string;
+          room: string;
+          start_time: string;
+          end_time: string;
+        };
+        reporting_time: string;
+      }>("/timetable/next-period");
+    },
+    getSchedule: async (params: { class_id?: number; section_id?: number; teacher_id?: number; day_of_week?: number } = {}) => {
+      const q = new URLSearchParams();
+      if (params.class_id) q.append("class_id", params.class_id.toString());
+      if (params.section_id) q.append("section_id", params.section_id.toString());
+      if (params.teacher_id) q.append("teacher_id", params.teacher_id.toString());
+      if (params.day_of_week) q.append("day_of_week", params.day_of_week.toString());
+      return request<Array<{
+        id: number;
+        period_number: number;
+        subject: string;
+        room?: string;
+        start_time: string;
+        end_time: string;
+        day_of_week: number;
+      }>>(`/timetable/schedule?${q.toString()}`);
+    },
+  },
 };

@@ -1,5 +1,3 @@
-from app.db.session import Base
-from app.models.base import TimestampMixin
 from app.models.school import School
 from app.models.academic_year import AcademicYear
 from app.models.role import Role, UserRole
@@ -11,14 +9,19 @@ from app.models.section import Section
 from app.models.student_enrollment import StudentEnrollment
 from app.models.teacher_assignment import TeacherAssignment
 from app.models.audit_log import AuditLog
+from app.models.attendance import AttendanceSession, AttendanceRecord
+from app.models.examination import ExamType, Exam, ExamSubject, Mark
+from app.models.fee import FeeCategory, FeeStructure, Invoice, Payment
+from app.models.notice import Notice
+from app.models.timetable import TimetableEntry
+from app.models.notification import Notification
+from app.models.ai import AIConversation, AIMessage, AIFeedback
 
 __all__ = [
-    "Base",
-    "TimestampMixin",
     "School",
     "AcademicYear",
     "Role",
-    "UserRole",
+    "user_roles",
     "User",
     "TeacherProfile",
     "StudentProfile",
@@ -27,4 +30,20 @@ __all__ = [
     "StudentEnrollment",
     "TeacherAssignment",
     "AuditLog",
+    "AttendanceSession",
+    "AttendanceRecord",
+    "ExamType",
+    "Exam",
+    "ExamSubject",
+    "Mark",
+    "FeeCategory",
+    "FeeStructure",
+    "Invoice",
+    "Payment",
+    "Notice",
+    "TimetableEntry",
+    "Notification",
+    "AIConversation",
+    "AIMessage",
+    "AIFeedback",
 ]

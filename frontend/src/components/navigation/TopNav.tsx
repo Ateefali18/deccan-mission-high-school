@@ -3,6 +3,7 @@ import { Menu, Calendar } from "lucide-react";
 import { GlobalSearch } from "./GlobalSearch";
 import { ThemeSelector } from "../ui/ThemeSelector";
 import { UserMenu } from "./UserMenu";
+import { NotificationDropdown } from "./NotificationDropdown";
 import { useAuth } from "../../app/AuthContext";
 
 interface TopNavProps {
@@ -33,6 +34,9 @@ export const TopNav: React.FC<TopNavProps> = ({ onOpenMobileSidebar }) => {
           <Calendar className="w-3.5 h-3.5" />
           <span>AY 2025–2026</span>
         </div>
+
+        {/* Notification Bell Dropdown */}
+        <NotificationDropdown />
 
         {/* Theme Switcher */}
         <ThemeSelector compact />

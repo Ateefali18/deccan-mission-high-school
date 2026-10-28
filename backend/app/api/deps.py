@@ -47,6 +47,8 @@ def get_current_user(
 
     return user
 
+get_current_active_user = get_current_user
+
 def require_admin(current_user: User = Depends(get_current_user)) -> User:
     PermissionService.require_roles(current_user, ["ADMIN"])
     return current_user

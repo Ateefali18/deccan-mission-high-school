@@ -53,5 +53,14 @@ class Settings(BaseSettings):
     # Rate limiting configuration (requests per minute for sensitive endpoints)
     LOGIN_RATE_LIMIT_PER_MINUTE: int = 15
 
+    # AI Assistant Provider Configuration
+    AI_PROVIDER: str = "gemini"  # gemini, openai, anthropic, or local
+    AI_MODEL: str = "gemini-1.5-pro"
+    AI_API_KEY: str = ""
+
+    # Attendance Calculation Configuration
+    ATTENDANCE_LATE_WEIGHT: float = 1.0  # Count late as present (1.0) or custom (e.g. 0.5)
+    ATTENDANCE_EXCUSED_IN_DENOMINATOR: bool = False  # Excused absences excluded from denominator by default
+
 
 settings = Settings()

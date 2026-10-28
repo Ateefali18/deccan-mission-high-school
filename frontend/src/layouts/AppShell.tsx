@@ -3,6 +3,7 @@ import { Outlet } from "react-router-dom";
 import { Sidebar } from "../components/navigation/Sidebar";
 import { TopNav } from "../components/navigation/TopNav";
 import { SupabaseBanner } from "../components/shared/SupabaseBanner";
+import { AIAssistantDrawer } from "../components/shared/AIAssistantDrawer";
 
 export const AppShell: React.FC = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -27,8 +28,11 @@ export const AppShell: React.FC = () => {
           <Outlet />
         </main>
 
+        {/* Global School AI Assistant */}
+        <AIAssistantDrawer />
+
         <footer className="px-6 py-4 border-t border-light-border dark:border-dark-border text-center text-xs text-light-secondary dark:text-dark-secondary">
-          <p>© 2026 Deccan Mission High School, Hyderabad. All Rights Reserved. • Cloud ERP Phase 2 (Supabase Connected)</p>
+          <p>© 2026 Deccan Mission High School, Hyderabad. All Rights Reserved. • Cloud ERP Phase 3 (AI & Realtime Active)</p>
         </footer>
       </div>
     </div>

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import {
   Users,
@@ -9,8 +9,12 @@ import {
   Clock,
   ArrowRight,
   ShieldCheck,
+  CheckCircle2,
+  Calendar,
+  AlertCircle,
 } from "lucide-react";
 import { api } from "../../services/api";
+import { useRealtimeSync } from "../../hooks/useRealtimeSync";
 import type { TeacherDashboardStats } from "../../types";
 import { PageHeader } from "../../components/shared/PageHeader";
 import { MetricCard } from "../../components/shared/MetricCard";
@@ -21,36 +25,54 @@ import { Skeleton } from "../../components/ui/Skeleton";
 
 export const TeacherDashboardPage: React.FC = () => {
   const [stats, setStats] = useState<TeacherDashboardStats | null>(null);
+  const [nextPeriodInfo, setNextPeriodInfo] = useState<{
+    status: string;
+    message: string;
+    current_period?: any;
+    next_period?: any;
+  } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    let isMounted = true;
-    api.dashboards
-      .getTeacher()
-      .then((data) => {
-        if (isMounted) setStats(data);
-      })
-      .catch(() => {})
-      .finally(() => {
-        if (isMounted) setIsLoading(false);
-      });
-
-    return () => {
-      isMounted = false;
-    };
+  const fetchDashboard = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const [dash, timetable] = await Promise.all([
+        api.dashboards.getTeacher(),
+        api.timetable.getNextPeriod().catch(() => null),
+      ]);
+      setStats(dash);
+      if (timetable) setNextPeriodInfo(timetable);
+    } catch {
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchDashboard();
+  }, [fetchDashboard]);
+
+  // Real-time synchronization
+  useRealtimeSync({
+    tables: ["attendance_records", "marks", "timetable_entries", "notices"],
+    onSync: () => {
+      fetchDashboard();
+    },
+  });
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Faculty Dashboard"
+        title="Faculty Academic Portal"
         subtitle={`Welcome, ${stats?.teacher_name || "Faculty Member"} • Employee ID: ${stats?.employee_id || "..."}`}
         action={
-          <Link to="/teacher/my-students">
-            <Button variant="primary" size="sm" leftIcon={<GraduationCap className="w-4 h-4" />}>
-              View My Students
-            </Button>
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link to="/teacher/my-students">
+              <Button variant="primary" size="sm" leftIcon={<GraduationCap className="w-4 h-4" />}>
+                Record Attendance
+              </Button>
+            </Link>
+          </div>
         }
       />
 
@@ -67,7 +89,7 @@ export const TeacherDashboardPage: React.FC = () => {
             label="Assigned Classes"
             value={stats.total_assigned_classes}
             icon={<BookOpen className="w-6 h-6" />}
-            subtitle="Sections in charge"
+            subtitle="Sections under your charge"
           />
           <MetricCard
             label="Authorized Students"
@@ -78,16 +100,44 @@ export const TeacherDashboardPage: React.FC = () => {
           />
           <MetricCard
             label="Department"
-            value={stats.department || "Faculty"}
+            value={stats.department || "Mathematics & Science"}
             icon={<Users className="w-6 h-6" />}
             subtitle={stats.designation}
           />
         </div>
       ) : null}
 
-      {/* Grid: Assigned Classes & Real Today Schedule */}
+      {/* Real Today's Bell & Period Status */}
+      <Card className="p-5 bg-gradient-to-r from-brand-navy/5 via-brand-gold/10 to-brand-navy/5 border border-brand-gold/30">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className="p-2.5 rounded-xl bg-brand-gold text-brand-navy shrink-0 font-bold">
+              <Clock className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h4 className="text-sm font-bold text-light-primary dark:text-dark-primary">
+                  Today's Bell & Timetable Period Status
+                </h4>
+                <Badge variant="gold" size="sm">Asia/Kolkata</Badge>
+              </div>
+              <p className="text-xs text-light-secondary dark:text-dark-secondary mt-0.5">
+                {nextPeriodInfo?.message || "Checking current class and timetable status..."}
+              </p>
+            </div>
+          </div>
+
+          <Link to="/teacher/my-students">
+            <Button variant="outline" size="sm" rightIcon={<ArrowRight className="w-3.5 h-3.5" />}>
+              Open Section Roll Call
+            </Button>
+          </Link>
+        </div>
+      </Card>
+
+      {/* Grid: Assigned Classes & Real Actions */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Real Class & Subject Assignments from Database */}
+        {/* Real Class & Subject Assignments */}
         <Card className="p-6">
           <div className="flex items-center justify-between mb-4">
             <div>
@@ -134,59 +184,44 @@ export const TeacherDashboardPage: React.FC = () => {
           )}
         </Card>
 
-        {/* Schedule & Quick Actions */}
+        {/* Quick Academic Actions */}
         <div className="space-y-4">
           <Card className="p-6">
-            <h3 className="text-base font-bold text-light-primary dark:text-dark-primary mb-1">
-              Today's Schedule & Period Bell
-            </h3>
-            <p className="text-xs text-light-secondary dark:text-dark-secondary mb-4">
-              Timetable and period bells are scheduled for Phase 2
-            </p>
-            <div className="p-4 rounded-xl border border-dashed border-light-border dark:border-dark-border bg-gray-50/60 dark:bg-dark-elevated/20 flex items-center gap-3">
-              <Clock className="w-5 h-5 text-brand-gold shrink-0" />
-              <p className="text-xs text-light-secondary dark:text-dark-secondary">
-                {stats?.today_schedule_placeholder || "Automated class timetable will be activated in Phase 2."}
-              </p>
-            </div>
-          </Card>
-
-          <Card className="p-6">
             <h3 className="text-base font-bold text-light-primary dark:text-dark-primary mb-3">
-              Quick Operations
+              Teaching Operations
             </h3>
             <div className="grid grid-cols-2 gap-3">
               <Link
                 to="/teacher/my-students"
-                className="p-3 rounded-xl border border-light-border dark:border-dark-border hover:border-brand-gold/60 text-left transition-all"
+                className="p-3.5 rounded-xl border border-light-border dark:border-dark-border hover:border-brand-gold/60 text-left transition-all group"
               >
-                <GraduationCap className="w-4 h-4 text-brand-gold mb-1.5" />
+                <GraduationCap className="w-5 h-5 text-brand-gold mb-2 group-hover:scale-110 transition-transform" />
                 <p className="text-xs font-bold text-light-primary dark:text-dark-primary">My Students</p>
-                <p className="text-[10px] text-light-secondary">Authorized roll list</p>
+                <p className="text-[10px] text-light-secondary">Authorized roll list & attendance</p>
               </Link>
+
               <Link
-                to="/coming-soon?module=Mark+Attendance&phase=2"
-                className="p-3 rounded-xl border border-light-border dark:border-dark-border hover:border-brand-gold/60 text-left transition-all"
+                to="/teacher/my-students"
+                className="p-3.5 rounded-xl border border-light-border dark:border-dark-border hover:border-brand-gold/60 text-left transition-all group"
               >
-                <CalendarCheck className="w-4 h-4 text-brand-gold mb-1.5" />
-                <p className="text-xs font-bold text-light-primary dark:text-dark-primary">Attendance</p>
-                <p className="text-[10px] text-light-secondary">Phase 2 Module</p>
+                <CalendarCheck className="w-5 h-5 text-emerald-500 mb-2 group-hover:scale-110 transition-transform" />
+                <p className="text-xs font-bold text-light-primary dark:text-dark-primary">Take Attendance</p>
+                <p className="text-[10px] text-light-secondary">Daily roll call submission</p>
               </Link>
-              <Link
-                to="/coming-soon?module=Enter+Marks&phase=2"
-                className="p-3 rounded-xl border border-light-border dark:border-dark-border hover:border-brand-gold/60 text-left transition-all"
-              >
-                <FileSpreadsheet className="w-4 h-4 text-brand-gold mb-1.5" />
-                <p className="text-xs font-bold text-light-primary dark:text-dark-primary">Enter Marks</p>
-                <p className="text-[10px] text-light-secondary">Phase 2 Module</p>
-              </Link>
+
+              <div className="p-3.5 rounded-xl border border-light-border dark:border-dark-border bg-gray-50/50 dark:bg-dark-elevated/30 text-left">
+                <FileSpreadsheet className="w-5 h-5 text-brand-gold mb-2" />
+                <p className="text-xs font-bold text-light-primary dark:text-dark-primary">Marks Entry</p>
+                <p className="text-[10px] text-light-secondary">Mid-Term Assessments</p>
+              </div>
+
               <Link
                 to="/teacher/profile"
-                className="p-3 rounded-xl border border-light-border dark:border-dark-border hover:border-brand-gold/60 text-left transition-all"
+                className="p-3.5 rounded-xl border border-light-border dark:border-dark-border hover:border-brand-gold/60 text-left transition-all group"
               >
-                <Users className="w-4 h-4 text-brand-gold mb-1.5" />
+                <Users className="w-5 h-5 text-brand-gold mb-2 group-hover:scale-110 transition-transform" />
                 <p className="text-xs font-bold text-light-primary dark:text-dark-primary">My Profile</p>
-                <p className="text-[10px] text-light-secondary">Official Faculty Card</p>
+                <p className="text-[10px] text-light-secondary">Faculty credentials & bio</p>
               </Link>
             </div>
           </Card>

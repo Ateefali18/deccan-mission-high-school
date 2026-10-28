@@ -322,5 +322,41 @@ The database contains 40 normalized tables with high-performance B-Tree indexes,
 
 ---
 
-## 10. Next Steps (Phase 3)
-- **Phase 3**: Autonomous School AI Assistant querying authorized school data with RAG, automated timetable generation, and predictive student performance insights.
+## 10. Phase 3 — Production-Ready AI Assistant, Realtime Sync & Verification
+
+Phase 3 completes the school ERP with an enterprise AI assistant architecture, real-time database synchronization, standardized attendance logic, timetable period calculation, and exhaustive test suites.
+
+### 1. Secure AI Assistant Architecture
+- **Provider Abstraction**: Configured via server-side environment variables `AI_PROVIDER` (default `"gemini"`), `AI_MODEL` (`"gemini-1.5-pro"`), and `AI_API_KEY`.
+- **Zero Raw SQL Exposure**: The AI engine uses pre-validated, role-gated query functions. Arbitrary model-generated SQL execution is strictly prevented.
+- **Strict Role-Scoped Answering**:
+  - **Admin**: School-wide student lookups, low-attendance alerts (<75%), fee totals, upcoming CBSE exams, faculty assignments, notices.
+  - **Teacher**: Restricted strictly to assigned classes/sections. Timetable periods, student roll call, low-attendance alerts for assigned students. Financials and unassigned classes are blocked.
+  - **Student**: Isolated strictly to their own student record, current period, overall attendance percentage, published marks, and principal announcements. Disclosing other student records is strictly blocked.
+- **Interactive Global AI Drawer**: Available across all portals via floating trigger pill and keyboard shortcut with role-tailored prompt suggestions and direct navigation links to student records and attendance.
+
+### 2. Standardized Attendance Formula
+$$\text{Attendance Percentage} = \frac{\text{Present} + (\text{Late} \times \text{Weight})}{\text{Total Sessions} - \text{Excused Sessions}} \times 100$$
+- Configurable late weight (default `1.0`) and excused denominator exclusion.
+- Low-attendance alerts automatically flag students below the 75% CBSE requirement.
+
+### 3. Timetable & Next Period Calculation
+- Timezone-aware calculation (`Asia/Kolkata`) comparing current time against the master timetable for today’s day-of-week.
+- Determines currently running periods, remaining time, and next period with subject and room number.
+
+### 4. Supabase Realtime Synchronization
+- Dynamic subscriptions via `useRealtimeSync` hook listening to `students`, `teachers`, `attendance_records`, `notices`, `invoices`, and `timetable_entries`.
+- Automatic clean-up on unmount prevents duplicate listeners and infinite re-fetch loops.
+
+### 5. Automated Test Results
+- **Backend Pytest Suite**: **20 passed (100%)**
+  - `test_auth.py`: Health check, login authentication, invalid password defense, token decoding, logout.
+  - `test_dashboards.py`: Admin database counts, teacher authorized assignments, student profile metrics.
+  - `test_permissions.py`: Student isolation, teacher assignment boundary, admin access control.
+  - `test_search.py`: Debounced admission number and employee ID lookups, term persistence.
+  - `test_ai_and_attendance.py`: Standardized attendance formula, AI next period calculation, admission lookup, financial boundary protection, notice retrieval.
+- **Frontend Vitest Suite**: **9 passed (100%)**
+  - `attendance_and_ai.test.ts`: Attendance percentages, weighting, low-attendance threshold.
+  - `validation.test.ts`: Zod schema validation rules.
+  - `ThemeSelector.test.tsx`: Royal Dark & Gold theme toggles, DOM class mutations, localStorage sync.
+- **Frontend Production Build**: `tsc && vite build` succeeded with **0 errors**.
