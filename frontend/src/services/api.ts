@@ -55,6 +55,11 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     return {} as T;
   }
 
+  const contentType = response.headers.get("content-type") || "";
+  if (contentType.includes("text/html")) {
+    throw new ApiError("API endpoint unavailable on static hosting.", 404);
+  }
+
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {

@@ -20,12 +20,17 @@ export const UserMenu: React.FC = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  if (!session) return null;
+  if (!session || !session.user) return null;
 
   const handleLogout = async () => {
     await logout();
     navigate("/login");
   };
+
+  const fullName = session.user.full_name || "School User";
+  const initials = fullName.charAt(0).toUpperCase() || "U";
+  const userEmail = session.user.email || "";
+  const roleName = session.role || "MEMBER";
 
   return (
     <div ref={menuRef} className="relative">
@@ -35,14 +40,14 @@ export const UserMenu: React.FC = () => {
         aria-label="User profile options"
       >
         <div className="w-8 h-8 rounded-full bg-brand-blue/15 text-brand-blue dark:text-dark-accent flex items-center justify-center font-bold text-xs border border-brand-blue/30">
-          {session.user.full_name.charAt(0).toUpperCase()}
+          {initials}
         </div>
         <div className="hidden sm:block text-left">
           <p className="text-xs font-bold text-light-primary dark:text-dark-primary leading-tight truncate max-w-[130px]">
-            {session.user.full_name}
+            {fullName}
           </p>
           <p className="text-[10px] text-light-secondary dark:text-dark-secondary uppercase font-semibold tracking-wider">
-            {session.role}
+            {roleName}
           </p>
         </div>
         <ChevronDown className="w-3.5 h-3.5 text-light-secondary hidden sm:block opacity-60" />
@@ -53,14 +58,14 @@ export const UserMenu: React.FC = () => {
           {/* User Info Header */}
           <div className="px-4 py-3 border-b border-light-border/70 dark:border-dark-border/70">
             <p className="text-sm font-bold text-light-primary dark:text-dark-primary">
-              {session.user.full_name}
+              {fullName}
             </p>
             <p className="text-xs text-light-secondary dark:text-dark-secondary truncate mb-2">
-              {session.user.email}
+              {userEmail}
             </p>
             <div className="flex items-center gap-2">
               <Badge variant="primary" size="sm">
-                {session.role}
+                {roleName}
               </Badge>
               {session.identifier && (
                 <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-gray-100 dark:bg-dark-elevated text-light-primary dark:text-dark-primary font-bold">

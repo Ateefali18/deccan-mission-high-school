@@ -27,9 +27,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     try {
       const data = await api.auth.getMe();
+      if (!data || !data.user || !data.role) {
+        throw new Error("Invalid session data");
+      }
       setSession(data);
     } catch (err) {
       localStorage.removeItem("dmhs_token");
+      localStorage.removeItem("dmhs_demo_role");
       setSession(null);
     } finally {
       setIsLoading(false);
