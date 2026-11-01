@@ -37,7 +37,7 @@ const studentCreateSchema = z.object({
   full_name: z.string().min(2, "Full name is required"),
   username: z.string().min(3, "Username must be at least 3 characters").optional(),
   email: z.string().email("Valid email required"),
-  password: z.string().min(6, "Password must be at least 6 characters").default("Student@12345"),
+  password: z.string().min(1, "Password is required").default("1234"),
   gender: z.string().optional(),
   date_of_birth: z.string().optional(),
   blood_group: z.string().optional(),
@@ -116,7 +116,7 @@ export const StudentsPage: React.FC = () => {
   } = useForm<StudentCreateFormData>({
     resolver: zodResolver(studentCreateSchema),
     defaultValues: {
-      password: "Student@12345",
+      password: "1234",
     },
   });
 
@@ -563,6 +563,22 @@ export const StudentsPage: React.FC = () => {
                 { value: "Other", label: "Other" },
               ]}
               {...register("gender")}
+            />
+          </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input
+              label="Login Username (Optional)"
+              placeholder="e.g. Ali (portal sign-in username)"
+              error={errors.username?.message}
+              {...register("username")}
+            />
+            <Input
+              label="Login Password"
+              type="password"
+              placeholder="e.g. 1234"
+              error={errors.password?.message}
+              {...register("password")}
             />
           </div>
 

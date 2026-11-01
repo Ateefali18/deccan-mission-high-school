@@ -36,7 +36,7 @@ const teacherCreateSchema = z.object({
   full_name: z.string().min(2, "Full name is required"),
   username: z.string().min(3, "Username must be at least 3 characters").optional(),
   email: z.string().email("Valid email required"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
+  password: z.string().min(1, "Password is required").default("1234"),
   designation: z.string().min(2, "Designation is required"),
   department: z.string().optional(),
   qualification: z.string().optional(),
@@ -82,6 +82,15 @@ export const TeachersPage: React.FC = () => {
   const [isDeactivateOpen, setIsDeactivateOpen] = useState(false);
   const [deactivatingTeacher, setDeactivatingTeacher] = useState<TeacherListItem | null>(null);
   const [isDeactivating, setIsDeactivating] = useState(false);
+  // Allot Class & Subject State
+  const [isAssignOpen, setIsAssignOpen] = useState(false);
+  const [assigningTeacher, setAssigningTeacher] = useState<TeacherListItem | null>(null);
+  const [assignClass, setAssignClass] = useState("Class 10");
+  const [assignSection, setAssignSection] = useState("A");
+  const [assignSubject, setAssignSubject] = useState("Mathematics");
+  const [assignRoleType, setAssignRoleType] = useState("Class Teacher");
+  const [isSubmittingAssign, setIsSubmittingAssign] = useState(false);
+
 
   const {
     register: registerCreate,
@@ -93,7 +102,7 @@ export const TeachersPage: React.FC = () => {
     defaultValues: {
       designation: "Faculty / Senior Teacher",
       department: "General",
-      password: "Teacher@12345",
+      password: "1234",
     },
   });
 
@@ -191,6 +200,26 @@ export const TeachersPage: React.FC = () => {
   const handleOpenDeactivate = (teacher: TeacherListItem) => {
     setDeactivatingTeacher(teacher);
     setIsDeactivateOpen(true);
+  };
+
+    const handleConfirmAssign = async () => {
+    if (!assigningTeacher) return;
+    setIsSubmittingAssign(true);
+    try {
+      await api.teachers.assignClass(assigningTeacher.id, {
+        class_name: assignClass,
+        section_name: assignSection,
+        subject_name: assignSubject,
+        role_type: assignRoleType,
+      });
+      toast.success(`${assignClass}-${assignSection} (${assignSubject}) successfully allotted to ${assigningTeacher.full_name}!`);
+      setIsAssignOpen(false);
+      fetchTeachers();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to allot class to faculty");
+    } finally {
+      setIsSubmittingAssign(false);
+    }
   };
 
   const handleConfirmDeactivate = async () => {
@@ -746,6 +775,105 @@ export const TeachersPage: React.FC = () => {
         variant="danger"
         isLoading={isDeactivating}
       />
+          {/* Allot Class & Subject Dialog */}
+      <Dialog
+        isOpen={isAssignOpen}
+        onClose={() => setIsAssignOpen(false)}
+        title={`Allot Class & Subject: ${assigningTeacher?.full_name || "Faculty"}`}
+        description="Allocate authorized classes, sections, and teaching subjects to this teacher"
+        maxWidth="md"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setIsAssignOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleConfirmAssign}
+              isLoading={isSubmittingAssign}
+            >
+              Confirm Allotment
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4 py-2">
+          <div className="p-3 bg-brand-pale/50 dark:bg-dark-elevated rounded-xl border border-brand-blue/20 flex items-center justify-between text-xs">
+            <span className="font-semibold text-light-secondary dark:text-dark-secondary">Faculty Member:</span>
+            <span className="font-bold text-brand-navy dark:text-white">{assigningTeacher?.full_name} ({assigningTeacher?.employee_id})</span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold mb-1 text-light-secondary dark:text-dark-secondary">
+                Select Class
+              </label>
+              <select
+                value={assignClass}
+                onChange={(e) => setAssignClass(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl border border-light-border dark:border-dark-border bg-white dark:bg-dark-card text-xs text-light-primary dark:text-dark-primary focus:border-brand-gold focus:outline-none"
+              >
+                {Array.from({ length: 10 }, (_, i) => `Class ${i + 1}`).map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold mb-1 text-light-secondary dark:text-dark-secondary">
+                Select Section
+              </label>
+              <select
+                value={assignSection}
+                onChange={(e) => setAssignSection(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl border border-light-border dark:border-dark-border bg-white dark:bg-dark-card text-xs text-light-primary dark:text-dark-primary focus:border-brand-gold focus:outline-none"
+              >
+                <option value="A">Section A</option>
+                <option value="B">Section B</option>
+                <option value="C">Section C</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold mb-1 text-light-secondary dark:text-dark-secondary">
+                Subject
+              </label>
+              <select
+                value={assignSubject}
+                onChange={(e) => setAssignSubject(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl border border-light-border dark:border-dark-border bg-white dark:bg-dark-card text-xs text-light-primary dark:text-dark-primary focus:border-brand-gold focus:outline-none"
+              >
+                <option value="Mathematics">Mathematics</option>
+                <option value="General Science">General Science</option>
+                <option value="Physics">Physics</option>
+                <option value="Chemistry">Chemistry</option>
+                <option value="English Core">English Core</option>
+                <option value="Social Studies">Social Studies</option>
+                <option value="Computer Science">Computer Science</option>
+                <option value="Second Language (Urdu/Hindi)">Second Language (Urdu/Hindi)</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold mb-1 text-light-secondary dark:text-dark-secondary">
+                Responsibility Role
+              </label>
+              <select
+                value={assignRoleType}
+                onChange={(e) => setAssignRoleType(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl border border-light-border dark:border-dark-border bg-white dark:bg-dark-card text-xs text-light-primary dark:text-dark-primary focus:border-brand-gold focus:outline-none"
+              >
+                <option value="Class Teacher">Class Teacher</option>
+                <option value="Subject Teacher">Subject Teacher</option>
+                <option value="Co-Teacher">Co-Teacher</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </Dialog>
+
     </div>
   );
 };

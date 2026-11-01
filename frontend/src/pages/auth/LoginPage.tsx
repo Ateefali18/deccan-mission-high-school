@@ -149,46 +149,49 @@ export const LoginPage: React.FC = () => {
               <button
                 type="button"
                 onClick={async () => {
-                  setDevAccount("admin", "Admin@DMHS2026");
+                  setDevAccount("STA khadri", "1234");
                   try {
-                    const s = await login("admin", "Admin@DMHS2026");
+                    const s = await login("STA khadri", "1234");
                     navigate("/admin/dashboard", { replace: true });
                   } catch (e) {}
                 }}
                 className="p-2.5 rounded-xl text-center bg-brand-pale/50 dark:bg-dark-elevated hover:border-brand-blue border border-brand-blue/30 transition-all hover:scale-[1.02] shadow-sm"
               >
                 <span className="text-xs font-bold block text-brand-navy dark:text-white">Admin</span>
-                <span className="text-[10px] text-brand-blue dark:text-dark-accent block">Principal</span>
+                <span className="text-[10px] text-brand-blue dark:text-dark-accent block">STA khadri (1234)</span>
               </button>
               <button
                 type="button"
                 onClick={async () => {
-                  setDevAccount("teacher1", "Teacher@DMHS2026");
+                  setDevAccount("Ateef", "1234");
                   try {
-                    const s = await login("teacher1", "Teacher@DMHS2026");
+                    const s = await login("Ateef", "1234");
                     navigate("/teacher/dashboard", { replace: true });
                   } catch (e) {}
                 }}
                 className="p-2.5 rounded-xl text-center bg-brand-pale/50 dark:bg-dark-elevated hover:border-brand-blue border border-brand-blue/30 transition-all hover:scale-[1.02] shadow-sm"
               >
                 <span className="text-xs font-bold block text-brand-navy dark:text-white">Teacher</span>
-                <span className="text-[10px] text-brand-blue dark:text-dark-accent block">Faculty</span>
+                <span className="text-[10px] text-brand-blue dark:text-dark-accent block">Ateef (1234)</span>
               </button>
               <button
                 type="button"
                 onClick={async () => {
-                  setDevAccount("student1", "Student@12345");
+                  setDevAccount("Ali", "1234");
                   try {
-                    const s = await login("student1", "Student@12345");
+                    const s = await login("Ali", "1234");
                     navigate("/student/dashboard", { replace: true });
                   } catch (e) {}
                 }}
                 className="p-2.5 rounded-xl text-center bg-brand-pale/50 dark:bg-dark-elevated hover:border-brand-blue border border-brand-blue/30 transition-all hover:scale-[1.02] shadow-sm"
               >
                 <span className="text-xs font-bold block text-brand-navy dark:text-white">Student</span>
-                <span className="text-[10px] text-brand-blue dark:text-dark-accent block">Portal</span>
+                <span className="text-[10px] text-brand-blue dark:text-dark-accent block">Ali (1234)</span>
               </button>
             </div>
+            <p className="text-[11px] text-center text-light-secondary dark:text-dark-secondary mt-3">
+              Admin can register new teachers and students, who can immediately log in with their assigned username &amp; password.
+            </p>
           </div>
         </div>
       </div>
