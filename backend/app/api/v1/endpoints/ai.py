@@ -21,6 +21,25 @@ class AIQueryResponse(BaseModel):
     route: Optional[str] = None
     filters: Optional[Dict[str, Any]] = None
     conversation_id: Optional[int] = None
+    provider: Optional[str] = "institutional_db"
+    is_grounded: Optional[bool] = True
+
+class AIStatusResponse(BaseModel):
+    provider: str
+    model: str
+    is_api_key_configured: bool
+    server_side_key_enforced: bool
+    pii_safeguards_active: bool
+    grounded_queries_supported: List[str]
+
+@router.get("/status", response_model=AIStatusResponse)
+def get_ai_status(
+    current_user: User = Depends(deps.get_current_active_user),
+):
+    """
+    Returns AI Provider and configuration status without ever exposing secret API keys.
+    """
+    return AIService.get_provider_status()
 
 @router.post("/query", response_model=AIQueryResponse)
 def query_ai_assistant(
@@ -81,6 +100,8 @@ def query_ai_assistant(
         route=result.get("route"),
         filters=result.get("filters"),
         conversation_id=conv_id,
+        provider=result.get("provider", "institutional_db"),
+        is_grounded=result.get("is_grounded", True),
     )
 
 @router.get("/conversations", response_model=List[Dict[str, Any]])

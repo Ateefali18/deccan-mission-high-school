@@ -67,6 +67,35 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   return data as T;
 }
 
+export const apiClient = {
+  get: async <T = any>(endpoint: string) => {
+    const data = await request<T>(endpoint);
+    return { data };
+  },
+  post: async <T = any>(endpoint: string, body: any) => {
+    const data = await request<T>(endpoint, {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+    return { data };
+  },
+  put: async <T = any>(endpoint: string, body: any) => {
+    const data = await request<T>(endpoint, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    });
+    return { data };
+  },
+  delete: async <T = any>(endpoint: string) => {
+    const data = await request<T>(endpoint, {
+      method: "DELETE",
+    });
+    return { data };
+  },
+};
+
+const USE_MOCK_FALLBACK = false;
+
 export const api = {
   auth: {
     login: async (username_or_email: string, password: string) => {
@@ -169,55 +198,135 @@ export const api = {
 
   schools: {
     getCurrent: async () => {
-      if (isSupabaseConfigured()) {
-        return supabaseService.schools.getCurrent();
+      try {
+        return await request<any>("/schools/current");
+      } catch (err) {
+        if (isSupabaseConfigured()) {
+          return supabaseService.schools.getCurrent();
+        }
+        throw err;
       }
-      return request<any>("/schools/current");
+    },
+    updateCurrent: async (data: any) => {
+      return request<any>("/schools/current", {
+        method: "PUT",
+        body: JSON.stringify(data),
+      });
     },
   },
 
   academicYears: {
     list: async (): Promise<AcademicYear[]> => {
-      if (isSupabaseConfigured()) {
-        return supabaseService.academicYears.list();
+      try {
+        return await request<AcademicYear[]>("/academic-years/");
+      } catch (err) {
+        if (isSupabaseConfigured()) {
+          return supabaseService.academicYears.list();
+        }
+        throw err;
       }
-      return request<AcademicYear[]>("/academic-years/");
     },
     create: async (data: { name: string; start_date: string; end_date: string; is_current: boolean; status: string }) => {
-      if (isSupabaseConfigured()) {
-        return supabaseService.academicYears.create(data);
+      try {
+        return await request<AcademicYear>("/academic-years/", {
+          method: "POST",
+          body: JSON.stringify(data),
+        });
+      } catch (err) {
+        if (isSupabaseConfigured()) {
+          return supabaseService.academicYears.create(data);
+        }
+        throw err;
       }
-      return request<AcademicYear>("/academic-years/", {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
     },
   },
 
   classes: {
     list: async (): Promise<SchoolClass[]> => {
-      if (isSupabaseConfigured()) {
-        return supabaseService.classes.list();
+      try {
+        return await request<SchoolClass[]>("/classes/");
+      } catch (err) {
+        if (isSupabaseConfigured()) {
+          return supabaseService.classes.list();
+        }
+        throw err;
       }
-      return request<SchoolClass[]>("/classes/");
     },
     create: async (data: { name: string; grade_level: number; stream?: string }) => {
-      if (isSupabaseConfigured()) {
-        return supabaseService.classes.create(data);
+      try {
+        return await request<SchoolClass>("/classes/", {
+          method: "POST",
+          body: JSON.stringify(data),
+        });
+      } catch (err) {
+        if (isSupabaseConfigured()) {
+          return supabaseService.classes.create(data);
+        }
+        throw err;
       }
-      return request<SchoolClass>("/classes/", {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
     },
     createSection: async (classId: number | string, data: { name: string; room_number?: string; capacity: number }) => {
-      if (isSupabaseConfigured()) {
-        return supabaseService.classes.createSection(classId, data);
+      try {
+        return await request<Section>(`/classes/${classId}/sections`, {
+          method: "POST",
+          body: JSON.stringify(data),
+        });
+      } catch (err) {
+        if (isSupabaseConfigured()) {
+          return supabaseService.classes.createSection(classId, data);
+        }
+        throw err;
       }
-      return request<Section>(`/classes/${classId}/sections`, {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
+    },
+    update: async (classId: number | string, data: { name?: string; grade_level?: number; stream?: string; is_active?: boolean }) => {
+      try {
+        return await request<SchoolClass>(`/classes/${classId}`, {
+          method: "PUT",
+          body: JSON.stringify(data),
+        });
+      } catch (err) {
+        if (isSupabaseConfigured()) {
+          return supabaseService.classes.update(classId, data);
+        }
+        throw err;
+      }
+    },
+    deactivate: async (classId: number | string) => {
+      try {
+        return await request<SchoolClass>(`/classes/${classId}`, {
+          method: "DELETE",
+        });
+      } catch (err) {
+        if (isSupabaseConfigured()) {
+          return supabaseService.classes.deactivate(classId);
+        }
+        throw err;
+      }
+    },
+    updateSection: async (sectionId: number | string, data: { name?: string; room_number?: string; capacity?: number; is_active?: boolean }) => {
+      try {
+        return await request<Section>(`/classes/sections/${sectionId}`, {
+          method: "PUT",
+          body: JSON.stringify(data),
+        });
+      } catch (err) {
+        if (isSupabaseConfigured()) {
+          return supabaseService.classes.updateSection(sectionId, data);
+        }
+        throw err;
+      }
+    },
+    deactivateSection: async (sectionId: number | string) => {
+      try {
+        return await request<Section>(`/classes/sections/${sectionId}`, {
+          method: "DELETE",
+        });
+      } catch (err) {
+        if (isSupabaseConfigured()) {
+          return supabaseService.classes.deactivateSection(sectionId);
+        }
+        throw err;
+      }
     },
   },
 
@@ -230,32 +339,41 @@ export const api = {
       status?: string;
       search?: string;
     } = {}) => {
-      if (isSupabaseConfigured()) {
-        return supabaseService.students.list({
-          page: params.page,
-          limit: params.limit,
-          classId: params.class_id,
-          sectionId: params.section_id,
-          status: params.status,
-          search: params.search,
-        });
+      try {
+        const query = new URLSearchParams();
+        if (params.page) query.append("page", params.page.toString());
+        if (params.limit) query.append("limit", params.limit.toString());
+        if (params.class_id) query.append("class_id", params.class_id.toString());
+        if (params.section_id) query.append("section_id", params.section_id.toString());
+        if (params.status) query.append("status", params.status);
+        if (params.search) query.append("search", params.search);
+        return await request<{ items: StudentListItem[]; total: number; page: number; limit: number }>(
+          `/students/?${query.toString()}`
+        );
+      } catch (err) {
+        if (isSupabaseConfigured()) {
+          return supabaseService.students.list({
+            page: params.page,
+            limit: params.limit,
+            classId: params.class_id,
+            sectionId: params.section_id,
+            status: params.status,
+            search: params.search,
+          });
+        }
+        throw err;
       }
-
-      const query = new URLSearchParams();
-      if (params.page) query.append("page", params.page.toString());
-      if (params.limit) query.append("limit", params.limit.toString());
-      if (params.class_id) query.append("class_id", params.class_id.toString());
-      if (params.section_id) query.append("section_id", params.section_id.toString());
-      return request<{ items: StudentListItem[]; total: number; page: number; limit: number }>(
-        `/students/?${query.toString()}`
-      );
     },
 
     getById: async (id: number | string): Promise<StudentProfile> => {
-      if (isSupabaseConfigured()) {
-        return supabaseService.students.getById(id);
+      try {
+        return await request<StudentProfile>(`/students/${id}`);
+      } catch (err) {
+        if (isSupabaseConfigured()) {
+          return supabaseService.students.getById(id);
+        }
+        throw err;
       }
-      return request<StudentProfile>(`/students/${id}`);
     },
 
     getMyProfile: async (): Promise<StudentProfile> => {
@@ -263,30 +381,70 @@ export const api = {
     },
 
     create: async (data: any): Promise<any> => {
-      if (isSupabaseConfigured()) {
-        return supabaseService.students.create(data);
+      const payload: any = {
+        ...data,
+        username: data.username || data.email?.split("@")[0] || (data.admission_number ? data.admission_number.toLowerCase().replace(/[^a-z0-9]/g, "") : "student"),
+        password: data.password || `Student@${data.admission_number || "12345"}`,
+      };
+      if (payload.date_of_birth === "") delete payload.date_of_birth;
+      if (payload.roll_number === "") delete payload.roll_number;
+
+      try {
+        return await request<StudentProfile>("/students/", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+      } catch (err) {
+        if (isSupabaseConfigured()) {
+          return supabaseService.students.create(payload);
+        }
+        throw err;
       }
-      return request<StudentProfile>("/students/", {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
     },
 
-    update: async (id: number | string, data: Partial<StudentProfile>) => {
-      if (isSupabaseConfigured()) {
-        return supabaseService.students.update(id, data);
+    update: async (id: number | string, data: any) => {
+      const payload: any = { ...data };
+      if (payload.date_of_birth === "") delete payload.date_of_birth;
+      if (payload.roll_number === "") delete payload.roll_number;
+
+      try {
+        return await request<StudentProfile>(`/students/${id}`, {
+          method: "PUT",
+          body: JSON.stringify(payload),
+        });
+      } catch (err) {
+        if (isSupabaseConfigured()) {
+          return supabaseService.students.update(id, payload);
+        }
+        throw err;
       }
-      return request<StudentProfile>(`/students/${id}`, {
-        method: "PATCH",
-        body: JSON.stringify(data),
-      });
+    },
+
+    deactivate: async (id: number | string) => {
+      try {
+        return await request<StudentProfile>(`/students/${id}`, {
+          method: "DELETE",
+        });
+      } catch (err) {
+        if (isSupabaseConfigured()) {
+          return supabaseService.students.deactivate(id);
+        }
+        throw err;
+      }
     },
 
     updateStatus: async (id: number | string, status: string, reason?: string) => {
-      if (isSupabaseConfigured()) {
-        return supabaseService.students.updateStatus(id, status, reason);
+      try {
+        return await request<StudentProfile>(`/students/${id}`, {
+          method: "PUT",
+          body: JSON.stringify({ student_status: status }),
+        });
+      } catch (err) {
+        if (isSupabaseConfigured()) {
+          return supabaseService.students.updateStatus(id, status, reason);
+        }
+        throw err;
       }
-      return true;
     },
 
     uploadPhoto: async (studentId: number | string, file: File): Promise<string> => {
@@ -308,24 +466,33 @@ export const api = {
   },
 
   teachers: {
-    list: async (params: { page?: number; limit?: number; search?: string } = {}) => {
-      if (isSupabaseConfigured()) {
-        return supabaseService.teachers.list(params);
+    list: async (params: { page?: number; limit?: number; search?: string; status?: string } = {}) => {
+      try {
+        const query = new URLSearchParams();
+        if (params.page) query.append("page", params.page.toString());
+        if (params.limit) query.append("limit", params.limit.toString());
+        if (params.search) query.append("search", params.search);
+        if (params.status) query.append("status", params.status);
+        return await request<{ items: TeacherListItem[]; total: number; page: number; limit: number }>(
+          `/teachers/?${query.toString()}`
+        );
+      } catch (err) {
+        if (isSupabaseConfigured()) {
+          return supabaseService.teachers.list(params);
+        }
+        throw err;
       }
-
-      const query = new URLSearchParams();
-      if (params.page) query.append("page", params.page.toString());
-      if (params.limit) query.append("limit", params.limit.toString());
-      return request<{ items: TeacherListItem[]; total: number; page: number; limit: number }>(
-        `/teachers/?${query.toString()}`
-      );
     },
 
     getById: async (id: number | string): Promise<TeacherProfile> => {
-      if (isSupabaseConfigured()) {
-        return supabaseService.teachers.getById(id);
+      try {
+        return await request<TeacherProfile>(`/teachers/${id}`);
+      } catch (err) {
+        if (isSupabaseConfigured()) {
+          return supabaseService.teachers.getById(id);
+        }
+        throw err;
       }
-      return request<TeacherProfile>(`/teachers/${id}`);
     },
 
     getMyProfile: async (): Promise<TeacherProfile> => {
@@ -333,78 +500,152 @@ export const api = {
     },
 
     create: async (data: any): Promise<any> => {
-      if (isSupabaseConfigured()) {
-        return supabaseService.teachers.create(data);
+      const payload: any = {
+        ...data,
+        username: data.username || data.email?.split("@")[0] || (data.employee_id ? data.employee_id.toLowerCase().replace(/[^a-z0-9]/g, "") : "teacher"),
+      };
+      if (payload.joining_date === "") delete payload.joining_date;
+
+      try {
+        return await request<TeacherProfile>("/teachers/", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+      } catch (err) {
+        if (isSupabaseConfigured()) {
+          return supabaseService.teachers.create(payload);
+        }
+        throw err;
       }
-      return request<TeacherProfile>("/teachers/", {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
     },
 
     update: async (id: number | string, data: any) => {
-      if (isSupabaseConfigured()) {
-        return supabaseService.teachers.update(id, data);
+      const payload: any = { ...data };
+      if (payload.joining_date === "") delete payload.joining_date;
+
+      try {
+        return await request<TeacherProfile>(`/teachers/${id}`, {
+          method: "PUT",
+          body: JSON.stringify(payload),
+        });
+      } catch (err) {
+        if (isSupabaseConfigured()) {
+          return supabaseService.teachers.update(id, payload);
+        }
+        throw err;
       }
-      return request<TeacherProfile>(`/teachers/${id}`, {
-        method: "PATCH",
-        body: JSON.stringify(data),
-      });
     },
 
     toggleStatus: async (id: number | string, isActive: boolean) => {
-      if (isSupabaseConfigured()) {
-        return supabaseService.teachers.toggleStatus(id, isActive);
+      try {
+        return await request<TeacherProfile>(`/teachers/${id}/status`, {
+          method: "PATCH",
+          body: JSON.stringify({ is_active: isActive }),
+        });
+      } catch (err) {
+        if (isSupabaseConfigured()) {
+          return supabaseService.teachers.toggleStatus(id, isActive);
+        }
+        throw err;
       }
-      return true;
+    },
+
+    deactivate: async (id: number | string) => {
+      try {
+        return await request<TeacherProfile>(`/teachers/${id}`, {
+          method: "DELETE",
+        });
+      } catch (err) {
+        if (isSupabaseConfigured()) {
+          return supabaseService.teachers.deactivate(id);
+        }
+        throw err;
+      }
     },
   },
 
   dashboards: {
     getAdmin: async (): Promise<AdminDashboardStats> => {
-      if (isSupabaseConfigured()) {
-        return supabaseService.dashboards.getAdmin();
+      try {
+        return await request<AdminDashboardStats>("/dashboards/admin");
+      } catch (err) {
+        if (isSupabaseConfigured()) {
+          return supabaseService.dashboards.getAdmin();
+        }
+        throw err;
       }
-      return request<AdminDashboardStats>("/dashboards/admin");
     },
 
     getTeacher: async (): Promise<TeacherDashboardStats> => {
-      if (isSupabaseConfigured()) {
-        return supabaseService.dashboards.getTeacher();
+      try {
+        return await request<TeacherDashboardStats>("/dashboards/teacher");
+      } catch (err) {
+        if (isSupabaseConfigured()) {
+          return supabaseService.dashboards.getTeacher();
+        }
+        throw err;
       }
-      return request<TeacherDashboardStats>("/dashboards/teacher");
     },
 
     getStudent: async (): Promise<StudentDashboardStats> => {
-      if (isSupabaseConfigured()) {
-        return supabaseService.dashboards.getStudent();
+      try {
+        return await request<StudentDashboardStats>("/dashboards/student");
+      } catch (err) {
+        if (isSupabaseConfigured()) {
+          return supabaseService.dashboards.getStudent();
+        }
+        throw err;
       }
-      return request<StudentDashboardStats>("/dashboards/student");
     },
   },
 
   search: {
     query: async (q: string, limit: number = 15): Promise<{ query: string; total: number; results: SearchResultItem[] }> => {
-      if (isSupabaseConfigured()) {
-        const results = await supabaseService.search.query(q, limit);
-        return { query: q, total: results.length, results };
+      try {
+        return await request<{ query: string; total: number; results: SearchResultItem[] }>(
+          `/search/?q=${encodeURIComponent(q)}&limit=${limit}`
+        );
+      } catch (err) {
+        if (isSupabaseConfigured()) {
+          const results = await supabaseService.search.query(q, limit);
+          return { query: q, total: results.length, results };
+        }
+        return { query: q, total: 0, results: [] };
       }
-      return request<{ query: string; total: number; results: SearchResultItem[] }>(
-        `/search/?q=${encodeURIComponent(q)}&limit=${limit}`
-      );
     },
   },
 
   notices: {
     list: async (audience: string = "all"): Promise<NoticeItem[]> => {
-      return supabaseService.notices.list(audience);
+      try {
+        return await request<NoticeItem[]>(`/notices/?audience=${audience}`);
+      } catch {
+        return supabaseService.notices.list(audience);
+      }
     },
     create: async (payload: { title: string; content: string; target_audience?: string; priority?: string }) => {
-      return supabaseService.notices.create(payload);
+      try {
+        return await request<NoticeItem>("/notices/", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+      } catch {
+        return supabaseService.notices.create(payload);
+      }
     },
   },
 
   ai: {
+    getStatus: async () => {
+      return request<{
+        provider: string;
+        model: string;
+        is_api_key_configured: boolean;
+        server_side_key_enforced: boolean;
+        pii_safeguards_active: boolean;
+        grounded_queries_supported: string[];
+      }>("/ai/status");
+    },
     query: async (question: string, conversation_id?: number) => {
       return request<{
         answer: string;
@@ -413,6 +654,8 @@ export const api = {
         route?: string;
         filters?: Record<string, any>;
         conversation_id?: number;
+        provider?: string;
+        is_grounded?: boolean;
       }>("/ai/query", {
         method: "POST",
         body: JSON.stringify({ question, conversation_id }),
@@ -424,43 +667,202 @@ export const api = {
   },
 
   attendance: {
-    submit: async (data: {
-      academic_year_id: number;
-      class_id: number;
-      section_id: number;
+    getSession: async (params: {
+      section_id: number | string;
       session_date: string;
       period_number?: number;
-      records: Array<{ student_id: number; status: string; remarks?: string }>;
     }) => {
-      return request<any>("/attendance/sessions", {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
+      if (USE_MOCK_FALLBACK) {
+        return await supabaseService.attendance.getSession(params);
+      }
+      try {
+        const q = new URLSearchParams({
+          section_id: String(params.section_id),
+          session_date: params.session_date,
+          period_number: String(params.period_number ?? 0),
+        });
+        const res = await apiClient.get(`/attendance/sessions?${q.toString()}`);
+        return res.data;
+      } catch (err) {
+        return await supabaseService.attendance.getSession(params);
+      }
+    },
+    submit: async (data: {
+      academic_year_id: number | string;
+      class_id: number | string;
+      section_id: number | string;
+      session_date: string;
+      period_number?: number;
+      records: Array<{ student_id: number | string; status: string; remarks?: string }>;
+    }) => {
+      if (USE_MOCK_FALLBACK) {
+        return await supabaseService.attendance.submit(data);
+      }
+      try {
+        const res = await apiClient.post("/attendance/sessions", data);
+        return res.data;
+      } catch (err) {
+        return await supabaseService.attendance.submit(data);
+      }
+    },
+    getDateWiseReport: async (params: {
+      class_id?: number | string;
+      section_id?: number | string;
+      from_date?: string;
+      to_date?: string;
+    } = {}) => {
+      if (USE_MOCK_FALLBACK) {
+        return await supabaseService.attendance.getDateWiseReport(params);
+      }
+      try {
+        const q = new URLSearchParams();
+        if (params.class_id) q.append("class_id", String(params.class_id));
+        if (params.section_id) q.append("section_id", String(params.section_id));
+        if (params.from_date) q.append("from_date", params.from_date);
+        if (params.to_date) q.append("to_date", params.to_date);
+        const res = await apiClient.get(`/attendance/reports/date-wise?${q.toString()}`);
+        return res.data;
+      } catch (err) {
+        return await supabaseService.attendance.getDateWiseReport(params);
+      }
     },
     getStudentSummary: async (studentId: number | string, academicYearId?: number | string) => {
-      const q = academicYearId ? `?academic_year_id=${academicYearId}` : "";
-      return request<{
-        student_id: number;
-        total_sessions: number;
-        present_count: number;
-        late_count: number;
-        absent_count: number;
-        excused_count: number;
-        attendance_percentage: number;
-        is_low_attendance: boolean;
-      }>(`/attendance/students/${studentId}/summary${q}`);
+      if (USE_MOCK_FALLBACK) {
+        return await supabaseService.attendance.getStudentSummary(studentId);
+      }
+      try {
+        const q = academicYearId ? `?academic_year_id=${academicYearId}` : "";
+        const res = await apiClient.get(`/attendance/students/${studentId}/summary${q}`);
+        return res.data;
+      } catch (err) {
+        return await supabaseService.attendance.getStudentSummary(studentId);
+      }
     },
-    getLowAttendance: async (threshold: number = 75.0, classId?: number) => {
-      const q = new URLSearchParams({ threshold: threshold.toString() });
-      if (classId) q.append("class_id", classId.toString());
-      return request<Array<{
-        student_id: number;
-        admission_number: string;
-        full_name: string;
-        attendance_percentage: number;
-        absent_count: number;
-        total_sessions: number;
-      }>>(`/attendance/low-attendance?${q.toString()}`);
+    getLowAttendance: async (threshold: number = 75.0, classId?: number | string) => {
+      if (USE_MOCK_FALLBACK) {
+        return [];
+      }
+      try {
+        const q = new URLSearchParams({ threshold: threshold.toString() });
+        if (classId) q.append("class_id", String(classId));
+        const res = await apiClient.get(`/attendance/low-attendance?${q.toString()}`);
+        return res.data;
+      } catch (err) {
+        return [];
+      }
+    },
+  },
+
+  exams: {
+    list: async (academicYearId?: number | string) => {
+      if (USE_MOCK_FALLBACK) {
+        return await supabaseService.exams.list(academicYearId);
+      }
+      try {
+        const q = academicYearId ? `?academic_year_id=${academicYearId}` : "";
+        const res = await apiClient.get(`/examinations/exams${q}`);
+        return res.data;
+      } catch (err) {
+        return await supabaseService.exams.list(academicYearId);
+      }
+    },
+  },
+
+  subjects: {
+    list: async (classId?: number | string) => {
+      if (USE_MOCK_FALLBACK) {
+        return await supabaseService.subjects.list(classId);
+      }
+      try {
+        const q = classId ? `?class_id=${classId}` : "";
+        const res = await apiClient.get(`/examinations/subjects${q}`);
+        return res.data;
+      } catch (err) {
+        return await supabaseService.subjects.list(classId);
+      }
+    },
+    create: async (data: { name: string; code: string; department?: string; is_active?: boolean }) => {
+      const res = await apiClient.post("/examinations/subjects", data);
+      return res.data;
+    },
+    update: async (subjectId: number | string, data: { name?: string; code?: string; department?: string; is_active?: boolean }) => {
+      const res = await apiClient.put(`/examinations/subjects/${subjectId}`, data);
+      return res.data;
+    },
+    deactivate: async (subjectId: number | string) => {
+      const res = await apiClient.delete(`/examinations/subjects/${subjectId}`);
+      return res.data;
+    },
+  },
+
+  marks: {
+    getEntrySheet: async (params: {
+      exam_id: number | string;
+      class_id: number | string;
+      section_id: number | string;
+      subject_name: string;
+    }) => {
+      if (USE_MOCK_FALLBACK) {
+        return await supabaseService.marks.getEntrySheet(params);
+      }
+      try {
+        const q = new URLSearchParams({
+          exam_id: String(params.exam_id),
+          class_id: String(params.class_id),
+          section_id: String(params.section_id),
+          subject_name: params.subject_name,
+        });
+        const res = await apiClient.get(`/examinations/marks/entry-sheet?${q.toString()}`);
+        return res.data;
+      } catch (err) {
+        return await supabaseService.marks.getEntrySheet(params);
+      }
+    },
+
+    save: async (payload: {
+      exam_id: number | string;
+      class_id: number | string;
+      section_id: number | string;
+      subject_name: string;
+      max_marks: number;
+      passing_marks: number;
+      entries: Array<{
+        student_id: number | string;
+        marks_obtained?: number | null;
+        is_absent?: boolean;
+        remarks?: string;
+      }>;
+    }) => {
+      if (USE_MOCK_FALLBACK) {
+        return await supabaseService.marks.save(payload);
+      }
+      try {
+        const res = await apiClient.post("/examinations/marks", payload);
+        return res.data;
+      } catch (err) {
+        return await supabaseService.marks.save(payload);
+      }
+    },
+
+    getClassResults: async (params: {
+      exam_id: number | string;
+      class_id: number | string;
+      section_id?: number | string;
+    }) => {
+      if (USE_MOCK_FALLBACK) {
+        return await supabaseService.marks.getClassResults(params);
+      }
+      try {
+        const q = new URLSearchParams({
+          exam_id: String(params.exam_id),
+          class_id: String(params.class_id),
+        });
+        if (params.section_id) q.append("section_id", String(params.section_id));
+        const res = await apiClient.get(`/examinations/results/class?${q.toString()}`);
+        return res.data;
+      } catch (err) {
+        return await supabaseService.marks.getClassResults(params);
+      }
     },
   },
 
@@ -501,6 +903,98 @@ export const api = {
         end_time: string;
         day_of_week: number;
       }>>(`/timetable/schedule?${q.toString()}`);
+    },
+  },
+
+  fees: {
+    getStats: async () => {
+      return request<{
+        total_billed: number;
+        total_collected: number;
+        outstanding: number;
+        collection_rate: number;
+      }>("/fees/stats");
+    },
+    getCategories: async () => {
+      return request<Array<{ id: number; name: string; description?: string }>>("/fees/categories");
+    },
+    createCategory: async (data: { name: string; description?: string }) => {
+      return request<any>("/fees/categories", {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+    },
+    getInvoices: async (params: { student_id?: number | string; status?: string } = {}) => {
+      const q = new URLSearchParams();
+      if (params.student_id) q.append("student_id", String(params.student_id));
+      if (params.status) q.append("status", params.status);
+      return request<any[]>(`/fees/invoices?${q.toString()}`);
+    },
+    createInvoice: async (data: {
+      student_id: number;
+      academic_year_id: number;
+      invoice_number: string;
+      total_amount: number;
+      due_date: string;
+    }) => {
+      return request<any>("/fees/invoices", {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+    },
+    recordPayment: async (data: {
+      invoice_id: number;
+      student_id: number;
+      receipt_number: string;
+      amount: number;
+      payment_mode: string;
+      transaction_reference?: string;
+    }) => {
+      return request<any>("/fees/payments", {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+    },
+  },
+
+  assignments: {
+    list: async (params: { class_id?: number | string; section_id?: number | string; subject?: string } = {}) => {
+      const q = new URLSearchParams();
+      if (params.class_id) q.append("class_id", String(params.class_id));
+      if (params.section_id) q.append("section_id", String(params.section_id));
+      if (params.subject) q.append("subject", params.subject);
+      return request<any[]>(`/assignments/?${q.toString()}`);
+    },
+    create: async (data: {
+      title: string;
+      description?: string;
+      subject: string;
+      class_id: number;
+      section_id?: number;
+      due_date: string;
+      max_marks?: number;
+    }) => {
+      return request<any>("/assignments/", {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+    },
+    delete: async (id: number | string) => {
+      return request<any>(`/assignments/${id}`, {
+        method: "DELETE",
+      });
+    },
+  },
+
+  reports: {
+    getSummary: async () => {
+      return request<{
+        enrollment_by_class: Array<{ class_name: string; count: number }>;
+        gender_distribution: { male: number; female: number; other: number };
+        overall_attendance_rate: number;
+        fee_collection_status: { collected: number; pending: number };
+        top_performers: Array<{ name: string; class_name: string; percentage: number }>;
+      }>("/reports/summary");
     },
   },
 };

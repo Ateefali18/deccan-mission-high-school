@@ -24,7 +24,6 @@ import {
   School,
 } from "lucide-react";
 import { useAuth } from "../../app/AuthContext";
-import { Badge } from "../ui/Badge";
 
 interface SidebarProps {
   isCollapsed: boolean;
@@ -57,18 +56,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
         { label: "Teachers & Staff", path: "/admin/teachers", icon: <Users className="w-4 h-4" />, phase: "active" },
         { label: "Classes & Sections", path: "/admin/classes", icon: <Layers className="w-4 h-4" />, phase: "active" },
         { label: "Academic Years", path: "/admin/academic-years", icon: <Calendar className="w-4 h-4" />, phase: "active" },
-        { label: "Subjects", path: "/coming-soon?module=Subjects&phase=2", icon: <BookOpen className="w-4 h-4" />, phase: "Phase 2" },
-        { label: "Attendance", path: "/coming-soon?module=Attendance&phase=2", icon: <CalendarCheck className="w-4 h-4" />, phase: "Phase 2" },
-        { label: "Examinations", path: "/coming-soon?module=Examinations&phase=2", icon: <Award className="w-4 h-4" />, phase: "Phase 2" },
-        { label: "Marks & Results", path: "/coming-soon?module=Marks+%26+Results&phase=2", icon: <FileSpreadsheet className="w-4 h-4" />, phase: "Phase 2" },
-        { label: "Timetable", path: "/coming-soon?module=Timetable&phase=2", icon: <Clock className="w-4 h-4" />, phase: "Phase 2" },
-        { label: "Fees & Payments", path: "/coming-soon?module=Fees+%26+Payments&phase=2", icon: <CreditCard className="w-4 h-4" />, phase: "Phase 2" },
-        { label: "Student Documents", path: "/coming-soon?module=Student+Documents&phase=2", icon: <FolderLock className="w-4 h-4" />, phase: "Phase 2" },
-        { label: "Assignments", path: "/coming-soon?module=Assignments&phase=2", icon: <FileText className="w-4 h-4" />, phase: "Phase 2" },
-        { label: "Notices & Circulars", path: "/coming-soon?module=Notices+%26+Circulars&phase=2", icon: <Bell className="w-4 h-4" />, phase: "Phase 2" },
-        { label: "Reports & Analytics", path: "/coming-soon?module=Reports+%26+Analytics&phase=2", icon: <BarChart3 className="w-4 h-4" />, phase: "Phase 2" },
-        { label: "AI Assistant", path: "/coming-soon?module=AI+School+Assistant&phase=3", icon: <Sparkles className="w-4 h-4" />, phase: "Phase 3" },
-        { label: "Settings", path: "/coming-soon?module=System+Settings&phase=2", icon: <Settings className="w-4 h-4" />, phase: "Phase 2" },
+        { label: "Attendance Register", path: "/admin/attendance", icon: <CalendarCheck className="w-4 h-4" />, phase: "active" },
+        { label: "Examinations", path: "/admin/marks", icon: <Award className="w-4 h-4" />, phase: "active" },
+        { label: "Marks & Results", path: "/admin/marks", icon: <FileSpreadsheet className="w-4 h-4" />, phase: "active" },
+        { label: "Timetable", path: "/admin/timetable", icon: <Clock className="w-4 h-4" />, phase: "active" },
+        { label: "Student Documents", path: "/admin/students", icon: <FolderLock className="w-4 h-4" />, phase: "active" },
+        { label: "Notices & Circulars", path: "/admin/notices", icon: <Bell className="w-4 h-4" />, phase: "active" },
+        { label: "AI Assistant", path: "/admin/ai-assistant", icon: <Sparkles className="w-4 h-4" />, phase: "active" },
+        { label: "Subjects", path: "/admin/subjects", icon: <BookOpen className="w-4 h-4" />, phase: "active" },
+        { label: "Fees & Payments", path: "/admin/fees", icon: <CreditCard className="w-4 h-4" />, phase: "active" },
+        { label: "Assignments", path: "/admin/assignments", icon: <FileText className="w-4 h-4" />, phase: "active" },
+        { label: "Reports & Analytics", path: "/admin/reports", icon: <BarChart3 className="w-4 h-4" />, phase: "active" },
+        { label: "Settings", path: "/admin/settings", icon: <Settings className="w-4 h-4" />, phase: "active" },
       ];
     }
 
@@ -77,13 +76,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
         { label: "Faculty Dashboard", path: "/teacher/dashboard", icon: <LayoutDashboard className="w-4 h-4" />, phase: "active" },
         { label: "My Students", path: "/teacher/my-students", icon: <GraduationCap className="w-4 h-4" />, phase: "active" },
         { label: "My Profile", path: "/teacher/profile", icon: <Users className="w-4 h-4" />, phase: "active" },
-        { label: "Mark Attendance", path: "/coming-soon?module=Mark+Attendance&phase=2", icon: <CalendarCheck className="w-4 h-4" />, phase: "Phase 2" },
-        { label: "Enter Marks", path: "/coming-soon?module=Enter+Marks&phase=2", icon: <FileSpreadsheet className="w-4 h-4" />, phase: "Phase 2" },
-        { label: "Assignments", path: "/coming-soon?module=Teacher+Assignments&phase=2", icon: <FileText className="w-4 h-4" />, phase: "Phase 2" },
-        { label: "My Schedule", path: "/coming-soon?module=My+Schedule&phase=2", icon: <Clock className="w-4 h-4" />, phase: "Phase 2" },
-        { label: "Examinations", path: "/coming-soon?module=Examinations&phase=2", icon: <Award className="w-4 h-4" />, phase: "Phase 2" },
-        { label: "Notices", path: "/coming-soon?module=Notices&phase=2", icon: <Bell className="w-4 h-4" />, phase: "Phase 2" },
-        { label: "AI Assistant", path: "/coming-soon?module=AI+Faculty+Assistant&phase=3", icon: <Sparkles className="w-4 h-4" />, phase: "Phase 3" },
+        { label: "Daily Attendance", path: "/teacher/attendance", icon: <CalendarCheck className="w-4 h-4" />, phase: "active" },
+        { label: "Enter Marks", path: "/teacher/marks", icon: <FileSpreadsheet className="w-4 h-4" />, phase: "active" },
+        { label: "My Schedule", path: "/teacher/timetable", icon: <Clock className="w-4 h-4" />, phase: "active" },
+        { label: "Examinations", path: "/teacher/marks", icon: <Award className="w-4 h-4" />, phase: "active" },
+        { label: "Notices", path: "/teacher/notices", icon: <Bell className="w-4 h-4" />, phase: "active" },
+        { label: "AI Assistant", path: "/teacher/ai-assistant", icon: <Sparkles className="w-4 h-4" />, phase: "active" },
+        { label: "Assignments", path: "/teacher/assignments", icon: <FileText className="w-4 h-4" />, phase: "active" },
       ];
     }
 
@@ -91,34 +90,34 @@ export const Sidebar: React.FC<SidebarProps> = ({
     return [
       { label: "Student Dashboard", path: "/student/dashboard", icon: <LayoutDashboard className="w-4 h-4" />, phase: "active" },
       { label: "My Profile", path: "/student/profile", icon: <GraduationCap className="w-4 h-4" />, phase: "active" },
-      { label: "My Attendance", path: "/coming-soon?module=My+Attendance&phase=2", icon: <CalendarCheck className="w-4 h-4" />, phase: "Phase 2" },
-      { label: "My Marks & Results", path: "/coming-soon?module=My+Marks+%26+Results&phase=2", icon: <FileSpreadsheet className="w-4 h-4" />, phase: "Phase 2" },
-      { label: "My Timetable", path: "/coming-soon?module=My+Timetable&phase=2", icon: <Clock className="w-4 h-4" />, phase: "Phase 2" },
-      { label: "My Examinations", path: "/coming-soon?module=My+Examinations&phase=2", icon: <Award className="w-4 h-4" />, phase: "Phase 2" },
-      { label: "My Assignments", path: "/coming-soon?module=My+Assignments&phase=2", icon: <FileText className="w-4 h-4" />, phase: "Phase 2" },
-      { label: "My Fees", path: "/coming-soon?module=My+Fees&phase=2", icon: <CreditCard className="w-4 h-4" />, phase: "Phase 2" },
-      { label: "My Documents", path: "/coming-soon?module=My+Documents&phase=2", icon: <FolderLock className="w-4 h-4" />, phase: "Phase 2" },
-      { label: "Notices", path: "/coming-soon?module=Student+Notices&phase=2", icon: <Bell className="w-4 h-4" />, phase: "Phase 2" },
-      { label: "AI Assistant", path: "/coming-soon?module=Student+AI+Tutor&phase=3", icon: <Sparkles className="w-4 h-4" />, phase: "Phase 3" },
+      { label: "My Attendance", path: "/student/attendance", icon: <CalendarCheck className="w-4 h-4" />, phase: "active" },
+      { label: "My Marks & Results", path: "/student/marks", icon: <FileSpreadsheet className="w-4 h-4" />, phase: "active" },
+      { label: "My Timetable", path: "/student/timetable", icon: <Clock className="w-4 h-4" />, phase: "active" },
+      { label: "My Examinations", path: "/student/marks", icon: <Award className="w-4 h-4" />, phase: "active" },
+      { label: "Notices", path: "/student/notices", icon: <Bell className="w-4 h-4" />, phase: "active" },
+      { label: "AI Assistant", path: "/student/ai-assistant", icon: <Sparkles className="w-4 h-4" />, phase: "active" },
+      { label: "My Documents", path: "/student/profile", icon: <FolderLock className="w-4 h-4" />, phase: "active" },
+      { label: "My Fees", path: "/student/fees", icon: <CreditCard className="w-4 h-4" />, phase: "active" },
+      { label: "My Assignments", path: "/student/assignments", icon: <FileText className="w-4 h-4" />, phase: "active" },
     ];
   };
 
   const navItems = getNavItems();
 
   const sidebarContent = (
-    <div className="flex flex-col h-full bg-brand-midnight text-dark-primary border-r border-dark-border select-none">
+    <div className="flex flex-col h-full bg-[#142B4A] dark:bg-[#0B1730] text-white border-r border-[#1E3A5F] dark:border-dark-border select-none transition-colors">
       {/* Brand Header */}
-      <div className="flex items-center justify-between p-4 border-b border-dark-border/80">
+      <div className="flex items-center justify-between p-4 border-b border-[#1E3A5F] dark:border-dark-border">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-brand-gold/20 border border-brand-gold/40 flex items-center justify-center text-brand-gold font-bold shrink-0">
-            <School className="w-5 h-5" />
+          <div className="w-9 h-9 rounded-xl bg-white p-0.5 border border-brand-blue/30 flex items-center justify-center shrink-0 shadow-sm overflow-hidden">
+            <img src="/dmhs-logo-128.png" alt="DMHS Logo" className="w-full h-full object-contain" />
           </div>
           {!isCollapsed && (
             <div className="min-w-0">
-              <h1 className="text-xs font-black tracking-widest text-brand-gold uppercase truncate">
+              <h1 className="text-xs font-bold tracking-wider text-white uppercase truncate">
                 DECCAN MISSION
               </h1>
-              <p className="text-[10px] text-dark-secondary font-medium tracking-wider truncate">
+              <p className="text-[10px] text-blue-200/80 font-medium tracking-wider truncate">
                 HIGH SCHOOL • HYD
               </p>
             </div>
@@ -128,7 +127,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Mobile close button */}
         <button
           onClick={onCloseMobile}
-          className="md:hidden p-1.5 rounded-lg text-dark-secondary hover:text-white"
+          className="md:hidden p-1.5 rounded-lg text-blue-200 hover:text-white hover:bg-white/10 transition-colors"
+          aria-label="Close sidebar"
         >
           <X className="w-5 h-5" />
         </button>
@@ -144,22 +144,28 @@ export const Sidebar: React.FC<SidebarProps> = ({
               to={item.path}
               onClick={() => onCloseMobile()}
               className={({ isActive }) =>
-                `flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${
+                `flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-medium transition-all duration-150 relative ${
                   isActive && isPhaseActive
-                    ? "bg-brand-gold text-brand-midnight font-bold shadow-md shadow-brand-gold/10"
-                    : "text-dark-secondary hover:text-dark-primary hover:bg-brand-elevated"
+                    ? "bg-brand-blue text-white font-semibold shadow-sm"
+                    : "text-slate-200 hover:text-white hover:bg-[#1E3A5F] dark:hover:bg-[#17243A]"
                 }`
               }
             >
-              <div className="flex items-center gap-3 min-w-0">
-                <span className="shrink-0">{item.icon}</span>
-                {!isCollapsed && <span className="truncate">{item.label}</span>}
-              </div>
+              {({ isActive }) => (
+                <>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className={`shrink-0 ${isActive && isPhaseActive ? "text-white" : "text-blue-200/70"}`}>
+                      {item.icon}
+                    </span>
+                    {!isCollapsed && <span className="truncate">{item.label}</span>}
+                  </div>
 
-              {!isCollapsed && item.phase && item.phase !== "active" && (
-                <span className="text-[9px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded bg-dark-elevated text-dark-secondary border border-dark-border/80">
-                  {item.phase}
-                </span>
+                  {!isCollapsed && item.phase && item.phase !== "active" && (
+                    <span className="text-[9px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded bg-black/20 text-slate-300 border border-white/10">
+                      {item.phase}
+                    </span>
+                  )}
+                </>
               )}
             </NavLink>
           );
@@ -167,16 +173,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </nav>
 
       {/* Desktop Collapse Toggle */}
-      <div className="hidden md:flex items-center justify-between p-3 border-t border-dark-border/80">
+      <div className="hidden md:flex items-center justify-between p-3 border-t border-[#1E3A5F] dark:border-dark-border">
         {!isCollapsed && (
-          <div className="text-[11px] text-dark-secondary truncate font-mono">
-            ERP Phase 1 Foundation
+          <div className="text-[11px] text-blue-200/80 truncate font-mono">
+            TS-HYD-CBSE-41092
           </div>
         )}
         <button
           onClick={onToggleCollapse}
-          className="p-1.5 rounded-lg text-dark-secondary hover:text-white hover:bg-brand-elevated transition-colors ml-auto"
+          className="p-1.5 rounded-lg text-blue-200 hover:text-white hover:bg-white/10 transition-colors ml-auto"
           title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+          aria-label={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
         >
           {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
         </button>

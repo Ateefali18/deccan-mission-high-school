@@ -34,6 +34,7 @@ class ExamSubject(Base, TimestampMixin):
     id = Column(Integer, primary_key=True, index=True)
     exam_id = Column(Integer, ForeignKey("exams.id", ondelete="CASCADE"), nullable=False)
     class_id = Column(Integer, ForeignKey("classes.id", ondelete="CASCADE"), nullable=False)
+    subject_id = Column(Integer, ForeignKey("subjects.id", ondelete="SET NULL"), nullable=True)
     subject_name = Column(String(100), nullable=False)
     max_marks = Column(Float, default=100.0, nullable=False)
     passing_marks = Column(Float, default=35.0, nullable=False)

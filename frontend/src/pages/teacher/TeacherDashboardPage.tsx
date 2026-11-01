@@ -67,8 +67,8 @@ export const TeacherDashboardPage: React.FC = () => {
         subtitle={`Welcome, ${stats?.teacher_name || "Faculty Member"} • Employee ID: ${stats?.employee_id || "..."}`}
         action={
           <div className="flex items-center gap-2">
-            <Link to="/teacher/my-students">
-              <Button variant="primary" size="sm" leftIcon={<GraduationCap className="w-4 h-4" />}>
+            <Link to="/teacher/attendance">
+              <Button variant="primary" size="sm" leftIcon={<CalendarCheck className="w-4 h-4" />}>
                 Record Attendance
               </Button>
             </Link>
@@ -108,10 +108,10 @@ export const TeacherDashboardPage: React.FC = () => {
       ) : null}
 
       {/* Real Today's Bell & Period Status */}
-      <Card className="p-5 bg-gradient-to-r from-brand-navy/5 via-brand-gold/10 to-brand-navy/5 border border-brand-gold/30">
+      <Card className="p-5 bg-gradient-to-r from-brand-navy/5 via-brand-blue/10 to-brand-navy/5 border border-brand-blue/30">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-start gap-3">
-            <div className="p-2.5 rounded-xl bg-brand-gold text-brand-navy shrink-0 font-bold">
+            <div className="p-2.5 rounded-xl bg-brand-blue text-white shrink-0 font-bold">
               <Clock className="w-5 h-5" />
             </div>
             <div>
@@ -119,7 +119,7 @@ export const TeacherDashboardPage: React.FC = () => {
                 <h4 className="text-sm font-bold text-light-primary dark:text-dark-primary">
                   Today's Bell & Timetable Period Status
                 </h4>
-                <Badge variant="gold" size="sm">Asia/Kolkata</Badge>
+                <Badge variant="primary" size="sm">Asia/Kolkata</Badge>
               </div>
               <p className="text-xs text-light-secondary dark:text-dark-secondary mt-0.5">
                 {nextPeriodInfo?.message || "Checking current class and timetable status..."}
@@ -127,11 +127,18 @@ export const TeacherDashboardPage: React.FC = () => {
             </div>
           </div>
 
-          <Link to="/teacher/my-students">
-            <Button variant="outline" size="sm" rightIcon={<ArrowRight className="w-3.5 h-3.5" />}>
-              Open Section Roll Call
-            </Button>
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link to="/teacher/timetable">
+              <Button variant="outline" size="sm" leftIcon={<Clock className="w-3.5 h-3.5" />}>
+                Master Schedule
+              </Button>
+            </Link>
+            <Link to="/teacher/my-students">
+              <Button variant="primary" size="sm" rightIcon={<ArrowRight className="w-3.5 h-3.5" />}>
+                Section Roll Call
+              </Button>
+            </Link>
+          </div>
         </div>
       </Card>
 
@@ -148,7 +155,7 @@ export const TeacherDashboardPage: React.FC = () => {
                 Enforced by server-side resource permissions
               </p>
             </div>
-            <ShieldCheck className="w-5 h-5 text-brand-gold" />
+            <ShieldCheck className="w-5 h-5 text-brand-blue dark:text-dark-accent" />
           </div>
 
           {stats && stats.assignments.length > 0 ? (
@@ -159,7 +166,7 @@ export const TeacherDashboardPage: React.FC = () => {
                   className="p-3.5 rounded-xl border border-light-border dark:border-dark-border bg-gray-50/50 dark:bg-dark-elevated/40 flex items-center justify-between"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-brand-gold/15 text-brand-gold font-bold text-xs">
+                    <div className="p-2 rounded-lg bg-brand-blue/10 dark:bg-brand-blue/20 text-brand-blue dark:text-dark-accent font-bold text-xs">
                       {a.class_name}
                     </div>
                     <div>
@@ -171,7 +178,7 @@ export const TeacherDashboardPage: React.FC = () => {
                       </p>
                     </div>
                   </div>
-                  <Badge variant={a.role_type === "class_teacher" ? "gold" : "info"} size="sm">
+                  <Badge variant={a.role_type === "class_teacher" ? "primary" : "info"} size="sm">
                     {a.role_type.replace(/_/g, " ")}
                   </Badge>
                 </div>
@@ -193,33 +200,36 @@ export const TeacherDashboardPage: React.FC = () => {
             <div className="grid grid-cols-2 gap-3">
               <Link
                 to="/teacher/my-students"
-                className="p-3.5 rounded-xl border border-light-border dark:border-dark-border hover:border-brand-gold/60 text-left transition-all group"
+                className="p-3.5 rounded-xl border border-light-border dark:border-dark-border hover:border-brand-blue/60 dark:hover:border-dark-accent/60 text-left transition-all group"
               >
-                <GraduationCap className="w-5 h-5 text-brand-gold mb-2 group-hover:scale-110 transition-transform" />
+                <GraduationCap className="w-5 h-5 text-brand-blue dark:text-dark-accent mb-2 group-hover:scale-110 transition-transform" />
                 <p className="text-xs font-bold text-light-primary dark:text-dark-primary">My Students</p>
                 <p className="text-[10px] text-light-secondary">Authorized roll list & attendance</p>
               </Link>
 
               <Link
-                to="/teacher/my-students"
-                className="p-3.5 rounded-xl border border-light-border dark:border-dark-border hover:border-brand-gold/60 text-left transition-all group"
+                to="/teacher/attendance"
+                className="p-3.5 rounded-xl border border-light-border dark:border-dark-border hover:border-brand-blue/60 dark:hover:border-dark-accent/60 text-left transition-all group"
               >
                 <CalendarCheck className="w-5 h-5 text-emerald-500 mb-2 group-hover:scale-110 transition-transform" />
                 <p className="text-xs font-bold text-light-primary dark:text-dark-primary">Take Attendance</p>
                 <p className="text-[10px] text-light-secondary">Daily roll call submission</p>
               </Link>
 
-              <div className="p-3.5 rounded-xl border border-light-border dark:border-dark-border bg-gray-50/50 dark:bg-dark-elevated/30 text-left">
-                <FileSpreadsheet className="w-5 h-5 text-brand-gold mb-2" />
+              <Link
+                to="/teacher/marks"
+                className="p-3.5 rounded-xl border border-light-border dark:border-dark-border hover:border-brand-blue/60 dark:hover:border-dark-accent/60 text-left transition-all group"
+              >
+                <FileSpreadsheet className="w-5 h-5 text-brand-blue dark:text-dark-accent mb-2 group-hover:scale-110 transition-transform" />
                 <p className="text-xs font-bold text-light-primary dark:text-dark-primary">Marks Entry</p>
-                <p className="text-[10px] text-light-secondary">Mid-Term Assessments</p>
-              </div>
+                <p className="text-[10px] text-light-secondary">Enter & Edit Mid-Term Marks</p>
+              </Link>
 
               <Link
                 to="/teacher/profile"
-                className="p-3.5 rounded-xl border border-light-border dark:border-dark-border hover:border-brand-gold/60 text-left transition-all group"
+                className="p-3.5 rounded-xl border border-light-border dark:border-dark-border hover:border-brand-blue/60 dark:hover:border-dark-accent/60 text-left transition-all group"
               >
-                <Users className="w-5 h-5 text-brand-gold mb-2 group-hover:scale-110 transition-transform" />
+                <Users className="w-5 h-5 text-brand-blue dark:text-dark-accent mb-2 group-hover:scale-110 transition-transform" />
                 <p className="text-xs font-bold text-light-primary dark:text-dark-primary">My Profile</p>
                 <p className="text-[10px] text-light-secondary">Faculty credentials & bio</p>
               </Link>

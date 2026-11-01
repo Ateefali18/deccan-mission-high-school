@@ -14,8 +14,10 @@ from app.models.examination import ExamType, Exam, ExamSubject, Mark
 from app.models.fee import FeeCategory, FeeStructure, Invoice, Payment
 from app.models.notice import Notice
 from app.models.timetable import TimetableEntry
+from app.models.subject import Subject, ClassSubject, GradingScale
 from app.models.notification import Notification
 from app.models.ai import AIConversation, AIMessage, AIFeedback
+from app.models.assignment import Assignment, AssignmentSubmission
 
 __all__ = [
     "School",

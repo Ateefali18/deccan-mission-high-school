@@ -9,12 +9,15 @@ import {
   Filter,
   GraduationCap,
   Eye,
+  Edit2,
+  Trash2,
   Camera,
   Upload,
   FileText,
-  Clock,
   Phone,
   MapPin,
+  CheckCircle,
+  XCircle,
 } from "lucide-react";
 import { api } from "../../services/api";
 import type { StudentListItem, StudentProfile, SchoolClass, AcademicYear, DocumentItem } from "../../types";
@@ -26,24 +29,46 @@ import { Input } from "../../components/ui/Input";
 import { Select } from "../../components/ui/Select";
 import { Badge } from "../../components/ui/Badge";
 import { Dialog } from "../../components/ui/Dialog";
+import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
 import { useToast } from "../../components/ui/Toast";
 
-const studentSchema = z.object({
+const studentCreateSchema = z.object({
   admission_number: z.string().min(3, "Admission number is required"),
   full_name: z.string().min(2, "Full name is required"),
-  username: z.string().min(3, "Username must be at least 3 characters"),
+  username: z.string().min(3, "Username must be at least 3 characters").optional(),
   email: z.string().email("Valid email required"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
+  password: z.string().min(6, "Password must be at least 6 characters").default("Student@12345"),
   gender: z.string().optional(),
+  date_of_birth: z.string().optional(),
+  blood_group: z.string().optional(),
   class_id: z.coerce.number().min(1, "Please select a class"),
   section_id: z.coerce.number().min(1, "Please select a section"),
   academic_year_id: z.coerce.number().min(1, "Please select academic year"),
   guardian_name: z.string().optional(),
   guardian_phone: z.string().optional(),
+  emergency_contact: z.string().optional(),
+  address: z.string().optional(),
   roll_number: z.string().optional(),
 });
 
-type StudentFormData = z.infer<typeof studentSchema>;
+const studentEditSchema = z.object({
+  full_name: z.string().min(2, "Full name is required"),
+  email: z.string().email("Valid email required"),
+  gender: z.string().optional(),
+  date_of_birth: z.string().optional(),
+  blood_group: z.string().optional(),
+  guardian_name: z.string().optional(),
+  guardian_phone: z.string().optional(),
+  emergency_contact: z.string().optional(),
+  address: z.string().optional(),
+  class_id: z.coerce.number().optional(),
+  section_id: z.coerce.number().optional(),
+  roll_number: z.string().optional(),
+  student_status: z.string().default("active"),
+});
+
+type StudentCreateFormData = z.infer<typeof studentCreateSchema>;
+type StudentEditFormData = z.infer<typeof studentEditSchema>;
 
 export const StudentsPage: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -62,7 +87,7 @@ export const StudentsPage: React.FC = () => {
   const [selectedClassId, setSelectedClassId] = useState<number | undefined>(undefined);
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>("all");
 
-  // Dialogs & Modals
+  // Modals
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<StudentProfile | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -70,20 +95,44 @@ export const StudentsPage: React.FC = () => {
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [isUploadingDoc, setIsUploadingDoc] = useState(false);
 
+  // Edit State
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editingStudentId, setEditingStudentId] = useState<string | number | null>(null);
+
+  // Deactivate Confirmation
+  const [deactivatingStudent, setDeactivatingStudent] = useState<StudentListItem | null>(null);
+  const [isDeactivating, setIsDeactivating] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const docInputRef = useRef<HTMLInputElement>(null);
 
+  // Registration Form
   const {
     register,
     handleSubmit,
     reset,
     watch,
     formState: { errors, isSubmitting },
-  } = useForm<StudentFormData>({
-    resolver: zodResolver(studentSchema),
+  } = useForm<StudentCreateFormData>({
+    resolver: zodResolver(studentCreateSchema),
+    defaultValues: {
+      password: "Student@12345",
+    },
   });
 
-  const watchedClassId = watch("class_id");
+  // Edit Form
+  const {
+    register: registerEdit,
+    handleSubmit: handleSubmitEdit,
+    reset: resetEdit,
+    watch: watchEdit,
+    formState: { errors: editErrors, isSubmitting: isSubmittingEdit },
+  } = useForm<StudentEditFormData>({
+    resolver: zodResolver(studentEditSchema),
+  });
+
+  const watchedCreateClassId = watch("class_id");
+  const watchedEditClassId = watchEdit("class_id");
 
   useEffect(() => {
     api.classes.list().then(setClasses).catch(() => {});
@@ -113,9 +162,14 @@ export const StudentsPage: React.FC = () => {
     fetchStudents();
   }, [fetchStudents]);
 
-  const onRegisterStudent = async (data: StudentFormData) => {
+  // Create Student
+  const onRegisterStudent = async (data: StudentCreateFormData) => {
     try {
-      await api.students.create(data);
+      const payload = {
+        ...data,
+        username: data.username || data.email.split("@")[0],
+      };
+      await api.students.create(payload);
       toast.success(`Student ${data.full_name} admitted successfully!`);
       setIsRegisterOpen(false);
       reset();
@@ -125,12 +179,80 @@ export const StudentsPage: React.FC = () => {
     }
   };
 
+  // Open Edit Modal
+  const handleOpenEdit = async (id: number | string) => {
+    try {
+      const profile = await api.students.getById(id);
+      setEditingStudentId(id);
+
+      // Locate class & section ID if available
+      const matchingClass = classes.find(
+        (c) => c.name === profile.current_enrollment?.class_name
+      );
+      const matchingSection = matchingClass?.sections?.find(
+        (s) => s.name === profile.current_enrollment?.section_name
+      );
+
+      resetEdit({
+        full_name: profile.full_name,
+        email: profile.email,
+        gender: profile.gender || "",
+        date_of_birth: profile.date_of_birth || "",
+        blood_group: profile.blood_group || "",
+        guardian_name: profile.guardian_name || "",
+        guardian_phone: profile.guardian_phone || "",
+        emergency_contact: profile.emergency_contact || "",
+        address: profile.address || "",
+        class_id: matchingClass ? Number(matchingClass.id) : undefined,
+        section_id: matchingSection ? Number(matchingSection.id) : undefined,
+        roll_number: profile.current_enrollment?.roll_number || "",
+        student_status: profile.student_status || "active",
+      });
+      setIsEditOpen(true);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to load student details for editing");
+    }
+  };
+
+  // Save Edit Student
+  const onSaveEdit = async (data: StudentEditFormData) => {
+    if (!editingStudentId) return;
+    try {
+      await api.students.update(editingStudentId, data);
+      toast.success(`Student profile updated successfully!`);
+      setIsEditOpen(false);
+      setEditingStudentId(null);
+      fetchStudents();
+      if (selectedStudent && selectedStudent.id === editingStudentId) {
+        const updated = await api.students.getById(editingStudentId);
+        setSelectedStudent(updated);
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update student profile");
+    }
+  };
+
+  // Deactivate Student
+  const onConfirmDeactivate = async () => {
+    if (!deactivatingStudent) return;
+    setIsDeactivating(true);
+    try {
+      await api.students.deactivate(deactivatingStudent.id);
+      toast.success(`Student ${deactivatingStudent.full_name} deactivated.`);
+      setDeactivatingStudent(null);
+      fetchStudents();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to deactivate student");
+    } finally {
+      setIsDeactivating(false);
+    }
+  };
+
   const handleViewDetails = async (id: number | string) => {
     try {
       const profile = await api.students.getById(id);
       setSelectedStudent(profile);
       setIsDetailOpen(true);
-      // Fetch documents
       api.students.getDocuments(id).then(setStudentDocs).catch(() => setStudentDocs([]));
     } catch (err: any) {
       toast.error(err.message || "Failed to load student details");
@@ -187,12 +309,6 @@ export const StudentsPage: React.FC = () => {
     }
   };
 
-  const filteredStudents = students.filter(
-    (s) =>
-      s.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.admission_number.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
   const getStatusBadge = (status: string) => {
     switch (status.toLowerCase()) {
       case "active":
@@ -202,7 +318,8 @@ export const StudentsPage: React.FC = () => {
       case "graduated":
         return <Badge variant="gold" size="sm">Graduated</Badge>;
       case "withdrawn":
-        return <Badge variant="danger" size="sm">Withdrawn</Badge>;
+      case "inactive":
+        return <Badge variant="danger" size="sm">Inactive</Badge>;
       default:
         return <Badge variant="neutral" size="sm">{status}</Badge>;
     }
@@ -250,7 +367,7 @@ export const StudentsPage: React.FC = () => {
       header: "Class & Section",
       render: (row) => (
         <span>
-          {row.class_name ? `${row.class_name} - ${row.section_name}` : "Unenrolled"}
+          {row.class_name ? `${row.class_name} - ${row.section_name || "A"}` : "Unenrolled"}
         </span>
       ),
     },
@@ -266,32 +383,55 @@ export const StudentsPage: React.FC = () => {
     },
     {
       key: "actions",
-      header: "Action",
+      header: "Actions",
       className: "text-right",
       render: (row) => (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleViewDetails(row.id);
-          }}
-          leftIcon={<Eye className="w-3.5 h-3.5" />}
-        >
-          View
-        </Button>
+        <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleViewDetails(row.id)}
+            leftIcon={<Eye className="w-3.5 h-3.5" />}
+          >
+            View
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleOpenEdit(row.id)}
+            leftIcon={<Edit2 className="w-3.5 h-3.5" />}
+          >
+            Edit
+          </Button>
+          {row.student_status === "active" && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-red-500 hover:text-red-600"
+              onClick={() => setDeactivatingStudent(row)}
+              leftIcon={<Trash2 className="w-3.5 h-3.5" />}
+            >
+              Deactivate
+            </Button>
+          )}
+        </div>
       ),
     },
   ];
 
-  const selectedClassObj = classes.find((c) => String(c.id) === String(watchedClassId));
-  const availableSections = selectedClassObj?.sections || [];
+  // Section options for create
+  const selectedCreateClassObj = classes.find((c) => String(c.id) === String(watchedCreateClassId));
+  const availableCreateSections = selectedCreateClassObj?.sections || [];
+
+  // Section options for edit
+  const selectedEditClassObj = classes.find((c) => String(c.id) === String(watchedEditClassId));
+  const availableEditSections = selectedEditClassObj?.sections || [];
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Student Directory"
-        subtitle="Manage student admissions, real-time Supabase enrollments, and academic biodata"
+        subtitle="Manage student admissions, real-time enrollments, and academic biodata"
         action={
           <Button
             variant="primary"
@@ -305,7 +445,7 @@ export const StudentsPage: React.FC = () => {
 
       {/* Filter and Search Bar */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 bg-white dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl">
-        <div className="relative w-full sm:w-72">
+        <div className="relative w-full sm:w-80">
           <Search className="w-4 h-4 absolute left-3 top-3 text-light-secondary dark:text-dark-secondary" />
           <input
             type="text"
@@ -338,6 +478,7 @@ export const StudentsPage: React.FC = () => {
           >
             <option value="all">All Statuses</option>
             <option value="active">Active Only</option>
+            <option value="inactive">Inactive</option>
             <option value="transferred">Transferred</option>
             <option value="graduated">Graduated</option>
             <option value="withdrawn">Withdrawn</option>
@@ -348,7 +489,7 @@ export const StudentsPage: React.FC = () => {
       {/* Students Table */}
       <Table
         columns={columns}
-        data={filteredStudents}
+        data={students}
         keyExtractor={(row) => String(row.id)}
         isLoading={isLoading}
         onRowClick={(row) => handleViewDetails(row.id)}
@@ -358,7 +499,7 @@ export const StudentsPage: React.FC = () => {
         currentPage={page}
         totalItems={total}
         pageSize={pageSize}
-        onPageChange={setPage}
+        onChange={setPage}
       />
 
       {/* Register Student Modal */}
@@ -407,30 +548,12 @@ export const StudentsPage: React.FC = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
-              label="Username"
-              placeholder="e.g. zainab.fatima"
-              error={errors.username?.message}
-              required
-              {...register("username")}
-            />
-            <Input
               label="Email"
               type="email"
               placeholder="e.g. zainab.fatima@student.dmhs.edu.in"
               error={errors.email?.message}
               required
               {...register("email")}
-            />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input
-              label="Temporary Password"
-              type="password"
-              placeholder="At least 6 characters"
-              error={errors.password?.message}
-              required
-              {...register("password")}
             />
             <Select
               label="Gender"
@@ -476,10 +599,10 @@ export const StudentsPage: React.FC = () => {
               label="Section"
               error={errors.section_id?.message}
               required
-              disabled={!watchedClassId}
+              disabled={!watchedCreateClassId}
               options={[
                 { value: "", label: "Select Section" },
-                ...availableSections.map((s) => ({
+                ...availableCreateSections.map((s) => ({
                   value: String(s.id),
                   label: `Section ${s.name}`,
                 })),
@@ -505,8 +628,173 @@ export const StudentsPage: React.FC = () => {
               {...register("guardian_phone")}
             />
           </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input
+              label="Date of Birth"
+              type="date"
+              {...register("date_of_birth")}
+            />
+            <Input
+              label="Residential Address"
+              placeholder="e.g. Moghalpura, Hyderabad"
+              {...register("address")}
+            />
+          </div>
         </form>
       </Dialog>
+
+      {/* Edit Student Modal */}
+      <Dialog
+        isOpen={isEditOpen}
+        onClose={() => setIsEditOpen(false)}
+        title="Edit Student Profile"
+        description="Update personal details, enrollment, and guardian contact info"
+        maxWidth="lg"
+        footer={
+          <>
+            <Button
+              variant="secondary"
+              onClick={() => setIsEditOpen(false)}
+              disabled={isSubmittingEdit}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleSubmitEdit(onSaveEdit)}
+              isLoading={isSubmittingEdit}
+            >
+              Save Changes
+            </Button>
+          </>
+        }
+      >
+        <form onSubmit={handleSubmitEdit(onSaveEdit)} className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input
+              label="Student Full Name"
+              error={editErrors.full_name?.message}
+              required
+              {...registerEdit("full_name")}
+            />
+            <Input
+              label="Email"
+              type="email"
+              error={editErrors.email?.message}
+              required
+              {...registerEdit("email")}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Select
+              label="Gender"
+              options={[
+                { value: "Male", label: "Male" },
+                { value: "Female", label: "Female" },
+                { value: "Other", label: "Other" },
+              ]}
+              {...registerEdit("gender")}
+            />
+            <Input
+              label="Date of Birth"
+              type="date"
+              {...registerEdit("date_of_birth")}
+            />
+            <Select
+              label="Blood Group"
+              options={[
+                { value: "", label: "Select Blood Group" },
+                { value: "A+", label: "A+" },
+                { value: "A-", label: "A-" },
+                { value: "B+", label: "B+" },
+                { value: "B-", label: "B-" },
+                { value: "O+", label: "O+" },
+                { value: "O-", label: "O-" },
+                { value: "AB+", label: "AB+" },
+                { value: "AB-", label: "AB-" },
+              ]}
+              {...registerEdit("blood_group")}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Select
+              label="Class"
+              options={[
+                { value: "", label: "Select Class" },
+                ...classes.map((c) => ({
+                  value: String(c.id),
+                  label: c.name,
+                })),
+              ]}
+              {...registerEdit("class_id")}
+            />
+
+            <Select
+              label="Section"
+              disabled={!watchedEditClassId}
+              options={[
+                { value: "", label: "Select Section" },
+                ...availableEditSections.map((s) => ({
+                  value: String(s.id),
+                  label: `Section ${s.name}`,
+                })),
+              ]}
+              {...registerEdit("section_id")}
+            />
+
+            <Input
+              label="Roll Number"
+              placeholder="e.g. 15"
+              {...registerEdit("roll_number")}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Input
+              label="Guardian Name"
+              placeholder="e.g. Mohammed Ahmed"
+              {...registerEdit("guardian_name")}
+            />
+            <Input
+              label="Guardian Phone"
+              placeholder="+91 98490 00000"
+              {...registerEdit("guardian_phone")}
+            />
+            <Select
+              label="Status"
+              options={[
+                { value: "active", label: "Active" },
+                { value: "inactive", label: "Inactive" },
+                { value: "transferred", label: "Transferred" },
+                { value: "graduated", label: "Graduated" },
+                { value: "withdrawn", label: "Withdrawn" },
+              ]}
+              {...registerEdit("student_status")}
+            />
+          </div>
+
+          <Input
+            label="Residential Address"
+            placeholder="e.g. Moghalpura, Hyderabad"
+            {...registerEdit("address")}
+          />
+        </form>
+      </Dialog>
+
+      {/* Confirm Deactivate Student Dialog */}
+      <ConfirmDialog
+        isOpen={!!deactivatingStudent}
+        onClose={() => setDeactivatingStudent(null)}
+        onConfirm={onConfirmDeactivate}
+        title="Deactivate Student"
+        message={`Are you sure you want to deactivate ${deactivatingStudent?.full_name} (${deactivatingStudent?.admission_number})? Academic records, past attendance, and documents will be securely preserved.`}
+        confirmLabel="Deactivate"
+        isDestructive
+        isLoading={isDeactivating}
+      />
 
       {/* Student Details Dialog */}
       <Dialog
@@ -516,9 +804,24 @@ export const StudentsPage: React.FC = () => {
         description="Detailed record from Deccan Mission High School database"
         maxWidth="lg"
         footer={
-          <Button variant="secondary" onClick={() => setIsDetailOpen(false)}>
-            Close
-          </Button>
+          <div className="flex items-center justify-between w-full">
+            <Button
+              variant="outline"
+              size="sm"
+              leftIcon={<Edit2 className="w-3.5 h-3.5" />}
+              onClick={() => {
+                if (selectedStudent) {
+                  setIsDetailOpen(false);
+                  handleOpenEdit(selectedStudent.id);
+                }
+              }}
+            >
+              Edit Profile
+            </Button>
+            <Button variant="secondary" onClick={() => setIsDetailOpen(false)}>
+              Close
+            </Button>
+          </div>
         }
       >
         {selectedStudent && (
@@ -575,6 +878,7 @@ export const StudentsPage: React.FC = () => {
                   className="text-xs font-semibold px-2.5 py-1 rounded-lg border border-brand-gold/40 bg-white dark:bg-dark-card text-brand-gold focus:outline-none"
                 >
                   <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
                   <option value="transferred">Transferred</option>
                   <option value="graduated">Graduated</option>
                   <option value="withdrawn">Withdrawn</option>

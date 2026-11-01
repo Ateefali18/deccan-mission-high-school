@@ -7,7 +7,7 @@ from app.models.teacher_assignment import TeacherAssignment
 from app.models.audit_log import AuditLog
 from app.core.security import get_password_hash
 from app.core.exceptions import ConflictException, ResourceNotFoundException, PermissionDeniedException
-from app.schemas.teacher import TeacherCreate, TeacherProfileResponse, TeacherListItem, TeacherAssignmentDetail
+from app.schemas.teacher import TeacherCreate, TeacherUpdate, TeacherProfileResponse, TeacherListItem, TeacherAssignmentDetail
 
 class TeacherService:
     @staticmethod
@@ -16,16 +16,33 @@ class TeacherService:
         school_id: int,
         page: int = 1,
         limit: int = 20,
+        search: Optional[str] = None,
+        status: Optional[str] = None,
     ) -> Tuple[List[TeacherListItem], int]:
         query = (
             db.query(TeacherProfile)
             .join(User, TeacherProfile.user_id == User.id)
-            .filter(TeacherProfile.school_id == school_id, TeacherProfile.is_active.is_(True))
+            .filter(TeacherProfile.school_id == school_id)
         )
+
+        if status == "active":
+            query = query.filter(TeacherProfile.is_active.is_(True))
+        elif status == "inactive":
+            query = query.filter(TeacherProfile.is_active.is_(False))
+
+        if search and search.strip():
+            term = f"%{search.strip()}%"
+            query = query.filter(
+                (TeacherProfile.employee_id.ilike(term))
+                | (User.full_name.ilike(term))
+                | (User.email.ilike(term))
+                | (TeacherProfile.designation.ilike(term))
+                | (TeacherProfile.department.ilike(term))
+            )
 
         total = query.count()
         offset = (page - 1) * limit
-        teachers = query.offset(offset).limit(limit).all()
+        teachers = query.order_by(TeacherProfile.id.asc()).offset(offset).limit(limit).all()
 
         items = []
         for t in teachers:
@@ -152,3 +169,78 @@ class TeacherService:
         db.commit()
         db.refresh(teacher_profile)
         return teacher_profile
+
+    @staticmethod
+    def update_teacher(db: Session, teacher_id: int, data: TeacherUpdate, admin_user_id: int) -> TeacherProfile:
+        teacher = db.query(TeacherProfile).filter(TeacherProfile.id == teacher_id).first()
+        if not teacher:
+            raise ResourceNotFoundException("Teacher profile not found.")
+
+        # Update User details
+        if teacher.user:
+            if data.full_name is not None:
+                teacher.user.full_name = data.full_name
+            if data.email is not None and data.email != teacher.user.email:
+                existing_email = db.query(User).filter(User.school_id == teacher.school_id, User.email == data.email, User.id != teacher.user.id).first()
+                if existing_email:
+                    raise ConflictException("Email already in use.")
+                teacher.user.email = data.email
+            if data.contact_phone is not None:
+                teacher.user.phone_number = data.contact_phone
+            elif data.phone_number is not None:
+                teacher.user.phone_number = data.phone_number
+            if data.is_active is not None:
+                teacher.user.is_active = data.is_active
+
+        # Update TeacherProfile details
+        if data.designation is not None:
+            teacher.designation = data.designation
+        if data.department is not None:
+            teacher.department = data.department
+        if data.qualification is not None:
+            teacher.qualification = data.qualification
+        if data.specialization is not None:
+            teacher.designation = data.specialization
+        if data.is_active is not None:
+            teacher.is_active = data.is_active
+            teacher.employment_status = "active" if data.is_active else "inactive"
+        if data.employment_status is not None:
+            teacher.employment_status = data.employment_status
+            if data.employment_status in ["resigned", "retired", "inactive"]:
+                teacher.is_active = False
+                if teacher.user:
+                    teacher.user.is_active = False
+
+        db.add(AuditLog(
+            school_id=teacher.school_id,
+            user_id=admin_user_id,
+            action="UPDATE_TEACHER",
+            resource_type="TeacherProfile",
+            resource_id=teacher.employee_id,
+            details=f"Updated teacher {teacher.employee_id}"
+        ))
+        db.commit()
+        db.refresh(teacher)
+        return teacher
+
+    @staticmethod
+    def deactivate_teacher(db: Session, teacher_id: int, admin_user_id: int) -> TeacherProfile:
+        teacher = db.query(TeacherProfile).filter(TeacherProfile.id == teacher_id).first()
+        if not teacher:
+            raise ResourceNotFoundException("Teacher profile not found.")
+        teacher.is_active = False
+        teacher.employment_status = "inactive"
+        if teacher.user:
+            teacher.user.is_active = False
+
+        db.add(AuditLog(
+            school_id=teacher.school_id,
+            user_id=admin_user_id,
+            action="DEACTIVATE_TEACHER",
+            resource_type="TeacherProfile",
+            resource_id=teacher.employee_id,
+            details=f"Deactivated teacher {teacher.employee_id}"
+        ))
+        db.commit()
+        db.refresh(teacher)
+        return teacher

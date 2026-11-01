@@ -95,13 +95,15 @@ export const StudentDashboardPage: React.FC = () => {
             icon={<Layers className="w-6 h-6" />}
             subtitle={`Roll Number: ${stats.roll_number || "01"}`}
           />
-          <MetricCard
-            label="Overall Attendance"
-            value="94.2%"
-            icon={<CalendarCheck className="w-6 h-6" />}
-            subtitle="Verified in Database (≥75% CBSE Target)"
-            trend="Eligible"
-          />
+          <Link to="/student/attendance" className="block transition-transform hover:scale-[1.02]">
+            <MetricCard
+              label="Overall Attendance"
+              value="94.2%"
+              icon={<CalendarCheck className="w-6 h-6" />}
+              subtitle="Verified in Database (≥75% CBSE Target)"
+              trend="Eligible"
+            />
+          </Link>
           <MetricCard
             label="Academic Term"
             value={stats.current_academic_year || "2025-2026"}
@@ -113,28 +115,30 @@ export const StudentDashboardPage: React.FC = () => {
       ) : null}
 
       {/* Today's Period Status */}
-      <Card className="p-5 bg-gradient-to-r from-brand-navy/5 via-brand-gold/10 to-brand-navy/5 border border-brand-gold/30">
-        <div className="flex items-start gap-3">
-          <div className="p-2.5 rounded-xl bg-brand-gold text-brand-navy shrink-0 font-bold">
-            <Clock className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h4 className="text-sm font-bold text-light-primary dark:text-dark-primary">
-                Today's Class Schedule & Next Period
-              </h4>
-              <Badge variant="gold" size="sm">Asia/Kolkata</Badge>
+      <Link to="/student/timetable" className="block transition-transform hover:scale-[1.01]">
+        <Card className="p-5 bg-gradient-to-r from-brand-navy/5 via-brand-blue/10 to-brand-navy/5 border border-brand-blue/30 hover:border-brand-blue">
+          <div className="flex items-start gap-3">
+            <div className="p-2.5 rounded-xl bg-brand-blue text-white shrink-0 font-bold">
+              <Clock className="w-5 h-5" />
             </div>
-            <p className="text-xs text-light-secondary dark:text-dark-secondary mt-0.5 leading-relaxed">
-              {nextPeriodInfo?.message || "Period 1: Mathematics (Room 301) | Period 2: General Science | Period 3: English Core"}
-            </p>
+            <div>
+              <div className="flex items-center gap-2">
+                <h4 className="text-sm font-bold text-light-primary dark:text-dark-primary">
+                  Today's Class Schedule & Next Period
+                </h4>
+                <Badge variant="primary" size="sm">Asia/Kolkata</Badge>
+              </div>
+              <p className="text-xs text-light-secondary dark:text-dark-secondary mt-0.5 leading-relaxed">
+                {nextPeriodInfo?.message || "Period 1: Mathematics (Room 301) | Period 2: General Science | Period 3: English Core"}
+              </p>
+            </div>
           </div>
-        </div>
-      </Card>
+        </Card>
+      </Link>
 
       {/* Grid: Academic Overview & Quick Operations */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Student Enrollment Card */}
+        {/* Student Enrollment Record */}
         <Card className="p-6 lg:col-span-2">
           <div className="flex items-center justify-between mb-4">
             <div>
@@ -145,7 +149,7 @@ export const StudentDashboardPage: React.FC = () => {
                 Protected personal academic record under CBSE Affiliation #TS-HYD-CBSE-41092
               </p>
             </div>
-            <ShieldCheck className="w-5 h-5 text-brand-gold" />
+            <ShieldCheck className="w-5 h-5 text-brand-blue dark:text-dark-accent" />
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 rounded-xl bg-gray-50/60 dark:bg-dark-elevated/40 border border-light-border dark:border-dark-border text-xs mb-4">
@@ -157,7 +161,7 @@ export const StudentDashboardPage: React.FC = () => {
             </div>
             <div>
               <span className="text-light-secondary dark:text-dark-secondary block">Admission Number</span>
-              <span className="font-mono font-bold text-brand-gold block mt-0.5">
+              <span className="font-mono font-bold text-brand-blue dark:text-dark-accent block mt-0.5">
                 {stats?.admission_number}
               </span>
             </div>
@@ -177,28 +181,34 @@ export const StudentDashboardPage: React.FC = () => {
 
           {/* Published Examination Results */}
           <div>
-            <h4 className="text-xs font-bold uppercase tracking-wider text-light-secondary dark:text-dark-secondary mb-2 flex items-center gap-1.5">
-              <Award className="w-4 h-4 text-brand-gold" />
-              <span>Published CBSE Examination Records (Term 2025–2026)</span>
-            </h4>
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-light-secondary dark:text-dark-secondary flex items-center gap-1.5">
+                <Award className="w-4 h-4 text-brand-blue dark:text-dark-accent" />
+                <span>Published CBSE Examination Records (Term 2025–2026)</span>
+              </h4>
+              <Link to="/student/marks" className="text-xs font-bold text-brand-blue dark:text-dark-accent hover:underline flex items-center gap-1">
+                <span>View Full Report Card</span>
+                <ArrowRight className="w-3 h-3" />
+              </Link>
+            </div>
             <div className="space-y-1.5 text-xs">
               <div className="p-2.5 rounded-lg bg-gray-50 dark:bg-dark-elevated border border-light-border dark:border-dark-border flex items-center justify-between">
                 <span className="font-bold text-light-primary dark:text-dark-primary">
                   Mathematics (Theory & Practical)
                 </span>
-                <span className="font-mono font-bold text-brand-gold">92 / 100 (Grade A1)</span>
+                <span className="font-mono font-bold text-brand-blue dark:text-dark-accent">92 / 100 (Grade A1)</span>
               </div>
               <div className="p-2.5 rounded-lg bg-gray-50 dark:bg-dark-elevated border border-light-border dark:border-dark-border flex items-center justify-between">
                 <span className="font-bold text-light-primary dark:text-dark-primary">
                   General Science (Physics/Chemistry/Bio)
                 </span>
-                <span className="font-mono font-bold text-brand-gold">88 / 100 (Grade A2)</span>
+                <span className="font-mono font-bold text-brand-blue dark:text-dark-accent">88 / 100 (Grade A2)</span>
               </div>
               <div className="p-2.5 rounded-lg bg-gray-50 dark:bg-dark-elevated border border-light-border dark:border-dark-border flex items-center justify-between">
                 <span className="font-bold text-light-primary dark:text-dark-primary">
                   English Core & Communication
                 </span>
-                <span className="font-mono font-bold text-brand-gold">94 / 100 (Grade A1)</span>
+                <span className="font-mono font-bold text-brand-blue dark:text-dark-accent">94 / 100 (Grade A1)</span>
               </div>
             </div>
           </div>
@@ -208,7 +218,7 @@ export const StudentDashboardPage: React.FC = () => {
         <div className="space-y-4">
           <Card className="p-6">
             <h3 className="text-base font-bold text-light-primary dark:text-dark-primary mb-3 flex items-center gap-2">
-              <Info className="w-4 h-4 text-brand-gold" />
+              <Info className="w-4 h-4 text-brand-blue dark:text-dark-accent" />
               <span>School Notices</span>
             </h3>
 

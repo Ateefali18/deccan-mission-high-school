@@ -13,7 +13,7 @@ export const ThemeSelector: React.FC<{ compact?: boolean }> = ({ compact = false
   ];
 
   return (
-    <div className="flex items-center p-1 rounded-xl bg-gray-200/80 dark:bg-dark-elevated border border-light-border dark:border-dark-border">
+    <div className="flex items-center p-1 rounded-lg bg-gray-100 dark:bg-dark-elevated border border-light-border dark:border-dark-border" role="group" aria-label="Theme mode switch">
       {options.map((opt) => {
         const isActive = theme === opt.mode;
         return (
@@ -21,9 +21,11 @@ export const ThemeSelector: React.FC<{ compact?: boolean }> = ({ compact = false
             key={opt.mode}
             onClick={() => setTheme(opt.mode)}
             title={`Switch to ${opt.label} mode`}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+            aria-label={`Switch to ${opt.label} mode`}
+            aria-pressed={isActive}
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all ${
               isActive
-                ? "bg-white dark:bg-dark-card text-brand-gold shadow-sm font-semibold"
+                ? "bg-white dark:bg-dark-card text-brand-blue dark:text-dark-accent shadow-sm font-semibold"
                 : "text-light-secondary dark:text-dark-secondary hover:text-light-primary dark:hover:text-dark-primary"
             }`}
           >

@@ -149,7 +149,7 @@ export const AdminDashboardPage: React.FC = () => {
       {/* Global Filter Bar */}
       <div className="p-3.5 bg-white dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl flex flex-wrap items-center justify-between gap-3 text-xs">
         <div className="flex items-center gap-2 font-semibold text-light-secondary dark:text-dark-secondary">
-          <Filter className="w-4 h-4 text-brand-gold" />
+          <Filter className="w-4 h-4 text-brand-blue dark:text-dark-accent" />
           <span>Institutional Filter:</span>
         </div>
 
@@ -157,7 +157,7 @@ export const AdminDashboardPage: React.FC = () => {
           <select
             value={selectedAyId}
             onChange={(e) => setSelectedAyId(e.target.value)}
-            className="px-2.5 py-1.5 rounded-lg border border-light-border dark:border-dark-border bg-gray-50 dark:bg-dark-elevated text-light-primary dark:text-dark-primary focus:border-brand-gold focus:outline-none"
+            className="px-2.5 py-1.5 rounded-lg border border-light-border dark:border-dark-border bg-gray-50 dark:bg-dark-elevated text-light-primary dark:text-dark-primary focus:border-brand-blue dark:focus:border-dark-accent focus:outline-none"
           >
             <option value="">All Academic Sessions</option>
             {academicYears.map((ay) => (
@@ -170,7 +170,7 @@ export const AdminDashboardPage: React.FC = () => {
           <select
             value={selectedClassId}
             onChange={(e) => setSelectedClassId(e.target.value)}
-            className="px-2.5 py-1.5 rounded-lg border border-light-border dark:border-dark-border bg-gray-50 dark:bg-dark-elevated text-light-primary dark:text-dark-primary focus:border-brand-gold focus:outline-none"
+            className="px-2.5 py-1.5 rounded-lg border border-light-border dark:border-dark-border bg-gray-50 dark:bg-dark-elevated text-light-primary dark:text-dark-primary focus:border-brand-blue dark:focus:border-dark-accent focus:outline-none"
           >
             <option value="">All Classes (Grades 1-10)</option>
             {classes.map((c) => (
@@ -183,7 +183,7 @@ export const AdminDashboardPage: React.FC = () => {
           <select
             value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value)}
-            className="px-2.5 py-1.5 rounded-lg border border-light-border dark:border-dark-border bg-gray-50 dark:bg-dark-elevated text-light-primary dark:text-dark-primary focus:border-brand-gold focus:outline-none"
+            className="px-2.5 py-1.5 rounded-lg border border-light-border dark:border-dark-border bg-gray-50 dark:bg-dark-elevated text-light-primary dark:text-dark-primary focus:border-brand-blue dark:focus:border-dark-accent focus:outline-none"
           >
             <option value="all">Status: Active & Inactive</option>
             <option value="active">Active Only</option>
@@ -238,9 +238,12 @@ export const AdminDashboardPage: React.FC = () => {
 
       {/* Operational Highlights: Attendance, Exams, Fees, Documents */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-4 rounded-xl bg-white dark:bg-dark-card border border-light-border dark:border-dark-border">
+        <Link
+          to="/admin/attendance"
+          className="p-4 rounded-xl bg-white dark:bg-dark-card border border-light-border dark:border-dark-border hover:border-brand-blue/60 dark:hover:border-dark-accent/60 transition-all cursor-pointer block group"
+        >
           <div className="flex items-center justify-between text-xs text-light-secondary dark:text-dark-secondary mb-2">
-            <span>Today's Attendance</span>
+            <span className="group-hover:text-brand-blue dark:group-hover:text-dark-accent transition-colors font-medium">Today's Attendance</span>
             <Clock className="w-4 h-4 text-emerald-500" />
           </div>
           <p className="text-xl font-bold text-light-primary dark:text-dark-primary font-mono">
@@ -248,22 +251,25 @@ export const AdminDashboardPage: React.FC = () => {
           </p>
           <p className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-1 flex items-center gap-1 font-semibold">
             <CheckCircle2 className="w-3 h-3" />
-            <span>Roll call active across sections</span>
+            <span>Open Attendance Register →</span>
           </p>
-        </div>
+        </Link>
 
-        <div className="p-4 rounded-xl bg-white dark:bg-dark-card border border-light-border dark:border-dark-border">
+        <Link
+          to="/admin/marks"
+          className="p-4 rounded-xl bg-white dark:bg-dark-card border border-light-border dark:border-dark-border hover:border-brand-blue/60 dark:hover:border-dark-accent/60 transition-all cursor-pointer block group"
+        >
           <div className="flex items-center justify-between text-xs text-light-secondary dark:text-dark-secondary mb-2">
-            <span>Upcoming Exams</span>
-            <Award className="w-4 h-4 text-brand-gold" />
+            <span className="group-hover:text-brand-blue dark:group-hover:text-dark-accent transition-colors font-medium">Upcoming Exams</span>
+            <Award className="w-4 h-4 text-brand-blue dark:text-dark-accent" />
           </div>
           <p className="text-xl font-bold text-light-primary dark:text-dark-primary font-mono">
             Mid-Term Assessment
           </p>
-          <p className="text-[11px] text-light-secondary dark:text-dark-secondary mt-1">
-            CBSE Schedule verified
+          <p className="text-[11px] text-brand-blue dark:text-dark-accent mt-1 flex items-center gap-1 font-semibold">
+            <span>Enter Marks & Results →</span>
           </p>
-        </div>
+        </Link>
 
         <div className="p-4 rounded-xl bg-white dark:bg-dark-card border border-light-border dark:border-dark-border">
           <div className="flex items-center justify-between text-xs text-light-secondary dark:text-dark-secondary mb-2">
@@ -306,10 +312,10 @@ export const AdminDashboardPage: React.FC = () => {
           <div className="space-y-2">
             <Link
               to="/admin/students"
-              className="flex items-center justify-between p-3 rounded-xl border border-light-border dark:border-dark-border hover:border-brand-gold/60 hover:bg-brand-gold/5 transition-all group"
+              className="flex items-center justify-between p-3 rounded-xl border border-light-border dark:border-dark-border hover:border-brand-blue/60 dark:hover:border-dark-accent/60 hover:bg-brand-blue/5 dark:hover:bg-brand-blue/10 transition-all group"
             >
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-brand-gold/15 text-brand-gold">
+                <div className="p-2 rounded-lg bg-brand-blue/10 dark:bg-brand-blue/20 text-brand-blue dark:text-dark-accent">
                   <GraduationCap className="w-4 h-4" />
                 </div>
                 <div>
@@ -319,15 +325,15 @@ export const AdminDashboardPage: React.FC = () => {
                   </p>
                 </div>
               </div>
-              <ArrowRight className="w-4 h-4 text-light-secondary group-hover:text-brand-gold group-hover:translate-x-1 transition-all" />
+              <ArrowRight className="w-4 h-4 text-light-secondary group-hover:text-brand-blue dark:group-hover:text-dark-accent group-hover:translate-x-1 transition-all" />
             </Link>
 
             <Link
               to="/admin/teachers"
-              className="flex items-center justify-between p-3 rounded-xl border border-light-border dark:border-dark-border hover:border-brand-gold/60 hover:bg-brand-gold/5 transition-all group"
+              className="flex items-center justify-between p-3 rounded-xl border border-light-border dark:border-dark-border hover:border-brand-blue/60 dark:hover:border-dark-accent/60 hover:bg-brand-blue/5 dark:hover:bg-brand-blue/10 transition-all group"
             >
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-brand-gold/15 text-brand-gold">
+                <div className="p-2 rounded-lg bg-brand-blue/10 dark:bg-brand-blue/20 text-brand-blue dark:text-dark-accent">
                   <Users className="w-4 h-4" />
                 </div>
                 <div>
@@ -337,15 +343,15 @@ export const AdminDashboardPage: React.FC = () => {
                   </p>
                 </div>
               </div>
-              <ArrowRight className="w-4 h-4 text-light-secondary group-hover:text-brand-gold group-hover:translate-x-1 transition-all" />
+              <ArrowRight className="w-4 h-4 text-light-secondary group-hover:text-brand-blue dark:group-hover:text-dark-accent group-hover:translate-x-1 transition-all" />
             </Link>
 
             <Link
               to="/admin/classes"
-              className="flex items-center justify-between p-3 rounded-xl border border-light-border dark:border-dark-border hover:border-brand-gold/60 hover:bg-brand-gold/5 transition-all group"
+              className="flex items-center justify-between p-3 rounded-xl border border-light-border dark:border-dark-border hover:border-brand-blue/60 dark:hover:border-dark-accent/60 hover:bg-brand-blue/5 dark:hover:bg-brand-blue/10 transition-all group"
             >
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-brand-gold/15 text-brand-gold">
+                <div className="p-2 rounded-lg bg-brand-blue/10 dark:bg-brand-blue/20 text-brand-blue dark:text-dark-accent">
                   <Layers className="w-4 h-4" />
                 </div>
                 <div>
@@ -355,15 +361,15 @@ export const AdminDashboardPage: React.FC = () => {
                   </p>
                 </div>
               </div>
-              <ArrowRight className="w-4 h-4 text-light-secondary group-hover:text-brand-gold group-hover:translate-x-1 transition-all" />
+              <ArrowRight className="w-4 h-4 text-light-secondary group-hover:text-brand-blue dark:group-hover:text-dark-accent group-hover:translate-x-1 transition-all" />
             </Link>
 
             <Link
               to="/admin/academic-years"
-              className="flex items-center justify-between p-3 rounded-xl border border-light-border dark:border-dark-border hover:border-brand-gold/60 hover:bg-brand-gold/5 transition-all group"
+              className="flex items-center justify-between p-3 rounded-xl border border-light-border dark:border-dark-border hover:border-brand-blue/60 dark:hover:border-dark-accent/60 hover:bg-brand-blue/5 dark:hover:bg-brand-blue/10 transition-all group"
             >
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-brand-gold/15 text-brand-gold">
+                <div className="p-2 rounded-lg bg-brand-blue/10 dark:bg-brand-blue/20 text-brand-blue dark:text-dark-accent">
                   <Calendar className="w-4 h-4" />
                 </div>
                 <div>
@@ -373,7 +379,79 @@ export const AdminDashboardPage: React.FC = () => {
                   </p>
                 </div>
               </div>
-              <ArrowRight className="w-4 h-4 text-light-secondary group-hover:text-brand-gold group-hover:translate-x-1 transition-all" />
+              <ArrowRight className="w-4 h-4 text-light-secondary group-hover:text-brand-blue dark:group-hover:text-dark-accent group-hover:translate-x-1 transition-all" />
+            </Link>
+
+            <Link
+              to="/admin/attendance"
+              className="flex items-center justify-between p-3 rounded-xl border border-light-border dark:border-dark-border hover:border-brand-blue/60 dark:hover:border-dark-accent/60 hover:bg-brand-blue/5 dark:hover:bg-brand-blue/10 transition-all group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                  <Clock className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-light-primary dark:text-dark-primary">Attendance Register</p>
+                  <p className="text-[11px] text-light-secondary dark:text-dark-secondary">
+                    Roll call entry & CBSE reports
+                  </p>
+                </div>
+              </div>
+              <ArrowRight className="w-4 h-4 text-light-secondary group-hover:text-brand-blue dark:group-hover:text-dark-accent group-hover:translate-x-1 transition-all" />
+            </Link>
+
+            <Link
+              to="/admin/marks"
+              className="flex items-center justify-between p-3 rounded-xl border border-light-border dark:border-dark-border hover:border-brand-blue/60 dark:hover:border-dark-accent/60 hover:bg-brand-blue/5 dark:hover:bg-brand-blue/10 transition-all group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-brand-blue/10 dark:bg-brand-blue/20 text-brand-blue dark:text-dark-accent">
+                  <Award className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-light-primary dark:text-dark-primary">Examinations & Marks</p>
+                  <p className="text-[11px] text-light-secondary dark:text-dark-secondary">
+                    CBSE scorecards, rankings, grading
+                  </p>
+                </div>
+              </div>
+              <ArrowRight className="w-4 h-4 text-light-secondary group-hover:text-brand-blue dark:group-hover:text-dark-accent group-hover:translate-x-1 transition-all" />
+            </Link>
+
+            <Link
+              to="/admin/notices"
+              className="flex items-center justify-between p-3 rounded-xl border border-light-border dark:border-dark-border hover:border-brand-blue/60 dark:hover:border-dark-accent/60 hover:bg-brand-blue/5 dark:hover:bg-brand-blue/10 transition-all group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-blue-500/15 text-blue-600 dark:text-blue-400">
+                  <FileCheck className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-light-primary dark:text-dark-primary">Official Circulars</p>
+                  <p className="text-[11px] text-light-secondary dark:text-dark-secondary">
+                    Broadcast notices to staff & students
+                  </p>
+                </div>
+              </div>
+              <ArrowRight className="w-4 h-4 text-light-secondary group-hover:text-brand-blue dark:group-hover:text-dark-accent group-hover:translate-x-1 transition-all" />
+            </Link>
+
+            <Link
+              to="/admin/timetable"
+              className="flex items-center justify-between p-3 rounded-xl border border-light-border dark:border-dark-border hover:border-brand-blue/60 dark:hover:border-dark-accent/60 hover:bg-brand-blue/5 dark:hover:bg-brand-blue/10 transition-all group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-purple-500/15 text-purple-600 dark:text-purple-400">
+                  <Clock className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-light-primary dark:text-dark-primary">Master Timetable</p>
+                  <p className="text-[11px] text-light-secondary dark:text-dark-secondary">
+                    Daily bell schedule & room allocation
+                  </p>
+                </div>
+              </div>
+              <ArrowRight className="w-4 h-4 text-light-secondary group-hover:text-brand-blue dark:group-hover:text-dark-accent group-hover:translate-x-1 transition-all" />
             </Link>
           </div>
         </Card>
@@ -389,7 +467,7 @@ export const AdminDashboardPage: React.FC = () => {
                 Immutable security log of student enrollments, status changes, and auth events
               </p>
             </div>
-            <Activity className="w-4 h-4 text-brand-gold" />
+            <Activity className="w-4 h-4 text-brand-blue dark:text-dark-accent" />
           </div>
 
           {isLoading ? (
@@ -414,7 +492,7 @@ export const AdminDashboardPage: React.FC = () => {
                     <span className="text-[10px] text-light-secondary dark:text-dark-secondary font-mono block">
                       {new Date(act.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                     </span>
-                    <span className="text-[10px] text-brand-gold font-semibold block">
+                    <span className="text-[10px] text-brand-blue dark:text-dark-accent font-semibold block">
                       {act.user_name || "Admin User"}
                     </span>
                   </div>
@@ -454,7 +532,7 @@ export const AdminDashboardPage: React.FC = () => {
           <select
             value={reportType}
             onChange={(e) => setReportType(e.target.value)}
-            className="w-full px-3 py-2 text-xs rounded-xl border border-light-border dark:border-dark-border bg-gray-50 dark:bg-dark-elevated text-light-primary dark:text-dark-primary focus:border-brand-gold focus:outline-none"
+            className="w-full px-3 py-2 text-xs rounded-xl border border-light-border dark:border-dark-border bg-gray-50 dark:bg-dark-elevated text-light-primary dark:text-dark-primary focus:border-brand-blue dark:focus:border-dark-accent focus:outline-none"
           >
             <option value="enrollment">Class Enrollment & Capacity Summary</option>
             <option value="attendance">Daily & Term Attendance Register</option>

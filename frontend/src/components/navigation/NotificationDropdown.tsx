@@ -68,7 +68,7 @@ export const NotificationDropdown: React.FC = () => {
   const getIcon = (type: string) => {
     switch (type) {
       case "notice":
-        return <Info className="w-3.5 h-3.5 text-brand-gold" />;
+        return <Info className="w-3.5 h-3.5 text-brand-blue dark:text-dark-accent" />;
       case "exam":
         return <Award className="w-3.5 h-3.5 text-amber-500" />;
       default:
@@ -86,7 +86,7 @@ export const NotificationDropdown: React.FC = () => {
       >
         <Bell className="w-5 h-5" />
         {unreadCount > 0 && (
-          <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-brand-gold text-brand-navy font-bold text-[9px] flex items-center justify-center animate-pulse">
+          <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-brand-blue text-white font-bold text-[9px] flex items-center justify-center animate-pulse">
             {unreadCount}
           </span>
         )}
@@ -100,7 +100,7 @@ export const NotificationDropdown: React.FC = () => {
                 Notifications & Announcements
               </span>
               {unreadCount > 0 && (
-                <span className="px-1.5 py-0.5 rounded-full bg-brand-gold/20 text-brand-gold text-[10px] font-bold">
+                <span className="px-1.5 py-0.5 rounded-full bg-brand-blue/15 text-brand-blue dark:text-dark-accent text-[10px] font-bold">
                   {unreadCount} New
                 </span>
               )}
@@ -108,7 +108,7 @@ export const NotificationDropdown: React.FC = () => {
             {unreadCount > 0 && (
               <button
                 onClick={markAllRead}
-                className="text-[11px] text-brand-gold font-semibold hover:underline flex items-center gap-1"
+                className="text-[11px] text-brand-blue dark:text-dark-accent font-semibold hover:underline flex items-center gap-1"
               >
                 <Check className="w-3 h-3" />
                 <span>Mark all read</span>
@@ -126,7 +126,7 @@ export const NotificationDropdown: React.FC = () => {
                 <div
                   key={n.id}
                   className={`p-3 text-xs transition-colors hover:bg-gray-50 dark:hover:bg-dark-elevated ${
-                    !n.isRead ? "bg-brand-gold/5" : ""
+                    !n.isRead ? "bg-brand-blue/5 dark:bg-brand-blue/10" : ""
                   }`}
                 >
                   <div className="flex items-start gap-2.5">

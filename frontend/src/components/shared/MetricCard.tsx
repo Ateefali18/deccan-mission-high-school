@@ -24,7 +24,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
     <Card
       className={twMerge(
         clsx(
-          "p-5 hover:border-brand-gold/40 transition-all hover:shadow-md group relative overflow-hidden",
+          "p-5 hover:border-brand-blue/40 dark:hover:border-dark-accent/40 transition-all hover:shadow-md group relative overflow-hidden",
           className
         )
       )}
@@ -46,11 +46,11 @@ export const MetricCard: React.FC<MetricCardProps> = ({
             </p>
           )}
         </div>
-        <div className="p-3 rounded-xl bg-brand-gold/15 text-brand-gold border border-brand-gold/25 group-hover:scale-110 transition-transform shrink-0">
+        <div className="p-3 rounded-xl bg-brand-blue/10 dark:bg-brand-blue/20 text-brand-blue dark:text-dark-accent border border-brand-blue/20 group-hover:scale-110 transition-transform shrink-0">
           {icon}
         </div>
       </div>
-      <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-brand-gold/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+      <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-brand-blue/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
     </Card>
   );
 };

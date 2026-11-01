@@ -6,6 +6,8 @@ from app.models.attendance import AttendanceSession, AttendanceRecord
 from app.models.student_profile import StudentProfile
 from app.models.student_enrollment import StudentEnrollment
 from app.models.academic_year import AcademicYear
+from app.models.class_model import Class
+from app.models.section import Section
 from app.core.config import settings
 
 class AttendanceService:
@@ -177,3 +179,104 @@ class AttendanceService:
         db.commit()
         db.refresh(session)
         return session
+
+    @staticmethod
+    def get_session_records(
+        db: Session,
+        school_id: int,
+        section_id: int,
+        session_date: date,
+        period_number: int = 0,
+    ) -> Optional[Dict[str, Any]]:
+        session = (
+            db.query(AttendanceSession)
+            .filter(
+                AttendanceSession.school_id == school_id,
+                AttendanceSession.section_id == section_id,
+                AttendanceSession.session_date == session_date,
+                AttendanceSession.period_number == period_number,
+            )
+            .first()
+        )
+        if not session:
+            return None
+
+        records = (
+            db.query(AttendanceRecord)
+            .filter(AttendanceRecord.session_id == session.id)
+            .all()
+        )
+
+        record_map = {}
+        for r in records:
+            record_map[str(r.student_id)] = {
+                "id": r.id,
+                "student_id": r.student_id,
+                "status": r.status,
+                "remarks": r.remarks,
+            }
+
+        return {
+            "session_id": session.id,
+            "session_date": str(session.session_date),
+            "academic_year_id": session.academic_year_id,
+            "class_id": session.class_id,
+            "section_id": session.section_id,
+            "period_number": session.period_number,
+            "status": session.status,
+            "records": record_map,
+        }
+
+    @staticmethod
+    def get_date_wise_report(
+        db: Session,
+        school_id: int,
+        class_id: Optional[int] = None,
+        section_id: Optional[int] = None,
+        from_date: Optional[date] = None,
+        to_date: Optional[date] = None,
+    ) -> List[Dict[str, Any]]:
+        query = (
+            db.query(AttendanceSession)
+            .filter(AttendanceSession.school_id == school_id)
+        )
+        if class_id:
+            query = query.filter(AttendanceSession.class_id == class_id)
+        if section_id:
+            query = query.filter(AttendanceSession.section_id == section_id)
+        if from_date:
+            query = query.filter(AttendanceSession.session_date >= from_date)
+        if to_date:
+            query = query.filter(AttendanceSession.session_date <= to_date)
+
+        sessions = query.order_by(AttendanceSession.session_date.desc()).all()
+        report = []
+        for s in sessions:
+            recs = db.query(AttendanceRecord).filter(AttendanceRecord.session_id == s.id).all()
+            present = sum(1 for r in recs if r.status == "present")
+            late = sum(1 for r in recs if r.status == "late")
+            absent = sum(1 for r in recs if r.status == "absent")
+            excused = sum(1 for r in recs if r.status == "excused")
+            total = len(recs)
+            pct = AttendanceService.calculate_percentage(present, late, absent, excused)
+
+            section = db.query(Section).filter(Section.id == s.section_id).first()
+            class_obj = db.query(Class).filter(Class.id == s.class_id).first()
+
+            report.append({
+                "session_id": s.id,
+                "session_date": str(s.session_date),
+                "period_number": s.period_number,
+                "class_id": s.class_id,
+                "class_name": class_obj.name if class_obj else f"Class {s.class_id}",
+                "section_id": s.section_id,
+                "section_name": section.name if section else f"Sec {s.section_id}",
+                "total_students": total,
+                "present_count": present,
+                "late_count": late,
+                "absent_count": absent,
+                "excused_count": excused,
+                "attendance_percentage": pct,
+                "status": s.status,
+            })
+        return report

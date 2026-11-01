@@ -10,11 +10,14 @@ import {
   Eye,
   BookOpen,
   Edit2,
+  Trash2,
   CheckCircle,
   XCircle,
   Phone,
   Mail,
   GraduationCap,
+  Briefcase,
+  AlertTriangle,
 } from "lucide-react";
 import { api } from "../../services/api";
 import type { TeacherListItem, TeacherProfile } from "../../types";
@@ -25,20 +28,33 @@ import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { Badge } from "../../components/ui/Badge";
 import { Dialog } from "../../components/ui/Dialog";
+import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
 import { useToast } from "../../components/ui/Toast";
 
-const teacherSchema = z.object({
+const teacherCreateSchema = z.object({
   employee_id: z.string().min(3, "Employee ID is required"),
   full_name: z.string().min(2, "Full name is required"),
-  username: z.string().min(3, "Username must be at least 3 characters"),
+  username: z.string().min(3, "Username must be at least 3 characters").optional(),
   email: z.string().email("Valid email required"),
   password: z.string().min(6, "Password must be at least 6 characters"),
   designation: z.string().min(2, "Designation is required"),
   department: z.string().optional(),
   qualification: z.string().optional(),
+  contact_phone: z.string().optional(),
 });
 
-type TeacherFormData = z.infer<typeof teacherSchema>;
+const teacherEditSchema = z.object({
+  full_name: z.string().min(2, "Full name is required"),
+  email: z.string().email("Valid email required"),
+  designation: z.string().min(2, "Designation is required"),
+  department: z.string().optional(),
+  qualification: z.string().optional(),
+  contact_phone: z.string().optional(),
+  is_active: z.boolean().default(true),
+});
+
+type TeacherCreateFormData = z.infer<typeof teacherCreateSchema>;
+type TeacherEditFormData = z.infer<typeof teacherEditSchema>;
 
 export const TeachersPage: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -51,6 +67,7 @@ export const TeachersPage: React.FC = () => {
   const [pageSize] = useState(10);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState(initialSearch);
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
 
   // Dialogs
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
@@ -59,27 +76,49 @@ export const TeachersPage: React.FC = () => {
 
   // Edit Faculty State
   const [isEditOpen, setIsEditOpen] = useState(false);
-  const [editSpecialization, setEditSpecialization] = useState("");
-  const [editQualification, setEditQualification] = useState("");
-  const [editPhone, setEditPhone] = useState("");
-  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [editingTeacherId, setEditingTeacherId] = useState<number | string | null>(null);
+
+  // Deactivate Faculty State
+  const [isDeactivateOpen, setIsDeactivateOpen] = useState(false);
+  const [deactivatingTeacher, setDeactivatingTeacher] = useState<TeacherListItem | null>(null);
+  const [isDeactivating, setIsDeactivating] = useState(false);
 
   const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors, isSubmitting },
-  } = useForm<TeacherFormData>({
-    resolver: zodResolver(teacherSchema),
+    register: registerCreate,
+    handleSubmit: handleSubmitCreate,
+    reset: resetCreate,
+    formState: { errors: createErrors, isSubmitting: isSubmittingCreate },
+  } = useForm<TeacherCreateFormData>({
+    resolver: zodResolver(teacherCreateSchema),
     defaultValues: {
-      designation: "Teacher",
+      designation: "Faculty / Senior Teacher",
+      department: "General",
+      password: "Teacher@12345",
+    },
+  });
+
+  const {
+    register: registerEdit,
+    handleSubmit: handleSubmitEdit,
+    reset: resetEdit,
+    setValue: setEditValue,
+    formState: { errors: editErrors, isSubmitting: isSubmittingEdit },
+  } = useForm<TeacherEditFormData>({
+    resolver: zodResolver(teacherEditSchema),
+    defaultValues: {
+      is_active: true,
     },
   });
 
   const fetchTeachers = useCallback(async () => {
     setIsLoading(true);
     try {
-      const data = await api.teachers.list({ page, limit: pageSize, search: searchTerm });
+      const data = await api.teachers.list({
+        page,
+        limit: pageSize,
+        search: searchTerm,
+        status: statusFilter === "all" ? undefined : statusFilter,
+      });
       setTeachers(data.items);
       setTotal(data.total);
     } catch (err: any) {
@@ -87,18 +126,18 @@ export const TeachersPage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [page, pageSize, searchTerm]);
+  }, [page, pageSize, searchTerm, statusFilter]);
 
   useEffect(() => {
     fetchTeachers();
   }, [fetchTeachers]);
 
-  const onRegisterTeacher = async (data: TeacherFormData) => {
+  const onRegisterTeacher = async (data: TeacherCreateFormData) => {
     try {
       await api.teachers.create(data);
       toast.success(`Faculty member ${data.full_name} registered successfully!`);
       setIsRegisterOpen(false);
-      reset();
+      resetCreate();
       fetchTeachers();
     } catch (err: any) {
       toast.error(err.message || "Failed to register teacher");
@@ -115,37 +154,66 @@ export const TeachersPage: React.FC = () => {
     }
   };
 
-  const handleOpenEdit = (profile: TeacherProfile) => {
-    setEditSpecialization(profile.designation || "");
-    setEditQualification(profile.qualification || "");
-    setEditPhone(profile.contact_phone || "");
-    setIsEditOpen(true);
+  const handleOpenEdit = async (teacher: TeacherListItem | TeacherProfile) => {
+    try {
+      const profile = await api.teachers.getById(teacher.id);
+      setSelectedTeacher(profile);
+      setEditingTeacherId(profile.id);
+      setEditValue("full_name", profile.full_name || "");
+      setEditValue("email", profile.email || "");
+      setEditValue("designation", profile.designation || "Faculty");
+      setEditValue("department", profile.department || "");
+      setEditValue("qualification", profile.qualification || "");
+      setEditValue("contact_phone", profile.contact_phone || "");
+      setEditValue("is_active", profile.is_active ?? true);
+      setIsEditOpen(true);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to load teacher for editing");
+    }
   };
 
-  const handleSaveEdit = async () => {
-    if (!selectedTeacher) return;
-    setIsSavingEdit(true);
+  const onSaveEdit = async (data: TeacherEditFormData) => {
+    if (!editingTeacherId) return;
     try {
-      await api.teachers.update(selectedTeacher.id, {
-        specialization: editSpecialization,
-        qualification: editQualification,
-        contact_phone: editPhone,
-      });
-      toast.success(`Teacher ${selectedTeacher.full_name} updated successfully!`);
+      await api.teachers.update(editingTeacherId, data);
+      toast.success(`Faculty member ${data.full_name} updated successfully!`);
       setIsEditOpen(false);
-      // Refresh teacher details and table
-      const updated = await api.teachers.getById(selectedTeacher.id);
-      setSelectedTeacher(updated);
+      if (selectedTeacher && selectedTeacher.id === editingTeacherId) {
+        const updated = await api.teachers.getById(editingTeacherId);
+        setSelectedTeacher(updated);
+      }
       fetchTeachers();
     } catch (err: any) {
       toast.error(err.message || "Failed to update teacher");
+    }
+  };
+
+  const handleOpenDeactivate = (teacher: TeacherListItem) => {
+    setDeactivatingTeacher(teacher);
+    setIsDeactivateOpen(true);
+  };
+
+  const handleConfirmDeactivate = async () => {
+    if (!deactivatingTeacher) return;
+    setIsDeactivating(true);
+    try {
+      await api.teachers.deactivate(deactivatingTeacher.id);
+      toast.success(`Faculty member ${deactivatingTeacher.full_name} deactivated successfully!`);
+      setIsDeactivateOpen(false);
+      setDeactivatingTeacher(null);
+      if (selectedTeacher && selectedTeacher.id === deactivatingTeacher.id) {
+        setIsDetailOpen(false);
+      }
+      fetchTeachers();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to deactivate faculty member");
     } finally {
-      setIsSavingEdit(false);
+      setIsDeactivating(false);
     }
   };
 
   const handleToggleStatus = async (id: number | string, currentStatus: string) => {
-    const newStatus = currentStatus === "active" ? false : true;
+    const newStatus = currentStatus !== "active";
     try {
       await api.teachers.toggleStatus(id, newStatus);
       toast.success(`Faculty status set to ${newStatus ? "Active" : "Inactive"}`);
@@ -162,12 +230,22 @@ export const TeachersPage: React.FC = () => {
     }
   };
 
-  const filteredTeachers = teachers.filter(
-    (t) =>
+  const filteredTeachers = teachers.filter((t) => {
+    const matchesSearch =
       t.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       t.employee_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (t.department && t.department.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+      (t.department && t.department.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (t.designation && t.designation.toLowerCase().includes(searchTerm.toLowerCase()));
+
+    const matchesStatus =
+      statusFilter === "all"
+        ? true
+        : statusFilter === "active"
+        ? t.employment_status === "active"
+        : t.employment_status !== "active";
+
+    return matchesSearch && matchesStatus;
+  });
 
   const columns: Column<TeacherListItem>[] = [
     {
@@ -241,7 +319,7 @@ export const TeachersPage: React.FC = () => {
     },
     {
       key: "actions",
-      header: "Action",
+      header: "Actions",
       className: "text-right",
       render: (row) => (
         <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
@@ -253,6 +331,25 @@ export const TeachersPage: React.FC = () => {
           >
             View
           </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleOpenEdit(row)}
+            leftIcon={<Edit2 className="w-3.5 h-3.5 text-brand-gold" />}
+          >
+            Edit
+          </Button>
+          {row.employment_status === "active" && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleOpenDeactivate(row)}
+              className="text-red-500 hover:text-red-600 hover:bg-red-500/10"
+              leftIcon={<Trash2 className="w-3.5 h-3.5" />}
+            >
+              Deactivate
+            </Button>
+          )}
         </div>
       ),
     },
@@ -275,7 +372,7 @@ export const TeachersPage: React.FC = () => {
       />
 
       {/* Filter and Search Bar */}
-      <div className="flex items-center justify-between gap-3 p-4 bg-white dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 bg-white dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl">
         <div className="relative w-full sm:w-80">
           <Search className="w-4 h-4 absolute left-3 top-3 text-light-secondary dark:text-dark-secondary" />
           <input
@@ -285,6 +382,29 @@ export const TeachersPage: React.FC = () => {
             placeholder="Search employee ID, faculty name, department..."
             className="w-full text-xs sm:text-sm pl-9 pr-3 py-2 rounded-lg bg-gray-50 dark:bg-dark-elevated text-light-primary dark:text-dark-primary border border-light-border dark:border-dark-border focus:border-brand-gold focus:outline-none"
           />
+        </div>
+        <div className="flex items-center gap-1.5 w-full sm:w-auto">
+          <Button
+            variant={statusFilter === "all" ? "primary" : "ghost"}
+            size="sm"
+            onClick={() => setStatusFilter("all")}
+          >
+            All Faculty
+          </Button>
+          <Button
+            variant={statusFilter === "active" ? "primary" : "ghost"}
+            size="sm"
+            onClick={() => setStatusFilter("active")}
+          >
+            Active Only
+          </Button>
+          <Button
+            variant={statusFilter === "inactive" ? "primary" : "ghost"}
+            size="sm"
+            onClick={() => setStatusFilter("inactive")}
+          >
+            Inactive
+          </Button>
         </div>
       </div>
 
@@ -316,53 +436,52 @@ export const TeachersPage: React.FC = () => {
             <Button
               variant="secondary"
               onClick={() => setIsRegisterOpen(false)}
-              disabled={isSubmitting}
+              disabled={isSubmittingCreate}
             >
               Cancel
             </Button>
             <Button
               variant="primary"
-              onClick={handleSubmit(onRegisterTeacher)}
-              isLoading={isSubmitting}
+              onClick={handleSubmitCreate(onRegisterTeacher)}
+              isLoading={isSubmittingCreate}
             >
               Save Faculty Member
             </Button>
           </>
         }
       >
-        <form onSubmit={handleSubmit(onRegisterTeacher)} className="space-y-4">
+        <form onSubmit={handleSubmitCreate(onRegisterTeacher)} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Employee ID"
               placeholder="e.g. EMP-1002"
-              error={errors.employee_id?.message}
+              error={createErrors.employee_id?.message}
               required
-              {...register("employee_id")}
+              {...registerCreate("employee_id")}
             />
             <Input
               label="Faculty Full Name"
               placeholder="e.g. Dr. Syed Ibrahim"
-              error={errors.full_name?.message}
+              error={createErrors.full_name?.message}
               required
-              {...register("full_name")}
+              {...registerCreate("full_name")}
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
-              label="Username"
+              label="Username (Optional)"
               placeholder="e.g. syed.ibrahim"
-              error={errors.username?.message}
-              required
-              {...register("username")}
+              error={createErrors.username?.message}
+              {...registerCreate("username")}
             />
             <Input
               label="Email"
               type="email"
               placeholder="e.g. syed.ibrahim@dmhs.edu.in"
-              error={errors.email?.message}
+              error={createErrors.email?.message}
               required
-              {...register("email")}
+              {...registerCreate("email")}
             />
           </div>
 
@@ -371,30 +490,37 @@ export const TeachersPage: React.FC = () => {
               label="Temporary Password"
               type="password"
               placeholder="At least 6 characters"
-              error={errors.password?.message}
+              error={createErrors.password?.message}
               required
-              {...register("password")}
+              {...registerCreate("password")}
             />
             <Input
               label="Designation"
               placeholder="e.g. Senior Faculty"
-              error={errors.designation?.message}
+              error={createErrors.designation?.message}
               required
-              {...register("designation")}
+              {...registerCreate("designation")}
             />
             <Input
               label="Department"
               placeholder="e.g. Physics / Science"
-              error={errors.department?.message}
-              {...register("department")}
+              error={createErrors.department?.message}
+              {...registerCreate("department")}
             />
           </div>
 
-          <Input
-            label="Qualifications"
-            placeholder="e.g. M.Sc. Physics, B.Ed, Ph.D"
-            {...register("qualification")}
-          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input
+              label="Qualifications"
+              placeholder="e.g. M.Sc. Physics, B.Ed, Ph.D"
+              {...registerCreate("qualification")}
+            />
+            <Input
+              label="Contact Phone"
+              placeholder="+91 98490 12345"
+              {...registerCreate("contact_phone")}
+            />
+          </div>
         </form>
       </Dialog>
 
@@ -412,7 +538,10 @@ export const TeachersPage: React.FC = () => {
               size="sm"
               leftIcon={<Edit2 className="w-3.5 h-3.5" />}
               onClick={() => {
-                if (selectedTeacher) handleOpenEdit(selectedTeacher);
+                if (selectedTeacher) {
+                  setIsDetailOpen(false);
+                  handleOpenEdit(selectedTeacher);
+                }
               }}
             >
               Edit Details
@@ -492,13 +621,13 @@ export const TeachersPage: React.FC = () => {
                 <BookOpen className="w-3.5 h-3.5" />
                 <span>Class & Subject Assignments</span>
               </h5>
-              {selectedTeacher.assignments.length === 0 ? (
+              {selectedTeacher.assignments && selectedTeacher.assignments.length === 0 ? (
                 <p className="text-xs text-light-secondary dark:text-dark-secondary p-3 rounded-lg bg-gray-50 dark:bg-dark-elevated">
                   No classes currently assigned for this term.
                 </p>
               ) : (
                 <div className="space-y-1.5">
-                  {selectedTeacher.assignments.map((a) => (
+                  {(selectedTeacher.assignments || []).map((a) => (
                     <div
                       key={a.id}
                       className="p-2.5 rounded-lg bg-gray-50 dark:bg-dark-elevated border border-light-border dark:border-dark-border flex items-center justify-between text-xs"
@@ -523,40 +652,100 @@ export const TeachersPage: React.FC = () => {
         isOpen={isEditOpen}
         onClose={() => setIsEditOpen(false)}
         title="Edit Faculty Member"
-        description="Update faculty qualifications and contact information in persistent database"
-        maxWidth="sm"
+        description="Update faculty profile and credentials in the persistent school database"
+        maxWidth="md"
         footer={
           <>
-            <Button variant="secondary" onClick={() => setIsEditOpen(false)} disabled={isSavingEdit}>
+            <Button variant="secondary" onClick={() => setIsEditOpen(false)} disabled={isSubmittingEdit}>
               Cancel
             </Button>
-            <Button variant="primary" onClick={handleSaveEdit} isLoading={isSavingEdit}>
+            <Button variant="primary" onClick={handleSubmitEdit(onSaveEdit)} isLoading={isSubmittingEdit}>
               Save Changes
             </Button>
           </>
         }
       >
-        <div className="space-y-3">
-          <Input
-            label="Designation / Specialization"
-            value={editSpecialization}
-            onChange={(e) => setEditSpecialization(e.target.value)}
-            placeholder="e.g. Senior Faculty - Mathematics"
-          />
-          <Input
-            label="Qualifications"
-            value={editQualification}
-            onChange={(e) => setEditQualification(e.target.value)}
-            placeholder="e.g. M.Sc, B.Ed"
-          />
-          <Input
-            label="Contact Phone"
-            value={editPhone}
-            onChange={(e) => setEditPhone(e.target.value)}
-            placeholder="+91 98490 00000"
-          />
-        </div>
+        <form onSubmit={handleSubmitEdit(onSaveEdit)} className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input
+              label="Faculty Full Name"
+              placeholder="e.g. Dr. Syed Ibrahim"
+              error={editErrors.full_name?.message}
+              required
+              {...registerEdit("full_name")}
+            />
+            <Input
+              label="Email Address"
+              type="email"
+              placeholder="e.g. syed.ibrahim@dmhs.edu.in"
+              error={editErrors.email?.message}
+              required
+              {...registerEdit("email")}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input
+              label="Designation / Specialization"
+              placeholder="e.g. Senior Faculty - Mathematics"
+              error={editErrors.designation?.message}
+              required
+              {...registerEdit("designation")}
+            />
+            <Input
+              label="Department"
+              placeholder="e.g. Mathematics"
+              error={editErrors.department?.message}
+              {...registerEdit("department")}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input
+              label="Qualifications"
+              placeholder="e.g. M.Sc, B.Ed"
+              error={editErrors.qualification?.message}
+              {...registerEdit("qualification")}
+            />
+            <Input
+              label="Contact Phone"
+              placeholder="+91 98490 00000"
+              error={editErrors.contact_phone?.message}
+              {...registerEdit("contact_phone")}
+            />
+          </div>
+
+          <div className="flex items-center gap-2 pt-2">
+            <label className="flex items-center gap-2 text-xs cursor-pointer font-medium text-light-primary dark:text-dark-primary">
+              <input
+                type="checkbox"
+                className="rounded border-light-border dark:border-dark-border text-brand-gold focus:ring-brand-gold"
+                {...registerEdit("is_active")}
+              />
+              Active Faculty Status (Allows portal login and teaching allocations)
+            </label>
+          </div>
+        </form>
       </Dialog>
+
+      {/* Deactivate Faculty Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={isDeactivateOpen}
+        onClose={() => {
+          setIsDeactivateOpen(false);
+          setDeactivatingTeacher(null);
+        }}
+        onConfirm={handleConfirmDeactivate}
+        title="Deactivate Faculty Member"
+        message={
+          deactivatingTeacher
+            ? `Are you sure you want to deactivate ${deactivatingTeacher.full_name} (${deactivatingTeacher.employee_id})? The teacher will no longer be able to log in or enter marks, but historical timetable and student records will be preserved.`
+            : "Are you sure you want to deactivate this faculty member?"
+        }
+        confirmText="Deactivate Faculty"
+        variant="danger"
+        isLoading={isDeactivating}
+      />
     </div>
   );
 };

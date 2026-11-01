@@ -35,3 +35,11 @@ class ConflictException(DMHSException):
             detail=detail,
             error_code="CONFLICT"
         )
+
+class ValidationException(DMHSException):
+    def __init__(self, detail: str = "Validation error"):
+        super().__init__(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=detail,
+            error_code="VALIDATION_ERROR"
+        )

@@ -34,7 +34,7 @@ export const UserMenu: React.FC = () => {
         className="flex items-center gap-2.5 p-1.5 sm:px-3 sm:py-2 rounded-xl hover:bg-gray-100 dark:hover:bg-dark-elevated transition-colors border border-transparent hover:border-light-border dark:hover:border-dark-border"
         aria-label="User profile options"
       >
-        <div className="w-8 h-8 rounded-full bg-brand-gold/20 text-brand-gold flex items-center justify-center font-bold text-xs border border-brand-gold/30">
+        <div className="w-8 h-8 rounded-full bg-brand-blue/15 text-brand-blue dark:text-dark-accent flex items-center justify-center font-bold text-xs border border-brand-blue/30">
           {session.user.full_name.charAt(0).toUpperCase()}
         </div>
         <div className="hidden sm:block text-left">
@@ -59,7 +59,7 @@ export const UserMenu: React.FC = () => {
               {session.user.email}
             </p>
             <div className="flex items-center gap-2">
-              <Badge variant="gold" size="sm">
+              <Badge variant="primary" size="sm">
                 {session.role}
               </Badge>
               {session.identifier && (
@@ -78,9 +78,9 @@ export const UserMenu: React.FC = () => {
                   setIsOpen(false);
                   navigate("/student/profile");
                 }}
-                className="w-full text-left px-4 py-2 text-xs font-medium text-light-primary dark:text-dark-primary hover:bg-brand-gold/10 flex items-center gap-2.5 transition-colors"
+                className="w-full text-left px-4 py-2 text-xs font-medium text-light-primary dark:text-dark-primary hover:bg-brand-blue/10 flex items-center gap-2.5 transition-colors"
               >
-                <UserIcon className="w-4 h-4 text-brand-gold" />
+                <UserIcon className="w-4 h-4 text-brand-blue dark:text-dark-accent" />
                 <span>My Profile</span>
               </button>
             )}
@@ -90,9 +90,9 @@ export const UserMenu: React.FC = () => {
                   setIsOpen(false);
                   navigate("/teacher/profile");
                 }}
-                className="w-full text-left px-4 py-2 text-xs font-medium text-light-primary dark:text-dark-primary hover:bg-brand-gold/10 flex items-center gap-2.5 transition-colors"
+                className="w-full text-left px-4 py-2 text-xs font-medium text-light-primary dark:text-dark-primary hover:bg-brand-blue/10 flex items-center gap-2.5 transition-colors"
               >
-                <UserIcon className="w-4 h-4 text-brand-gold" />
+                <UserIcon className="w-4 h-4 text-brand-blue dark:text-dark-accent" />
                 <span>My Faculty Profile</span>
               </button>
             )}

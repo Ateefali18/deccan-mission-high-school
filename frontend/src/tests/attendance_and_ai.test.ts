@@ -44,3 +44,42 @@ describe("Attendance Calculation Formula", () => {
     expect(pct < 75.0).toBe(true);
   });
 });
+
+
+describe("Attendance Batch Roster and Duplicate Prevention", () => {
+  it("creates unique session key by section and date", () => {
+    const makeSessionKey = (sectionId: number | string, date: string, period: number = 0) =>
+      `${sectionId}_${date}_${period}`;
+
+    const key1 = makeSessionKey(101, "2026-10-29", 0);
+    const key2 = makeSessionKey(101, "2026-10-29", 0);
+    const key3 = makeSessionKey(102, "2026-10-29", 0);
+
+    expect(key1).toBe(key2); // Identical session identified for edit
+    expect(key1).not.toBe(key3); // Different section creates separate session
+  });
+
+  it("updates existing student records on re-submission without duplication", () => {
+    const sessionRecords: Record<string, { status: string; remarks?: string }> = {
+      "student-1": { status: "present" },
+      "student-2": { status: "absent" },
+    };
+
+    // Re-submission: change student-2 from absent to present
+    const updatedEntries = [
+      { student_id: "student-1", status: "present" },
+      { student_id: "student-2", status: "present", remarks: "Correction: was present" },
+    ];
+
+    updatedEntries.forEach((entry) => {
+      sessionRecords[entry.student_id] = {
+        status: entry.status,
+        remarks: entry.remarks,
+      };
+    });
+
+    expect(Object.keys(sessionRecords).length).toBe(2); // No duplicates
+    expect(sessionRecords["student-2"].status).toBe("present");
+    expect(sessionRecords["student-2"].remarks).toBe("Correction: was present");
+  });
+});

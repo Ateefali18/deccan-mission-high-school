@@ -19,6 +19,22 @@ class StudentCreate(BaseModel):
     section_id: int
     academic_year_id: int
 
+class StudentUpdate(BaseModel):
+    full_name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    roll_number: Optional[str] = None
+    gender: Optional[str] = None
+    date_of_birth: Optional[date] = None
+    blood_group: Optional[str] = None
+    guardian_name: Optional[str] = None
+    guardian_phone: Optional[str] = None
+    address: Optional[str] = None
+    student_status: Optional[str] = None
+    is_active: Optional[bool] = None
+    class_id: Optional[int] = None
+    section_id: Optional[int] = None
+    academic_year_id: Optional[int] = None
+
 class EnrollmentDetail(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

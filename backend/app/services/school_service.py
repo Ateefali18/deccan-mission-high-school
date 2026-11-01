@@ -16,7 +16,7 @@ from app.models.audit_log import AuditLog
 from app.core.security import get_password_hash
 from app.core.exceptions import ConflictException, ResourceNotFoundException
 from app.schemas.academic_year import AcademicYearCreate
-from app.schemas.class_section import ClassCreate, SectionCreate
+from app.schemas.class_section import ClassCreate, ClassUpdate, SectionCreate, SectionUpdate
 from app.schemas.student import StudentCreate
 from app.schemas.teacher import TeacherCreate
 
@@ -168,3 +168,117 @@ class SchoolService:
         db.commit()
         db.refresh(new_section)
         return new_section
+
+    @staticmethod
+    def update_class(db: Session, class_id: int, data: ClassUpdate, user_id: int) -> Class:
+        cls = db.query(Class).filter(Class.id == class_id).first()
+        if not cls:
+            raise ResourceNotFoundException("Class not found.")
+
+        if data.name is not None and data.name != cls.name:
+            existing = (
+                db.query(Class)
+                .filter(Class.school_id == cls.school_id, Class.name == data.name, Class.id != class_id)
+                .first()
+            )
+            if existing:
+                raise ConflictException(f"Class '{data.name}' already exists in this school.")
+            cls.name = data.name
+
+        if data.grade_level is not None:
+            cls.grade_level = data.grade_level
+        if data.stream is not None:
+            cls.stream = data.stream
+        if data.is_active is not None:
+            cls.is_active = data.is_active
+
+        db.add(AuditLog(
+            school_id=cls.school_id,
+            user_id=user_id,
+            action="UPDATE_CLASS",
+            resource_type="Class",
+            resource_id=str(cls.id),
+            details=f"Updated class {cls.name}"
+        ))
+        db.commit()
+        db.refresh(cls)
+        return cls
+
+    @staticmethod
+    def deactivate_class(db: Session, class_id: int, user_id: int) -> Class:
+        cls = db.query(Class).filter(Class.id == class_id).first()
+        if not cls:
+            raise ResourceNotFoundException("Class not found.")
+        cls.is_active = False
+
+        db.add(AuditLog(
+            school_id=cls.school_id,
+            user_id=user_id,
+            action="DEACTIVATE_CLASS",
+            resource_type="Class",
+            resource_id=str(cls.id),
+            details=f"Deactivated class {cls.name}"
+        ))
+        db.commit()
+        db.refresh(cls)
+        return cls
+
+    @staticmethod
+    def update_section(db: Session, section_id: int, data: SectionUpdate, user_id: int) -> Section:
+        sec = db.query(Section).filter(Section.id == section_id).first()
+        if not sec:
+            raise ResourceNotFoundException("Section not found.")
+
+        if data.name is not None and data.name != sec.name:
+            existing = (
+                db.query(Section)
+                .filter(Section.class_id == sec.class_id, Section.name == data.name, Section.id != section_id)
+                .first()
+            )
+            if existing:
+                raise ConflictException(f"Section '{data.name}' already exists for this class.")
+            sec.name = data.name
+
+        if data.room_number is not None:
+            sec.room_number = data.room_number
+        if data.capacity is not None:
+            sec.capacity = data.capacity
+        if data.is_active is not None:
+            sec.is_active = data.is_active
+
+        cls = db.query(Class).filter(Class.id == sec.class_id).first()
+        school_id = cls.school_id if cls else 1
+
+        db.add(AuditLog(
+            school_id=school_id,
+            user_id=user_id,
+            action="UPDATE_SECTION",
+            resource_type="Section",
+            resource_id=str(sec.id),
+            details=f"Updated section {sec.name}"
+        ))
+        db.commit()
+        db.refresh(sec)
+        return sec
+
+    @staticmethod
+    def deactivate_section(db: Session, section_id: int, user_id: int) -> Section:
+        sec = db.query(Section).filter(Section.id == section_id).first()
+        if not sec:
+            raise ResourceNotFoundException("Section not found.")
+        sec.is_active = False
+
+        cls = db.query(Class).filter(Class.id == sec.class_id).first()
+        school_id = cls.school_id if cls else 1
+
+        db.add(AuditLog(
+            school_id=school_id,
+            user_id=user_id,
+            action="DEACTIVATE_SECTION",
+            resource_type="Section",
+            resource_id=str(sec.id),
+            details=f"Deactivated section {sec.name}"
+        ))
+        db.commit()
+        db.refresh(sec)
+        return sec

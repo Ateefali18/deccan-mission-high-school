@@ -6,6 +6,8 @@ from app.core.config import settings
 from app.core.logging import setup_logging, logger
 from app.core.exceptions import DMHSException
 from app.api.v1.api import api_router
+from app.db.session import engine, Base
+import app.models
 
 setup_logging()
 
@@ -17,6 +19,11 @@ app = FastAPI(
     redoc_url="/redoc",
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
 )
+
+@app.on_event("startup")
+def on_startup():
+    Base.metadata.create_all(bind=engine)
+
 
 # CORS setup
 app.add_middleware(

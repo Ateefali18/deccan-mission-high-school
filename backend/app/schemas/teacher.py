@@ -11,7 +11,20 @@ class TeacherCreate(BaseModel):
     designation: str = "Teacher"
     department: Optional[str] = None
     qualification: Optional[str] = None
+    contact_phone: Optional[str] = None
     joining_date: Optional[date] = None
+
+class TeacherUpdate(BaseModel):
+    full_name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    designation: Optional[str] = None
+    department: Optional[str] = None
+    qualification: Optional[str] = None
+    specialization: Optional[str] = None
+    contact_phone: Optional[str] = None
+    phone_number: Optional[str] = None
+    is_active: Optional[bool] = None
+    employment_status: Optional[str] = None
 
 class TeacherAssignmentDetail(BaseModel):
     model_config = ConfigDict(from_attributes=True)

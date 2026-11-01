@@ -67,11 +67,11 @@ export const LoginPage: React.FC = () => {
       {/* Top Bar */}
       <div className="flex items-center justify-between max-w-6xl w-full mx-auto">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-brand-gold/20 border border-brand-gold/40 flex items-center justify-center text-brand-gold font-bold">
-            <School className="w-6 h-6" />
+          <div className="w-10 h-10 rounded-xl bg-white p-1 border border-brand-blue/30 flex items-center justify-center font-bold shadow-sm overflow-hidden shrink-0">
+            <img src="/dmhs-logo-128.png" alt="DMHS Logo" className="w-full h-full object-contain" />
           </div>
           <div>
-            <span className="text-xs font-black tracking-widest text-brand-gold uppercase block">
+            <span className="text-xs font-black tracking-widest text-brand-navy dark:text-white uppercase block">
               DECCAN MISSION
             </span>
             <span className="text-[10px] text-light-secondary dark:text-dark-secondary font-semibold tracking-wider block">
@@ -86,7 +86,7 @@ export const LoginPage: React.FC = () => {
       <div className="max-w-md w-full mx-auto my-8">
         <div className="bg-white dark:bg-dark-card border border-light-border dark:border-dark-border rounded-2xl shadow-xl p-6 sm:p-8 transition-all">
           <div className="text-center mb-6">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-brand-gold/15 text-brand-gold mb-3 border border-brand-gold/30">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-brand-blue/10 text-brand-blue dark:text-dark-accent mb-3 border border-brand-blue/20">
               <ShieldCheck className="w-6 h-6" />
             </div>
             <h2 className="text-2xl font-extrabold text-light-primary dark:text-dark-primary tracking-tight">
@@ -149,7 +149,7 @@ export const LoginPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setDevAccount("admin", "Admin@DMHS2026")}
-                className="p-2 rounded-lg text-center bg-gray-100 dark:bg-dark-elevated hover:border-brand-gold border border-transparent transition-all"
+                className="p-2 rounded-lg text-center bg-gray-100 dark:bg-dark-elevated hover:border-brand-blue border border-transparent transition-all"
               >
                 <span className="text-xs font-bold block text-light-primary dark:text-dark-primary">Admin</span>
                 <span className="text-[10px] text-light-secondary dark:text-dark-secondary block">Principal</span>
@@ -157,7 +157,7 @@ export const LoginPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setDevAccount("teacher1", "Teacher@DMHS2026")}
-                className="p-2 rounded-lg text-center bg-gray-100 dark:bg-dark-elevated hover:border-brand-gold border border-transparent transition-all"
+                className="p-2 rounded-lg text-center bg-gray-100 dark:bg-dark-elevated hover:border-brand-blue border border-transparent transition-all"
               >
                 <span className="text-xs font-bold block text-light-primary dark:text-dark-primary">Teacher</span>
                 <span className="text-[10px] text-light-secondary dark:text-dark-secondary block">Faculty</span>
@@ -165,7 +165,7 @@ export const LoginPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setDevAccount("student1", "Student@DMHS2026")}
-                className="p-2 rounded-lg text-center bg-gray-100 dark:bg-dark-elevated hover:border-brand-gold border border-transparent transition-all"
+                className="p-2 rounded-lg text-center bg-gray-100 dark:bg-dark-elevated hover:border-brand-blue border border-transparent transition-all"
               >
                 <span className="text-xs font-bold block text-light-primary dark:text-dark-primary">Student</span>
                 <span className="text-[10px] text-light-secondary dark:text-dark-secondary block">Class 10A</span>

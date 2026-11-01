@@ -99,3 +99,53 @@ def get_low_attendance_report(
     return AttendanceService.get_low_attendance_students(
         db, current_user.school_id, threshold=threshold, class_id=class_id, section_id=section_id
     )
+
+@router.get("/sessions")
+def get_attendance_session(
+    section_id: int,
+    session_date: date,
+    period_number: int = 0,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(deps.get_current_active_user),
+):
+    """
+    Retrieve attendance records for a given section and date.
+    Allows teachers and admins to inspect and edit existing attendance.
+    """
+    user_role = get_user_role(current_user)
+    if user_role not in ["ADMIN", "TEACHER"]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied.")
+
+    data = AttendanceService.get_session_records(
+        db=db,
+        school_id=current_user.school_id,
+        section_id=section_id,
+        session_date=session_date,
+        period_number=period_number,
+    )
+    return data or {"session_id": None, "records": {}}
+
+@router.get("/reports/date-wise")
+def get_date_wise_report(
+    class_id: Optional[int] = None,
+    section_id: Optional[int] = None,
+    from_date: Optional[date] = None,
+    to_date: Optional[date] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(deps.get_current_active_user),
+):
+    """
+    Retrieve date-wise attendance audit report with percentages.
+    """
+    user_role = get_user_role(current_user)
+    if user_role not in ["ADMIN", "TEACHER"]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied.")
+
+    return AttendanceService.get_date_wise_report(
+        db=db,
+        school_id=current_user.school_id,
+        class_id=class_id,
+        section_id=section_id,
+        from_date=from_date,
+        to_date=to_date,
+    )

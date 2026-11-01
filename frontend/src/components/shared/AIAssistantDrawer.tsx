@@ -13,6 +13,7 @@ import {
   AlertTriangle,
   FileText,
   Clock,
+  ExternalLink,
 } from "lucide-react";
 import { useAuth } from "../../app/AuthContext";
 import { api } from "../../services/api";
@@ -119,14 +120,14 @@ export const AIAssistantDrawer: React.FC = () => {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 z-40 flex items-center gap-2.5 px-4 py-3 rounded-full bg-brand-navy dark:bg-dark-card border-2 border-brand-gold text-brand-gold font-bold text-xs shadow-2xl hover:scale-105 active:scale-95 transition-all duration-200 group"
+          className="fixed bottom-6 right-6 z-40 flex items-center gap-2.5 px-4 py-3 rounded-full bg-brand-navy text-white border-2 border-brand-blue font-bold text-xs shadow-2xl hover:bg-brand-navy-light hover:scale-105 active:scale-95 transition-all duration-200 group"
           title="Open Deccan Mission AI Assistant"
         >
           <div className="relative">
-            <Sparkles className="w-4 h-4 text-brand-gold animate-pulse" />
+            <Sparkles className="w-4 h-4 text-brand-blue dark:text-dark-accent animate-pulse" />
           </div>
           <span>DMHS Assistant</span>
-          <span className="hidden sm:inline-block px-1.5 py-0.5 rounded-full bg-brand-gold/20 text-brand-gold text-[10px] uppercase font-mono tracking-wider">
+          <span className="hidden sm:inline-block px-1.5 py-0.5 rounded-full bg-brand-blue/20 text-blue-200 text-[10px] uppercase font-mono tracking-wider">
             {role || "Portal"}
           </span>
         </button>
@@ -139,7 +140,7 @@ export const AIAssistantDrawer: React.FC = () => {
             {/* Header */}
             <div className="p-4 border-b border-light-border dark:border-dark-border flex items-center justify-between bg-gradient-to-r from-brand-navy via-brand-navy-light to-brand-navy text-white">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-brand-gold/20 border border-brand-gold text-brand-gold flex items-center justify-center font-bold">
+                <div className="w-8 h-8 rounded-lg bg-brand-blue/20 border border-brand-blue text-white flex items-center justify-center font-bold">
                   <Bot className="w-4 h-4" />
                 </div>
                 <div>
@@ -150,18 +151,32 @@ export const AIAssistantDrawer: React.FC = () => {
                     </span>
                   </h3>
                   <p className="text-[11px] text-gray-300 flex items-center gap-1">
-                    <ShieldCheck className="w-3 h-3 text-brand-gold" />
+                    <ShieldCheck className="w-3 h-3 text-brand-blue dark:text-dark-accent" />
                     <span>Authorized for {session?.user.full_name || "User"} ({role})</span>
                   </p>
                 </div>
               </div>
 
-              <button
-                onClick={() => setIsOpen(false)}
-                className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => {
+                    setIsOpen(false);
+                    const dest = role ? `/${role.toLowerCase()}/ai-assistant` : "/ai-assistant";
+                    navigate(dest);
+                  }}
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
+                  title="Open full page assistant"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setIsOpen(false)}
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
+                  title="Close drawer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             {/* Quick Suggestions */}
@@ -175,7 +190,7 @@ export const AIAssistantDrawer: React.FC = () => {
                     <button
                       key={idx}
                       onClick={() => handleSend(s)}
-                      className="text-[11px] px-2.5 py-1 rounded-lg bg-white dark:bg-dark-card border border-light-border dark:border-dark-border text-light-primary dark:text-dark-primary hover:border-brand-gold hover:text-brand-gold transition-colors text-left"
+                      className="text-[11px] px-2.5 py-1 rounded-lg bg-white dark:bg-dark-card border border-light-border dark:border-dark-border text-light-primary dark:text-dark-primary hover:border-brand-blue hover:text-brand-blue dark:hover:border-dark-accent dark:hover:text-dark-accent transition-colors text-left"
                     >
                       {s}
                     </button>
@@ -188,7 +203,7 @@ export const AIAssistantDrawer: React.FC = () => {
             <div ref={scrollRef} className="flex-1 p-4 overflow-y-auto space-y-3">
               {messages.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-center p-6 text-light-secondary dark:text-dark-secondary">
-                  <div className="w-12 h-12 rounded-2xl bg-brand-gold/10 text-brand-gold flex items-center justify-center mb-3">
+                  <div className="w-12 h-12 rounded-2xl bg-brand-blue/10 text-brand-blue dark:text-dark-accent flex items-center justify-center mb-3">
                     <Sparkles className="w-6 h-6" />
                   </div>
                   <h4 className="text-sm font-bold text-light-primary dark:text-dark-primary mb-1">
@@ -205,7 +220,7 @@ export const AIAssistantDrawer: React.FC = () => {
                     className={`flex gap-2.5 ${m.role === "user" ? "justify-end" : "justify-start"}`}
                   >
                     {m.role === "assistant" && (
-                      <div className="w-7 h-7 rounded-full bg-brand-gold/20 text-brand-gold flex items-center justify-center shrink-0 mt-0.5">
+                      <div className="w-7 h-7 rounded-full bg-brand-blue/15 text-brand-blue dark:text-dark-accent flex items-center justify-center shrink-0 mt-0.5">
                         <Bot className="w-3.5 h-3.5" />
                       </div>
                     )}
@@ -213,7 +228,7 @@ export const AIAssistantDrawer: React.FC = () => {
                     <div
                       className={`max-w-[85%] rounded-2xl p-3 text-xs leading-relaxed shadow-xs ${
                         m.role === "user"
-                          ? "bg-brand-navy text-white rounded-br-xs dark:bg-brand-gold dark:text-brand-navy font-medium"
+                          ? "bg-brand-blue text-white rounded-br-xs font-medium"
                           : "bg-gray-100 text-light-primary dark:bg-dark-elevated dark:text-dark-primary rounded-bl-xs border border-light-border dark:border-dark-border"
                       }`}
                     >
@@ -233,7 +248,7 @@ export const AIAssistantDrawer: React.FC = () => {
                                 setIsOpen(false);
                                 navigate(m.route!);
                               }}
-                              className="font-bold text-brand-gold hover:underline flex items-center gap-0.5 ml-auto"
+                              className="font-bold text-brand-blue dark:text-dark-accent hover:underline flex items-center gap-0.5 ml-auto"
                             >
                               <span>View in Portal</span>
                               <ArrowRight className="w-2.5 h-2.5" />
@@ -248,7 +263,7 @@ export const AIAssistantDrawer: React.FC = () => {
                     </div>
 
                     {m.role === "user" && (
-                      <div className="w-7 h-7 rounded-full bg-brand-navy/20 dark:bg-brand-gold/20 text-brand-navy dark:text-brand-gold flex items-center justify-center shrink-0 mt-0.5">
+                      <div className="w-7 h-7 rounded-full bg-brand-navy/20 dark:bg-brand-blue/20 text-brand-navy dark:text-dark-accent flex items-center justify-center shrink-0 mt-0.5">
                         <UserIcon className="w-3.5 h-3.5" />
                       </div>
                     )}
@@ -258,7 +273,7 @@ export const AIAssistantDrawer: React.FC = () => {
 
               {isLoading && (
                 <div className="flex items-center gap-2 text-xs text-light-secondary dark:text-dark-secondary p-3 bg-gray-50 dark:bg-dark-elevated rounded-xl">
-                  <Loader2 className="w-4 h-4 animate-spin text-brand-gold" />
+                  <Loader2 className="w-4 h-4 animate-spin text-brand-blue dark:text-dark-accent" />
                   <span>Consulting authorized school records...</span>
                 </div>
               )}
@@ -279,12 +294,12 @@ export const AIAssistantDrawer: React.FC = () => {
                   onChange={(e) => setInput(e.target.value)}
                   placeholder="Ask a question about school records..."
                   disabled={isLoading}
-                  className="flex-1 px-3 py-2 text-xs rounded-xl bg-gray-50 dark:bg-dark-elevated text-light-primary dark:text-dark-primary border border-light-border dark:border-dark-border focus:border-brand-gold focus:outline-none"
+                  className="flex-1 px-3 py-2 text-xs rounded-xl bg-gray-50 dark:bg-dark-elevated text-light-primary dark:text-dark-primary border border-light-border dark:border-dark-border focus:border-brand-blue dark:focus:border-dark-accent focus:outline-none"
                 />
                 <button
                   type="submit"
                   disabled={!input.trim() || isLoading}
-                  className="p-2 rounded-xl bg-brand-gold text-brand-navy hover:bg-brand-gold-light disabled:opacity-40 transition-colors shrink-0"
+                  className="p-2 rounded-xl bg-brand-blue text-white hover:bg-brand-blue-hover disabled:opacity-40 transition-colors shrink-0"
                 >
                   <Send className="w-4 h-4" />
                 </button>

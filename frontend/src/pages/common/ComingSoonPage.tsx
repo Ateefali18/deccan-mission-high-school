@@ -19,11 +19,11 @@ export const ComingSoonPage: React.FC = () => {
       />
 
       <Card className="p-8 text-center border-dashed border-2 border-light-border dark:border-dark-border bg-white dark:bg-dark-card shadow-sm">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-brand-gold/15 text-brand-gold mb-4 border border-brand-gold/30">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-brand-blue/15 text-brand-blue dark:text-dark-accent mb-4 border border-brand-blue/30">
           {phase === "3" ? <Sparkles className="w-8 h-8" /> : <Clock className="w-8 h-8" />}
         </div>
 
-        <Badge variant={phase === "3" ? "info" : "gold"} size="md" className="mb-3">
+        <Badge variant={phase === "3" ? "info" : "primary"} size="md" className="mb-3">
           Roadmap Phase {phase}
         </Badge>
 
@@ -33,8 +33,8 @@ export const ComingSoonPage: React.FC = () => {
 
         <p className="text-xs sm:text-sm text-light-secondary dark:text-dark-secondary max-w-lg mx-auto leading-relaxed mb-6">
           Phase 1 covers the core database architecture, multi-role authentication (Admin, Teacher, Student),
-          server-side permission isolation, and the Royal Dark & Gold design system.
-          The complete functionality for <span className="font-semibold text-brand-gold">{moduleName}</span> will be implemented seamlessly in Prompt {phase} without altering this foundational architecture.
+          server-side permission isolation, and the Royal Navy & White design system.
+          The complete functionality for <span className="font-semibold text-brand-blue dark:text-dark-accent">{moduleName}</span> will be implemented seamlessly in Prompt {phase} without altering this foundational architecture.
         </p>
 
         <div className="p-4 rounded-xl bg-gray-50 dark:bg-dark-elevated text-xs text-left max-w-md mx-auto mb-6 space-y-2">

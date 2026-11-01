@@ -11,7 +11,7 @@ from app.models.section import Section
 from app.models.audit_log import AuditLog
 from app.core.security import get_password_hash
 from app.core.exceptions import ConflictException, ResourceNotFoundException, PermissionDeniedException
-from app.schemas.student import StudentCreate, StudentProfileResponse, StudentListItem, EnrollmentDetail
+from app.schemas.student import StudentCreate, StudentUpdate, StudentProfileResponse, StudentListItem, EnrollmentDetail
 from app.permissions.rules import PermissionService
 
 class StudentService:
@@ -23,12 +23,30 @@ class StudentService:
         limit: int = 20,
         class_id: Optional[int] = None,
         section_id: Optional[int] = None,
+        search: Optional[str] = None,
+        status: Optional[str] = None,
     ) -> Tuple[List[StudentListItem], int]:
         query = (
             db.query(StudentProfile)
             .join(User, StudentProfile.user_id == User.id)
-            .filter(StudentProfile.school_id == school_id, StudentProfile.is_active.is_(True))
+            .filter(StudentProfile.school_id == school_id)
         )
+
+        if status == "active":
+            query = query.filter(StudentProfile.is_active.is_(True))
+        elif status == "inactive":
+            query = query.filter(StudentProfile.is_active.is_(False))
+        elif status and status != "all":
+            query = query.filter(StudentProfile.student_status == status)
+
+        if search and search.strip():
+            term = f"%{search.strip()}%"
+            query = query.filter(
+                (StudentProfile.admission_number.ilike(term))
+                | (User.full_name.ilike(term))
+                | (User.email.ilike(term))
+                | (StudentProfile.guardian_name.ilike(term))
+            )
 
         if section_id or class_id:
             query = query.join(StudentEnrollment, StudentEnrollment.student_id == StudentProfile.id)
@@ -39,7 +57,7 @@ class StudentService:
 
         total = query.count()
         offset = (page - 1) * limit
-        students = query.offset(offset).limit(limit).all()
+        students = query.order_by(StudentProfile.id.asc()).offset(offset).limit(limit).all()
 
         items = []
         for s in students:
@@ -196,3 +214,103 @@ class StudentService:
         db.commit()
         db.refresh(student_profile)
         return student_profile
+
+    @staticmethod
+    def update_student(db: Session, student_id: int, data: StudentUpdate, admin_user_id: int) -> StudentProfile:
+        student = db.query(StudentProfile).filter(StudentProfile.id == student_id).first()
+        if not student:
+            raise ResourceNotFoundException("Student profile not found.")
+
+        # Update User details
+        if student.user:
+            if data.full_name is not None:
+                student.user.full_name = data.full_name
+            if data.email is not None and data.email != student.user.email:
+                existing_email = db.query(User).filter(User.school_id == student.school_id, User.email == data.email, User.id != student.user.id).first()
+                if existing_email:
+                    raise ConflictException("Email already in use.")
+                student.user.email = data.email
+            if data.guardian_phone is not None:
+                student.user.phone_number = data.guardian_phone
+            if data.is_active is not None:
+                student.user.is_active = data.is_active
+
+        # Update StudentProfile fields
+        if data.gender is not None:
+            student.gender = data.gender
+        if data.date_of_birth is not None:
+            student.date_of_birth = data.date_of_birth
+        if data.blood_group is not None:
+            student.blood_group = data.blood_group
+        if data.guardian_name is not None:
+            student.guardian_name = data.guardian_name
+        if data.guardian_phone is not None:
+            student.guardian_phone = data.guardian_phone
+        if data.address is not None:
+            student.address = data.address
+        if data.student_status is not None:
+            student.student_status = data.student_status
+        if data.is_active is not None:
+            student.is_active = data.is_active
+
+        # Update or create Enrollment if class/section/academic_year passed
+        if data.class_id or data.section_id or data.roll_number:
+            enrollment = (
+                db.query(StudentEnrollment)
+                .filter(StudentEnrollment.student_id == student.id)
+                .order_by(StudentEnrollment.id.desc())
+                .first()
+            )
+            if enrollment:
+                if data.class_id:
+                    enrollment.class_id = data.class_id
+                if data.section_id:
+                    enrollment.section_id = data.section_id
+                if data.academic_year_id:
+                    enrollment.academic_year_id = data.academic_year_id
+                if data.roll_number is not None:
+                    enrollment.roll_number = data.roll_number
+            elif data.class_id and data.section_id and data.academic_year_id:
+                new_enr = StudentEnrollment(
+                    student_id=student.id,
+                    academic_year_id=data.academic_year_id,
+                    class_id=data.class_id,
+                    section_id=data.section_id,
+                    roll_number=data.roll_number,
+                    enrollment_status="enrolled",
+                )
+                db.add(new_enr)
+
+        db.add(AuditLog(
+            school_id=student.school_id,
+            user_id=admin_user_id,
+            action="UPDATE_STUDENT",
+            resource_type="StudentProfile",
+            resource_id=student.admission_number,
+            details=f"Updated student {student.admission_number}"
+        ))
+        db.commit()
+        db.refresh(student)
+        return student
+
+    @staticmethod
+    def deactivate_student(db: Session, student_id: int, admin_user_id: int) -> StudentProfile:
+        student = db.query(StudentProfile).filter(StudentProfile.id == student_id).first()
+        if not student:
+            raise ResourceNotFoundException("Student profile not found.")
+        student.is_active = False
+        student.student_status = "inactive"
+        if student.user:
+            student.user.is_active = False
+
+        db.add(AuditLog(
+            school_id=student.school_id,
+            user_id=admin_user_id,
+            action="DEACTIVATE_STUDENT",
+            resource_type="StudentProfile",
+            resource_id=student.admission_number,
+            details=f"Deactivated student {student.admission_number}"
+        ))
+        db.commit()
+        db.refresh(student)
+        return student

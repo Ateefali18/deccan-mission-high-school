@@ -11,7 +11,12 @@ from app.api.v1.endpoints import (
     attendance,
     timetable,
     ai,
+    examinations,
+    notices,
     health,
+    fees,
+    assignments,
+    reports,
 )
 
 api_router = APIRouter()
@@ -28,3 +33,9 @@ api_router.include_router(search.router, prefix="/search", tags=["Global Search"
 api_router.include_router(attendance.router, prefix="/attendance", tags=["Attendance"])
 api_router.include_router(timetable.router, prefix="/timetable", tags=["Timetable"])
 api_router.include_router(ai.router, prefix="/ai", tags=["AI Assistant"])
+api_router.include_router(examinations.router, prefix="/examinations", tags=["Examinations & Marks"])
+api_router.include_router(notices.router, prefix="/notices", tags=["Notices & Announcements"])
+api_router.include_router(fees.router, prefix="/fees", tags=["Fees & Payments"])
+api_router.include_router(assignments.router, prefix="/assignments", tags=["Assignments"])
+api_router.include_router(reports.router, prefix="/reports", tags=["Reports & Analytics"])
+

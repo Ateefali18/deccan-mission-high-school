@@ -23,25 +23,25 @@ export const Button: React.FC<ButtonProps> = ({
   ...props
 }) => {
   const baseStyles =
-    "inline-flex items-center justify-center font-medium rounded-lg transition-colors focus-visible:outline-2 focus-visible:outline-brand-gold focus-visible:outline-offset-2 disabled:opacity-50 disabled:cursor-not-allowed select-none";
+    "inline-flex items-center justify-center font-semibold rounded-lg transition-all duration-150 focus-visible:outline-2 focus-visible:outline-brand-blue dark:focus-visible:outline-dark-accent focus-visible:outline-offset-2 disabled:opacity-50 disabled:cursor-not-allowed select-none active:scale-[0.98]";
 
   const variants = {
     primary:
-      "bg-brand-gold text-brand-midnight hover:bg-brand-goldHover active:bg-brand-goldPressed font-semibold shadow-sm",
+      "bg-brand-blue text-white hover:bg-brand-blueHover active:bg-[#1E40AF] shadow-sm",
     secondary:
-      "bg-light-card dark:bg-dark-elevated text-light-primary dark:text-dark-primary border border-light-border dark:border-dark-border hover:bg-gray-100 dark:hover:bg-slate-700/60 shadow-sm",
+      "bg-white dark:bg-dark-elevated text-light-primary dark:text-dark-primary border border-light-border dark:border-dark-border hover:bg-gray-50 dark:hover:bg-dark-card shadow-sm",
     outline:
-      "border border-brand-gold text-brand-gold hover:bg-brand-gold/10 active:bg-brand-gold/20",
+      "border border-brand-blue text-brand-blue dark:border-dark-accent dark:text-dark-accent hover:bg-brand-blue/10 active:bg-brand-blue/20",
     destructive:
-      "bg-status-error text-white hover:bg-red-700 active:bg-red-800 shadow-sm",
+      "bg-status-error text-white hover:bg-red-800 active:bg-red-900 shadow-sm",
     ghost:
       "text-light-secondary dark:text-dark-secondary hover:text-light-primary dark:hover:text-dark-primary hover:bg-black/5 dark:hover:bg-white/5",
   };
 
   const sizes = {
-    sm: "text-xs px-3 py-1.5 gap-1.5",
-    md: "text-sm px-4 py-2 gap-2",
-    lg: "text-base px-5 py-2.5 gap-2.5",
+    sm: "text-xs px-3 py-1.5 min-h-[34px] gap-1.5",
+    md: "text-sm px-4 py-2 min-h-[40px] gap-2",
+    lg: "text-base px-5 py-2.5 min-h-[44px] gap-2.5",
   };
 
   return (

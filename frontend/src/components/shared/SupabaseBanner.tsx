@@ -41,16 +41,16 @@ export const SupabaseBanner: React.FC = () => {
   }
 
   return (
-    <div className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-amber-500/10 via-brand-gold/10 to-amber-500/5 border border-brand-gold/30 text-xs shadow-sm">
+    <div className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-brand-navy/5 via-brand-blue/10 to-brand-navy/5 border border-brand-blue/30 text-xs shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3">
-          <div className="p-2 rounded-xl bg-brand-gold/20 text-brand-gold shrink-0 mt-0.5">
+          <div className="p-2 rounded-xl bg-brand-blue/15 text-brand-blue dark:text-dark-accent shrink-0 mt-0.5">
             <Database className="w-4 h-4" />
           </div>
           <div>
             <div className="flex items-center gap-2 font-semibold text-light-primary dark:text-dark-primary text-sm">
               <span>Supabase Integration Ready</span>
-              <span className="px-2 py-0.5 rounded-full bg-brand-gold/20 text-brand-gold text-[10px] uppercase tracking-wide">
+              <span className="px-2 py-0.5 rounded-full bg-brand-blue/15 text-brand-blue dark:text-dark-accent text-[10px] uppercase tracking-wide font-mono">
                 Target: snnzmgbkiiydboujublj
               </span>
             </div>
@@ -60,7 +60,7 @@ export const SupabaseBanner: React.FC = () => {
                 href={SUPABASE_CONFIG.dashboardUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-brand-gold hover:underline font-mono inline-flex items-center gap-1"
+                className="text-brand-blue dark:text-dark-accent hover:underline font-mono inline-flex items-center gap-1"
               >
                 https://snnzmgbkiiydboujublj.supabase.co
                 <ExternalLink className="w-2.5 h-2.5" />
@@ -76,7 +76,7 @@ export const SupabaseBanner: React.FC = () => {
                 href={`${SUPABASE_CONFIG.dashboardUrl}/sql/new`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-gold text-brand-navy font-semibold hover:bg-brand-gold-light transition-colors text-xs"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-blue text-white font-semibold hover:bg-brand-blue-hover transition-colors text-xs"
               >
                 <span>Open Supabase SQL Editor</span>
                 <ExternalLink className="w-3 h-3" />

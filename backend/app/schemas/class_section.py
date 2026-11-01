@@ -11,6 +11,12 @@ class SectionBase(BaseModel):
 class SectionCreate(SectionBase):
     pass
 
+class SectionUpdate(BaseModel):
+    name: Optional[str] = None
+    room_number: Optional[str] = None
+    capacity: Optional[int] = None
+    is_active: Optional[bool] = None
+
 class SectionResponse(SectionBase):
     model_config = ConfigDict(from_attributes=True)
 
@@ -26,6 +32,12 @@ class ClassBase(BaseModel):
 
 class ClassCreate(ClassBase):
     pass
+
+class ClassUpdate(BaseModel):
+    name: Optional[str] = None
+    grade_level: Optional[int] = None
+    stream: Optional[str] = None
+    is_active: Optional[bool] = None
 
 class ClassResponse(ClassBase):
     model_config = ConfigDict(from_attributes=True)

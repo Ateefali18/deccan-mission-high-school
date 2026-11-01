@@ -15,6 +15,8 @@ from app.models.student_profile import StudentProfile
 from app.models.student_enrollment import StudentEnrollment
 from app.models.teacher_profile import TeacherProfile
 from app.models.teacher_assignment import TeacherAssignment
+from app.models.examination import Exam, ExamSubject, Mark
+from app.models.subject import Subject
 from app.core.security import get_password_hash, create_access_token
 from datetime import date
 
@@ -210,6 +212,23 @@ def seeded_data(db_session):
         enrollment_status="enrolled",
     ))
 
+    # Seed Exam and Subject
+    exam = Exam(
+        school_id=school.id,
+        academic_year_id=ay.id,
+        name="Mid-Term Examination 2025-26",
+        start_date=date(2026, 10, 1),
+        end_date=date(2026, 10, 15),
+        is_published=True,
+    )
+    sub_math = Subject(
+        school_id=school.id,
+        name="Mathematics",
+        code="MATH-201",
+        department="Mathematics",
+        is_active=True,
+    )
+    db_session.add_all([exam, sub_math])
     db_session.commit()
 
     return {
@@ -225,4 +244,6 @@ def seeded_data(db_session):
         "sec10a": sec10a,
         "sec10b": sec10b,
         "academic_year": ay,
+        "exam": exam,
+        "subject": sub_math,
     }

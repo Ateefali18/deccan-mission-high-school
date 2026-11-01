@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.api.deps import get_current_user, require_admin, require_teacher
 from app.models.user import User
-from app.schemas.teacher import TeacherCreate, TeacherProfileResponse, TeacherListResponse
+from app.schemas.teacher import TeacherCreate, TeacherUpdate, TeacherProfileResponse, TeacherListResponse
 from app.services.teacher_service import TeacherService
 from app.core.exceptions import ResourceNotFoundException
 
@@ -14,6 +14,8 @@ router = APIRouter()
 def list_teachers(
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
+    search: Optional[str] = Query(None),
+    status: Optional[str] = Query(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -22,6 +24,8 @@ def list_teachers(
         school_id=current_user.school_id,
         page=page,
         limit=limit,
+        search=search,
+        status=status,
     )
     return TeacherListResponse(items=items, total=total, page=page, limit=limit)
 
@@ -54,4 +58,33 @@ def get_teacher_by_id(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    return TeacherService.get_teacher_by_id(db, teacher_id)
+
+@router.put("/{teacher_id}", response_model=TeacherProfileResponse)
+def update_teacher(
+    teacher_id: int,
+    payload: TeacherUpdate,
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    TeacherService.update_teacher(db, teacher_id, payload, current_user.id)
+    return TeacherService.get_teacher_by_id(db, teacher_id)
+
+@router.delete("/{teacher_id}", response_model=TeacherProfileResponse)
+def deactivate_teacher(
+    teacher_id: int,
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    TeacherService.deactivate_teacher(db, teacher_id, current_user.id)
+    return TeacherService.get_teacher_by_id(db, teacher_id)
+
+@router.patch("/{teacher_id}/status", response_model=TeacherProfileResponse)
+def toggle_teacher_status(
+    teacher_id: int,
+    payload: TeacherUpdate,
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    TeacherService.update_teacher(db, teacher_id, payload, current_user.id)
     return TeacherService.get_teacher_by_id(db, teacher_id)

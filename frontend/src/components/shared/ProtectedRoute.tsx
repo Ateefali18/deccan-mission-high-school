@@ -18,7 +18,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-light-bg dark:bg-dark-bg">
-        <div className="w-10 h-10 border-3 border-brand-gold border-t-transparent rounded-full animate-spin mb-3" />
+        <div className="w-10 h-10 border-3 border-brand-blue border-t-transparent rounded-full animate-spin mb-3" />
         <p className="text-xs font-semibold uppercase tracking-wider text-light-secondary dark:text-dark-secondary">
           Validating Security Credentials...
         </p>

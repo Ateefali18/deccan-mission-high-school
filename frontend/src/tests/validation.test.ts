@@ -49,3 +49,48 @@ describe("Form Validation Schemas", () => {
     }
   });
 });
+
+
+describe("Examination Marks Validation & CBSE 9-Point Grading Scale", () => {
+  const validateMarkEntry = (mark: number | null, isAbsent: boolean, maxMarks: number = 100) => {
+    if (isAbsent) return { valid: true, error: null };
+    if (mark === null || mark === undefined) return { valid: true, error: null };
+    if (mark < 0) return { valid: false, error: "Marks cannot be negative" };
+    if (mark > maxMarks) return { valid: false, error: `Marks cannot exceed max marks (${maxMarks})` };
+    return { valid: true, error: null };
+  };
+
+  const getCBSEGrade = (pct: number) => {
+    if (pct >= 91) return "A1";
+    if (pct >= 81) return "A2";
+    if (pct >= 71) return "B1";
+    if (pct >= 61) return "B2";
+    if (pct >= 51) return "C1";
+    if (pct >= 41) return "C2";
+    if (pct >= 33) return "D";
+    if (pct >= 21) return "E1";
+    return "E2";
+  };
+
+  it("validates marks within allowed range and rejects marks exceeding max_marks", () => {
+    expect(validateMarkEntry(95, false, 100).valid).toBe(true);
+    expect(validateMarkEntry(0, false, 100).valid).toBe(true);
+    expect(validateMarkEntry(-5, false, 100).valid).toBe(false);
+    expect(validateMarkEntry(105, false, 100).valid).toBe(false);
+    expect(validateMarkEntry(null, true, 100).valid).toBe(true); // Absent is valid
+  });
+
+  it("accurately computes standard CBSE 9-point grade boundaries", () => {
+    expect(getCBSEGrade(95)).toBe("A1");
+    expect(getCBSEGrade(91)).toBe("A1");
+    expect(getCBSEGrade(90.5)).toBe("A2");
+    expect(getCBSEGrade(81)).toBe("A2");
+    expect(getCBSEGrade(75)).toBe("B1");
+    expect(getCBSEGrade(65)).toBe("B2");
+    expect(getCBSEGrade(55)).toBe("C1");
+    expect(getCBSEGrade(45)).toBe("C2");
+    expect(getCBSEGrade(35)).toBe("D");
+    expect(getCBSEGrade(28)).toBe("E1");
+    expect(getCBSEGrade(15)).toBe("E2");
+  });
+});

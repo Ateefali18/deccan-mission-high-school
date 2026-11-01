@@ -4,27 +4,71 @@
 
 @layer base {
   :root {
-    --bg-page: #F4F6FA;
+    /* Brand Tokens */
+    --brand-navy: #142B4A;
+    --brand-deep-navy: #0B1730;
+    --brand-blue: #2563EB;
+    --brand-blue-hover: #1D4ED8;
+    --brand-pale-blue: #EFF6FF;
+    --brand-white: #FFFFFF;
+
+    /* Light Theme Core Tokens */
+    --bg-page: #F4F7FB;
     --bg-card: #FFFFFF;
-    --bg-elevated: #F8FAFC;
-    --text-primary: #182235;
-    --text-secondary: #526174;
-    --border-color: #D9E0E9;
-    --gold: #C6A45A;
-    --gold-hover: #D5B76D;
-    --gold-pressed: #AD8A40;
+    --bg-elevated: #FFFFFF;
+    --text-primary: #172033;
+    --text-secondary: #475569;
+    --text-muted: #64748B;
+    --border-color: #DCE3EC;
+    --input-bg: #FFFFFF;
+    --focus-ring: #2563EB;
+
+    /* Status Colors */
+    --status-success: #15803D;
+    --status-warning: #B45309;
+    --status-error: #B91C1C;
+    --status-info: #0369A1;
+
+    /* Sidebar */
+    --sidebar-bg: #142B4A;
+    --sidebar-text: #FFFFFF;
+    --sidebar-hover: #1E3A5F;
+    --sidebar-active: #2563EB;
+
+    /* Legacy mapping */
+    --gold: #2563EB;
+    --gold-hover: #1D4ED8;
+    --gold-pressed: #1E40AF;
   }
 
   .dark {
-    --bg-page: #101827;
-    --bg-card: #1C293B;
-    --bg-elevated: #243449;
-    --text-primary: #F1F5F9;
-    --text-secondary: #C1CBD8;
-    --border-color: #39485B;
-    --gold: #C6A45A;
-    --gold-hover: #D5B76D;
-    --gold-pressed: #AD8A40;
+    /* Dark Theme Core Tokens */
+    --bg-page: #0B1730;
+    --bg-card: #17243A;
+    --bg-elevated: #1E2D45;
+    --text-primary: #F8FAFC;
+    --text-secondary: #CBD5E1;
+    --text-muted: #94A3B8;
+    --border-color: #334155;
+    --input-bg: #101D32;
+    --focus-ring: #60A5FA;
+
+    /* Dark Status Accessible Variants */
+    --status-success: #4ADE80;
+    --status-warning: #FBBF24;
+    --status-error: #F87171;
+    --status-info: #60A5FA;
+
+    /* Sidebar */
+    --sidebar-bg: #0B1730;
+    --sidebar-text: #FFFFFF;
+    --sidebar-hover: #17243A;
+    --sidebar-active: #2563EB;
+
+    /* Legacy mapping */
+    --gold: #60A5FA;
+    --gold-hover: #93C5FD;
+    --gold-pressed: #3B82F6;
   }
 
   body {
@@ -34,17 +78,17 @@
     min-height: 100vh;
     margin: 0;
     padding: 0;
-    transition: background-color 0.2s ease, color 0.2s ease;
+    transition: background-color 0.15s ease, color 0.15s ease;
   }
 
-  /* Consistent accessible focus ring */
+  /* Accessible focus indicators adhering to WCAG 2.2 AA */
   *:focus-visible {
-    outline: 2px solid #C6A45A;
+    outline: 2px solid var(--focus-ring);
     outline-offset: 2px;
   }
 }
 
-/* Scrollbar customization */
+/* Restrained, elegant custom scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -53,9 +97,15 @@
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(198, 164, 90, 0.3);
+  background: rgba(37, 99, 235, 0.25);
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(198, 164, 90, 0.6);
+  background: rgba(37, 99, 235, 0.5);
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(96, 165, 250, 0.25);
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(96, 165, 250, 0.5);
 }

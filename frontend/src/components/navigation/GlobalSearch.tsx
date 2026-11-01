@@ -79,10 +79,10 @@ export const GlobalSearch: React.FC = () => {
             if (results.length > 0) setIsOpen(true);
           }}
           placeholder="Search student admission no, teacher ID, or name..."
-          className="w-full text-xs sm:text-sm pl-10 pr-9 py-2 rounded-xl bg-gray-100/80 dark:bg-dark-elevated text-light-primary dark:text-dark-primary border border-transparent focus:border-brand-gold focus:bg-white dark:focus:bg-dark-card focus:outline-none transition-all placeholder:text-gray-400 dark:placeholder:text-gray-500"
+          className="w-full text-xs sm:text-sm pl-10 pr-9 py-2 rounded-xl bg-gray-100/80 dark:bg-dark-elevated text-light-primary dark:text-dark-primary border border-transparent focus:border-brand-blue dark:focus:border-dark-accent focus:bg-white dark:focus:bg-dark-card focus:outline-none transition-all placeholder:text-gray-400 dark:placeholder:text-gray-500"
         />
         {isLoading ? (
-          <Loader2 className="w-4 h-4 absolute right-3 animate-spin text-brand-gold" />
+          <Loader2 className="w-4 h-4 absolute right-3 animate-spin text-brand-blue dark:text-dark-accent" />
         ) : query ? (
           <button
             onClick={() => {
@@ -113,9 +113,9 @@ export const GlobalSearch: React.FC = () => {
                 <button
                   key={`${item.type}-${item.id}`}
                   onClick={() => handleSelect(item)}
-                  className="w-full text-left px-4 py-2.5 flex items-center gap-3 hover:bg-brand-gold/10 transition-colors"
+                  className="w-full text-left px-4 py-2.5 flex items-center gap-3 hover:bg-brand-blue/10 transition-colors"
                 >
-                  <div className="p-2 rounded-lg bg-gray-100 dark:bg-dark-elevated text-brand-gold shrink-0">
+                  <div className="p-2 rounded-lg bg-gray-100 dark:bg-dark-elevated text-brand-blue dark:text-dark-accent shrink-0">
                     {item.type === "student" ? (
                       <GraduationCap className="w-4 h-4" />
                     ) : (
@@ -127,7 +127,7 @@ export const GlobalSearch: React.FC = () => {
                       <p className="text-xs sm:text-sm font-semibold text-light-primary dark:text-dark-primary truncate">
                         {item.title}
                       </p>
-                      <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-gray-100 dark:bg-dark-elevated text-brand-gold font-bold">
+                      <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-gray-100 dark:bg-dark-elevated text-brand-blue dark:text-dark-accent font-bold">
                         {item.identifier}
                       </span>
                     </div>
