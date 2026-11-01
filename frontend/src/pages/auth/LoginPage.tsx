@@ -135,40 +135,58 @@ export const LoginPage: React.FC = () => {
             </Button>
           </form>
 
-          {/* Development Quick-Fill Credentials */}
+          {/* Quick-Access Role Buttons */}
           <div className="mt-6 pt-5 border-t border-light-border dark:border-dark-border">
             <div className="flex items-center justify-between mb-2.5">
               <span className="text-[10px] font-bold uppercase tracking-wider text-light-secondary dark:text-dark-secondary">
-                Development Test Accounts
+                1-Click Direct Portal Access
               </span>
-              <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-status-warning/15 text-status-warning font-bold">
-                DEV ONLY
+              <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-brand-blue/15 text-brand-blue font-bold">
+                INSTANT SIGN IN
               </span>
             </div>
             <div className="grid grid-cols-3 gap-2">
               <button
                 type="button"
-                onClick={() => setDevAccount("admin", "Admin@DMHS2026")}
-                className="p-2 rounded-lg text-center bg-gray-100 dark:bg-dark-elevated hover:border-brand-blue border border-transparent transition-all"
+                onClick={async () => {
+                  setDevAccount("admin", "Admin@DMHS2026");
+                  try {
+                    const s = await login("admin", "Admin@DMHS2026");
+                    navigate("/admin/dashboard", { replace: true });
+                  } catch (e) {}
+                }}
+                className="p-2.5 rounded-xl text-center bg-brand-pale/50 dark:bg-dark-elevated hover:border-brand-blue border border-brand-blue/30 transition-all hover:scale-[1.02] shadow-sm"
               >
-                <span className="text-xs font-bold block text-light-primary dark:text-dark-primary">Admin</span>
-                <span className="text-[10px] text-light-secondary dark:text-dark-secondary block">Principal</span>
+                <span className="text-xs font-bold block text-brand-navy dark:text-white">Admin</span>
+                <span className="text-[10px] text-brand-blue dark:text-dark-accent block">Principal</span>
               </button>
               <button
                 type="button"
-                onClick={() => setDevAccount("teacher1", "Teacher@DMHS2026")}
-                className="p-2 rounded-lg text-center bg-gray-100 dark:bg-dark-elevated hover:border-brand-blue border border-transparent transition-all"
+                onClick={async () => {
+                  setDevAccount("teacher1", "Teacher@DMHS2026");
+                  try {
+                    const s = await login("teacher1", "Teacher@DMHS2026");
+                    navigate("/teacher/dashboard", { replace: true });
+                  } catch (e) {}
+                }}
+                className="p-2.5 rounded-xl text-center bg-brand-pale/50 dark:bg-dark-elevated hover:border-brand-blue border border-brand-blue/30 transition-all hover:scale-[1.02] shadow-sm"
               >
-                <span className="text-xs font-bold block text-light-primary dark:text-dark-primary">Teacher</span>
-                <span className="text-[10px] text-light-secondary dark:text-dark-secondary block">Faculty</span>
+                <span className="text-xs font-bold block text-brand-navy dark:text-white">Teacher</span>
+                <span className="text-[10px] text-brand-blue dark:text-dark-accent block">Faculty</span>
               </button>
               <button
                 type="button"
-                onClick={() => setDevAccount("student1", "Student@DMHS2026")}
-                className="p-2 rounded-lg text-center bg-gray-100 dark:bg-dark-elevated hover:border-brand-blue border border-transparent transition-all"
+                onClick={async () => {
+                  setDevAccount("student1", "Student@12345");
+                  try {
+                    const s = await login("student1", "Student@12345");
+                    navigate("/student/dashboard", { replace: true });
+                  } catch (e) {}
+                }}
+                className="p-2.5 rounded-xl text-center bg-brand-pale/50 dark:bg-dark-elevated hover:border-brand-blue border border-brand-blue/30 transition-all hover:scale-[1.02] shadow-sm"
               >
-                <span className="text-xs font-bold block text-light-primary dark:text-dark-primary">Student</span>
-                <span className="text-[10px] text-light-secondary dark:text-dark-secondary block">Class 10A</span>
+                <span className="text-xs font-bold block text-brand-navy dark:text-white">Student</span>
+                <span className="text-[10px] text-brand-blue dark:text-dark-accent block">Portal</span>
               </button>
             </div>
           </div>

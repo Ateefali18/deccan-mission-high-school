@@ -5,7 +5,7 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://snnzmgbkiiydb
 const SUPABASE_ANON_KEY =
   import.meta.env.VITE_SUPABASE_ANON_KEY ||
   import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
-  "";
+  "sb_publishable_cHZkW9hTTkEKhGQRHJ19Yg_HcFs0Dc_";
 
 // Check if credentials are placeholders or actually configured
 export function isSupabaseConfigured(): boolean {

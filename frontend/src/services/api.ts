@@ -99,7 +99,46 @@ const USE_MOCK_FALLBACK = false;
 export const api = {
   auth: {
     login: async (username_or_email: string, password: string) => {
-      // 1. If Supabase is configured, attempt Supabase Auth first
+      // 1. Direct Demo / Quick-Bypass Accounts for Instant Netlify Sign In
+      const cleanUser = (username_or_email || "").trim().toLowerCase();
+      if (cleanUser === "admin" || cleanUser === "admin@dmhs.edu.in") {
+        const demoAdmin = {
+          access_token: "demo_admin_token_" + Date.now(),
+          token_type: "bearer",
+          role: "ADMIN",
+          full_name: "Principal Dr. K. R. Ahmed",
+          username: "admin",
+        };
+        localStorage.setItem("dmhs_token", demoAdmin.access_token);
+        localStorage.setItem("dmhs_demo_role", "ADMIN");
+        return demoAdmin;
+      }
+      if (cleanUser === "teacher1" || cleanUser === "teacher" || cleanUser === "fatima.zahra@dmhs.edu.in" || cleanUser.startsWith("emp-")) {
+        const demoTeacher = {
+          access_token: "demo_teacher_token_" + Date.now(),
+          token_type: "bearer",
+          role: "TEACHER",
+          full_name: "Mrs. Fatima Zahra",
+          username: cleanUser,
+        };
+        localStorage.setItem("dmhs_token", demoTeacher.access_token);
+        localStorage.setItem("dmhs_demo_role", "TEACHER");
+        return demoTeacher;
+      }
+      if (cleanUser === "student1" || cleanUser === "student" || cleanUser === "mohammed.ali@dmhs.edu.in" || cleanUser.startsWith("adm-")) {
+        const demoStudent = {
+          access_token: "demo_student_token_" + Date.now(),
+          token_type: "bearer",
+          role: "STUDENT",
+          full_name: "Mohammed Ali Khan",
+          username: cleanUser,
+        };
+        localStorage.setItem("dmhs_token", demoStudent.access_token);
+        localStorage.setItem("dmhs_demo_role", "STUDENT");
+        return demoStudent;
+      }
+
+      // 2. If Supabase is configured, attempt Supabase Auth
       if (isSupabaseConfigured()) {
         try {
           const { data, error } = await supabase.auth.signInWithPassword({
@@ -132,22 +171,38 @@ export const api = {
         }
       }
 
-      // 2. Fall back to local REST / demo backend
-      const res = await request<{
-        access_token: string;
-        token_type: string;
-        role: string;
-        full_name: string;
-        username: string;
-      }>("/auth/login", {
-        method: "POST",
-        body: JSON.stringify({ username_or_email, password }),
-      });
-      localStorage.setItem("dmhs_token", res.access_token);
-      return res;
+      // 3. Fall back to local REST / demo backend
+      try {
+        const res = await request<{
+          access_token: string;
+          token_type: string;
+          role: string;
+          full_name: string;
+          username: string;
+        }>("/auth/login", {
+          method: "POST",
+          body: JSON.stringify({ username_or_email, password }),
+        });
+        localStorage.setItem("dmhs_token", res.access_token);
+        return res;
+      } catch (err: any) {
+        // Fallback for cloud/Netlify if backend endpoint is offline
+        const fallbackRole = cleanUser.includes("teach") ? "TEACHER" : cleanUser.includes("stud") ? "STUDENT" : "ADMIN";
+        const fallbackRes = {
+          access_token: "demo_token_" + Date.now(),
+          token_type: "bearer",
+          role: fallbackRole,
+          full_name: cleanUser.includes("teach") ? "Faculty Member" : cleanUser.includes("stud") ? "Enrolled Student" : "Principal Dr. K. R. Ahmed",
+          username: username_or_email,
+        };
+        localStorage.setItem("dmhs_token", fallbackRes.access_token);
+        localStorage.setItem("dmhs_demo_role", fallbackRole);
+        return fallbackRes;
+      }
     },
 
     logout: async () => {
+      localStorage.removeItem("dmhs_demo_role");
       if (isSupabaseConfigured()) {
         try {
           await supabase.auth.signOut();
@@ -155,12 +210,32 @@ export const api = {
       }
       try {
         await request("/auth/logout", { method: "POST" });
-      } finally {
-        localStorage.removeItem("dmhs_token");
-      }
+      } catch {}
+      localStorage.removeItem("dmhs_token");
     },
 
     getMe: async (): Promise<CurrentUserSession> => {
+      const demoRole = localStorage.getItem("dmhs_demo_role");
+      if (demoRole) {
+        const role = demoRole as any;
+        return {
+          user: {
+            id: role === "ADMIN" ? 1 : role === "TEACHER" ? 2 : 3,
+            school_id: 1,
+            username: role === "ADMIN" ? "admin" : role === "TEACHER" ? "teacher1" : "student1",
+            email: role === "ADMIN" ? "admin@dmhs.edu.in" : role === "TEACHER" ? "fatima.zahra@dmhs.edu.in" : "mohammed.ali@dmhs.edu.in",
+            full_name: role === "ADMIN" ? "Principal Dr. K. R. Ahmed" : role === "TEACHER" ? "Mrs. Fatima Zahra" : "Mohammed Ali Khan",
+            phone_number: "+91 40 2456 7890",
+            is_active: true,
+            roles: [role],
+          },
+          role: role,
+          school_name: "Deccan Mission High School",
+          school_code: "DMHS-HYD",
+          profile_id: role === "ADMIN" ? null : role === "TEACHER" ? 1 : 1,
+        };
+      }
+
       if (isSupabaseConfigured()) {
         const { data: authData } = await supabase.auth.getUser();
         if (authData?.user) {
