@@ -1938,4 +1938,86 @@ export const supabaseService = {
       };
     },
   },
+
+  // --------------------------------------------------------------------------
+  // TIMETABLE
+  // --------------------------------------------------------------------------
+  timetable: {
+    async getSchedule(filters: {
+      class_id?: string | number;
+      section_id?: string | number;
+      teacher_id?: string | number;
+      day_of_week?: number;
+    } = {}) {
+      if (!isSupabaseConfigured()) return [];
+      let query = supabase
+        .from("timetable_entries")
+        .select("*, classes(name), sections(name), subjects(name)")
+        .eq("is_active", true)
+        .order("period_number", { ascending: true });
+
+      if (filters.day_of_week) query = query.eq("day_of_week", filters.day_of_week);
+      if (filters.class_id) query = query.eq("class_id", filters.class_id);
+      if (filters.section_id) query = query.eq("section_id", filters.section_id);
+      if (filters.teacher_id) query = query.eq("teacher_id", filters.teacher_id);
+
+      const { data, error } = await query;
+      if (error) {
+        console.warn("Supabase timetable error:", error.message);
+        return [];
+      }
+      return data || [];
+    },
+
+    async createSlot(slot: {
+      day: number;
+      period: number;
+      time: string;
+      subject: string;
+      teacher: string;
+      teacher_id?: string | number;
+      room: string;
+      class_id?: string | number;
+      section_id?: string | number;
+      academic_year_id?: string | number;
+    }) {
+      if (!isSupabaseConfigured()) return { id: `slot_${Date.now()}` };
+
+      const timeParts = (slot.time || "09:00 - 09:45").split("-");
+      const startTime = (timeParts[0] || "09:00").trim();
+      const endTime = (timeParts[1] || "09:45").trim();
+
+      const { data, error } = await supabase
+        .from("timetable_entries")
+        .insert({
+          day_of_week: slot.day,
+          period_number: slot.period,
+          start_time: startTime.length === 5 ? `${startTime}:00` : startTime,
+          end_time: endTime.length === 5 ? `${endTime}:00` : endTime,
+          room_number: slot.room,
+          teacher_name: slot.teacher,
+          teacher_id: slot.teacher_id && String(slot.teacher_id).length === 36 ? slot.teacher_id : null,
+          class_id: slot.class_id && String(slot.class_id).length === 36 ? slot.class_id : null,
+          section_id: slot.section_id && String(slot.section_id).length === 36 ? slot.section_id : null,
+          is_active: true,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.warn("Supabase timetable insert warning:", error.message);
+      }
+      return data || { id: `slot_${Date.now()}` };
+    },
+
+    async deleteSlot(id: string | number) {
+      if (!isSupabaseConfigured()) return { success: true };
+      const { error } = await supabase
+        .from("timetable_entries")
+        .update({ is_active: false })
+        .eq("id", id);
+      if (error) console.warn("Supabase timetable delete error:", error.message);
+      return { success: !error };
+    },
+  },
 };

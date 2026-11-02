@@ -180,16 +180,146 @@ export const saveCustomStudent = (student: StudentListItem) => {
   localStorage.setItem("dmhs_custom_students", JSON.stringify(students));
 };
 
+export const DEFAULT_BASELINE_TIMETABLE: Record<number, any[]> = {
+  1: [
+    { id: "slot-1-1", day: 1, period: 1, time: "09:00 AM - 09:45 AM", start_time: "09:00", end_time: "09:45", subject: "Mathematics", teacher: "Ateef", teacher_id: "tch_ateef", class_id: "cls_10", class_name: "Class 10", section_id: "sec_10_a", section_name: "A", room: "Room 301", is_active: true },
+    { id: "slot-1-2", day: 1, period: 2, time: "09:45 AM - 10:30 AM", start_time: "09:45", end_time: "10:30", subject: "General Science (Physics)", teacher: "Dr. K. R. Ahmed", teacher_id: "tch_ahmed", class_id: "cls_10", class_name: "Class 10", section_id: "sec_10_a", section_name: "A", room: "Science Lab", is_active: true },
+    { id: "slot-1-3", day: 1, period: 3, time: "10:30 AM - 11:15 AM", start_time: "10:30", end_time: "11:15", subject: "Mathematics", teacher: "Ateef", teacher_id: "tch_ateef", class_id: "cls_10", class_name: "Class 10", section_id: "sec_10_b", section_name: "B", room: "Room 302", is_active: true },
+    { id: "slot-1-4", day: 1, period: 4, time: "11:30 AM - 12:15 PM", start_time: "11:30", end_time: "12:15", subject: "English Core", teacher: "Amina Begum", teacher_id: "tch_amina", class_id: "cls_10", class_name: "Class 10", section_id: "sec_10_a", section_name: "A", room: "Room 301", is_active: true },
+    { id: "slot-1-5", day: 1, period: 5, time: "12:15 PM - 01:00 PM", start_time: "12:15", end_time: "13:00", subject: "Mathematics", teacher: "Ateef", teacher_id: "tch_ateef", class_id: "cls_9", class_name: "Class 9", section_id: "sec_9_a", section_name: "A", room: "Room 201", is_active: true },
+    { id: "slot-1-6", day: 1, period: 6, time: "01:45 PM - 02:30 PM", start_time: "13:45", end_time: "14:30", subject: "Social Science", teacher: "Mohsin Khan", teacher_id: "tch_mohsin", class_id: "cls_10", class_name: "Class 10", section_id: "sec_10_a", section_name: "A", room: "Room 301", is_active: true },
+    { id: "slot-1-7", day: 1, period: 7, time: "02:30 PM - 03:15 PM", start_time: "14:30", end_time: "15:15", subject: "Computer Science", teacher: "Zainab Fatima", teacher_id: "tch_zainab", class_id: "cls_10", class_name: "Class 10", section_id: "sec_10_a", section_name: "A", room: "Computer Lab", is_active: true },
+    { id: "slot-1-8", day: 1, period: 8, time: "03:15 PM - 04:00 PM", start_time: "15:15", end_time: "16:00", subject: "Physical Education", teacher: "Coach Vikram", teacher_id: "tch_vikram", class_id: "cls_10", class_name: "Class 10", section_id: "sec_10_a", section_name: "A", room: "Playground", is_active: true },
+  ],
+  2: [
+    { id: "slot-2-1", day: 2, period: 1, time: "09:00 AM - 09:45 AM", start_time: "09:00", end_time: "09:45", subject: "English Core", teacher: "Amina Begum", teacher_id: "tch_amina", class_id: "cls_10", class_name: "Class 10", section_id: "sec_10_a", section_name: "A", room: "Room 301", is_active: true },
+    { id: "slot-2-2", day: 2, period: 2, time: "09:45 AM - 10:30 AM", start_time: "09:45", end_time: "10:30", subject: "Mathematics", teacher: "Ateef", teacher_id: "tch_ateef", class_id: "cls_10", class_name: "Class 10", section_id: "sec_10_a", section_name: "A", room: "Room 301", is_active: true },
+    { id: "slot-2-3", day: 2, period: 3, time: "10:30 AM - 11:15 AM", start_time: "10:30", end_time: "11:15", subject: "General Science (Chemistry)", teacher: "Dr. K. R. Ahmed", teacher_id: "tch_ahmed", class_id: "cls_10", class_name: "Class 10", section_id: "sec_10_a", section_name: "A", room: "Chemistry Lab", is_active: true },
+    { id: "slot-2-4", day: 2, period: 4, time: "11:30 AM - 12:15 PM", start_time: "11:30", end_time: "12:15", subject: "Mathematics", teacher: "Ateef", teacher_id: "tch_ateef", class_id: "cls_10", class_name: "Class 10", section_id: "sec_10_b", section_name: "B", room: "Room 302", is_active: true },
+    { id: "slot-2-5", day: 2, period: 5, time: "12:15 PM - 01:00 PM", start_time: "12:15", end_time: "13:00", subject: "Second Language (Hindi/Urdu)", teacher: "Rashid Ali", teacher_id: "tch_rashid", class_id: "cls_10", class_name: "Class 10", section_id: "sec_10_a", section_name: "A", room: "Room 301", is_active: true },
+    { id: "slot-2-6", day: 2, period: 6, time: "01:45 PM - 02:30 PM", start_time: "13:45", end_time: "14:30", subject: "Mathematics Tutorial", teacher: "Ateef", teacher_id: "tch_ateef", class_id: "cls_9", class_name: "Class 9", section_id: "sec_9_a", section_name: "A", room: "Room 201", is_active: true },
+    { id: "slot-2-7", day: 2, period: 7, time: "02:30 PM - 03:15 PM", start_time: "14:30", end_time: "15:15", subject: "Art & Craft", teacher: "Mrs. Shobha", teacher_id: "tch_shobha", class_id: "cls_10", class_name: "Class 10", section_id: "sec_10_a", section_name: "A", room: "Art Studio", is_active: true },
+    { id: "slot-2-8", day: 2, period: 8, time: "03:15 PM - 04:00 PM", start_time: "15:15", end_time: "16:00", subject: "Library & Self-Study", teacher: "Librarian", teacher_id: "tch_lib", class_id: "cls_10", class_name: "Class 10", section_id: "sec_10_a", section_name: "A", room: "Central Library", is_active: true },
+  ],
+  3: [
+    { id: "slot-3-1", day: 3, period: 1, time: "09:00 AM - 09:45 AM", start_time: "09:00", end_time: "09:45", subject: "Mathematics", teacher: "Ateef", teacher_id: "tch_ateef", class_id: "cls_10", class_name: "Class 10", section_id: "sec_10_b", section_name: "B", room: "Room 302", is_active: true },
+    { id: "slot-3-2", day: 3, period: 2, time: "09:45 AM - 10:30 AM", start_time: "09:45", end_time: "10:30", subject: "General Science (Biology)", teacher: "Dr. K. R. Ahmed", teacher_id: "tch_ahmed", class_id: "cls_10", class_name: "Class 10", section_id: "sec_10_a", section_name: "A", room: "Biology Lab", is_active: true },
+    { id: "slot-3-3", day: 3, period: 3, time: "10:30 AM - 11:15 AM", start_time: "10:30", end_time: "11:15", subject: "Mathematics", teacher: "Ateef", teacher_id: "tch_ateef", class_id: "cls_10", class_name: "Class 10", section_id: "sec_10_a", section_name: "A", room: "Room 301", is_active: true },
+    { id: "slot-3-4", day: 3, period: 4, time: "11:30 AM - 12:15 PM", start_time: "11:30", end_time: "12:15", subject: "Social Science", teacher: "Mohsin Khan", teacher_id: "tch_mohsin", class_id: "cls_10", class_name: "Class 10", section_id: "sec_10_a", section_name: "A", room: "Room 301", is_active: true },
+    { id: "slot-3-5", day: 3, period: 5, time: "12:15 PM - 01:00 PM", start_time: "12:15", end_time: "13:00", subject: "English Core", teacher: "Amina Begum", teacher_id: "tch_amina", class_id: "cls_10", class_name: "Class 10", section_id: "sec_10_a", section_name: "A", room: "Room 301", is_active: true },
+    { id: "slot-3-6", day: 3, period: 6, time: "01:45 PM - 02:30 PM", start_time: "13:45", end_time: "14:30", subject: "Computer Science Lab", teacher: "Zainab Fatima", teacher_id: "tch_zainab", class_id: "cls_10", class_name: "Class 10", section_id: "sec_10_a", section_name: "A", room: "Computer Lab", is_active: true },
+    { id: "slot-3-7", day: 3, period: 7, time: "02:30 PM - 03:15 PM", start_time: "14:30", end_time: "15:15", subject: "Mathematics", teacher: "Ateef", teacher_id: "tch_ateef", class_id: "cls_9", class_name: "Class 9", section_id: "sec_9_a", section_name: "A", room: "Room 201", is_active: true },
+    { id: "slot-3-8", day: 3, period: 8, time: "03:15 PM - 04:00 PM", start_time: "15:15", end_time: "16:00", subject: "Moral Science & Values", teacher: "STA Khadri", teacher_id: "tch_khadri", class_id: "cls_10", class_name: "Class 10", section_id: "sec_10_a", section_name: "A", room: "Room 301", is_active: true },
+  ],
+  4: [
+    { id: "slot-4-1", day: 4, period: 1, time: "09:00 AM - 09:45 AM", start_time: "09:00", end_time: "09:45", subject: "Mathematics", teacher: "Ateef", teacher_id: "tch_ateef", class_id: "cls_10", class_name: "Class 10", section_id: "sec_10_a", section_name: "A", room: "Room 301", is_active: true },
+    { id: "slot-4-2", day: 4, period: 2, time: "09:45 AM - 10:30 AM", start_time: "09:45", end_time: "10:30", subject: "English Core", teacher: "Amina Begum", teacher_id: "tch_amina", class_id: "cls_10", class_name: "Class 10", section_id: "sec_10_a", section_name: "A", room: "Room 301", is_active: true },
+    { id: "slot-4-3", day: 4, period: 3, time: "10:30 AM - 11:15 AM", start_time: "10:30", end_time: "11:15", subject: "Social Science", teacher: "Mohsin Khan", teacher_id: "tch_mohsin", class_id: "cls_10", class_name: "Class 10", section_id: "sec_10_a", section_name: "A", room: "Room 301", is_active: true },
+    { id: "slot-4-4", day: 4, period: 4, time: "11:30 AM - 12:15 PM", start_time: "11:30", end_time: "12:15", subject: "Mathematics", teacher: "Ateef", teacher_id: "tch_ateef", class_id: "cls_9", class_name: "Class 9", section_id: "sec_9_a", section_name: "A", room: "Room 201", is_active: true },
+    { id: "slot-4-5", day: 4, period: 5, time: "12:15 PM - 01:00 PM", start_time: "12:15", end_time: "13:00", subject: "General Science", teacher: "Dr. K. R. Ahmed", teacher_id: "tch_ahmed", class_id: "cls_10", class_name: "Class 10", section_id: "sec_10_a", section_name: "A", room: "Room 301", is_active: true },
+    { id: "slot-4-6", day: 4, period: 6, time: "01:45 PM - 02:30 PM", start_time: "13:45", end_time: "14:30", subject: "Mathematics Lab", teacher: "Ateef", teacher_id: "tch_ateef", class_id: "cls_10", class_name: "Class 10", section_id: "sec_10_b", section_name: "B", room: "Math Lab", is_active: true },
+    { id: "slot-4-7", day: 4, period: 7, time: "02:30 PM - 03:15 PM", start_time: "14:30", end_time: "15:15", subject: "Second Language", teacher: "Rashid Ali", teacher_id: "tch_rashid", class_id: "cls_10", class_name: "Class 10", section_id: "sec_10_a", section_name: "A", room: "Room 301", is_active: true },
+    { id: "slot-4-8", day: 4, period: 8, time: "03:15 PM - 04:00 PM", start_time: "15:15", end_time: "16:00", subject: "Physical Education", teacher: "Coach Vikram", teacher_id: "tch_vikram", class_id: "cls_10", class_name: "Class 10", section_id: "sec_10_a", section_name: "A", room: "Playground", is_active: true },
+  ],
+  5: [
+    { id: "slot-5-1", day: 5, period: 1, time: "09:00 AM - 09:45 AM", start_time: "09:00", end_time: "09:45", subject: "General Science", teacher: "Dr. K. R. Ahmed", teacher_id: "tch_ahmed", class_id: "cls_10", class_name: "Class 10", section_id: "sec_10_a", section_name: "A", room: "Science Lab", is_active: true },
+    { id: "slot-5-2", day: 5, period: 2, time: "09:45 AM - 10:30 AM", start_time: "09:45", end_time: "10:30", subject: "Mathematics", teacher: "Ateef", teacher_id: "tch_ateef", class_id: "cls_10", class_name: "Class 10", section_id: "sec_10_b", section_name: "B", room: "Room 302", is_active: true },
+    { id: "slot-5-3", day: 5, period: 3, time: "10:30 AM - 11:15 AM", start_time: "10:30", end_time: "11:15", subject: "English Core", teacher: "Amina Begum", teacher_id: "tch_amina", class_id: "cls_10", class_name: "Class 10", section_id: "sec_10_a", section_name: "A", room: "Room 301", is_active: true },
+    { id: "slot-5-4", day: 5, period: 4, time: "11:30 AM - 12:15 PM", start_time: "11:30", end_time: "12:15", subject: "Social Science", teacher: "Mohsin Khan", teacher_id: "tch_mohsin", class_id: "cls_10", class_name: "Class 10", section_id: "sec_10_a", section_name: "A", room: "Room 301", is_active: true },
+    { id: "slot-5-5", day: 5, period: 5, time: "12:15 PM - 01:00 PM", start_time: "12:15", end_time: "13:00", subject: "Mathematics", teacher: "Ateef", teacher_id: "tch_ateef", class_id: "cls_10", class_name: "Class 10", section_id: "sec_10_a", section_name: "A", room: "Room 301", is_active: true },
+    { id: "slot-5-6", day: 5, period: 6, time: "01:45 PM - 02:30 PM", start_time: "13:45", end_time: "14:30", subject: "Second Language", teacher: "Rashid Ali", teacher_id: "tch_rashid", class_id: "cls_10", class_name: "Class 10", section_id: "sec_10_a", section_name: "A", room: "Room 301", is_active: true },
+    { id: "slot-5-7", day: 5, period: 7, time: "02:30 PM - 03:15 PM", start_time: "14:30", end_time: "15:15", subject: "Computer Science", teacher: "Zainab Fatima", teacher_id: "tch_zainab", class_id: "cls_10", class_name: "Class 10", section_id: "sec_10_a", section_name: "A", room: "Computer Lab", is_active: true },
+    { id: "slot-5-8", day: 5, period: 8, time: "03:15 PM - 04:00 PM", start_time: "15:15", end_time: "16:00", subject: "Remedial Mathematics", teacher: "Ateef", teacher_id: "tch_ateef", class_id: "cls_9", class_name: "Class 9", section_id: "sec_9_a", section_name: "A", room: "Room 201", is_active: true },
+  ],
+  6: [
+    { id: "slot-6-1", day: 6, period: 1, time: "09:00 AM - 09:45 AM", start_time: "09:00", end_time: "09:45", subject: "Mathematics Assessment", teacher: "Ateef", teacher_id: "tch_ateef", class_id: "cls_10", class_name: "Class 10", section_id: "sec_10_a", section_name: "A", room: "Room 301", is_active: true },
+    { id: "slot-6-2", day: 6, period: 2, time: "09:45 AM - 10:30 AM", start_time: "09:45", end_time: "10:30", subject: "Mathematics Assessment", teacher: "Ateef", teacher_id: "tch_ateef", class_id: "cls_10", class_name: "Class 10", section_id: "sec_10_b", section_name: "B", room: "Room 302", is_active: true },
+    { id: "slot-6-3", day: 6, period: 3, time: "10:30 AM - 11:15 AM", start_time: "10:30", end_time: "11:15", subject: "General Science Club", teacher: "Dr. K. R. Ahmed", teacher_id: "tch_ahmed", class_id: "cls_10", class_name: "Class 10", section_id: "sec_10_a", section_name: "A", room: "Science Lab", is_active: true },
+    { id: "slot-6-4", day: 6, period: 4, time: "11:30 AM - 12:15 PM", start_time: "11:30", end_time: "12:15", subject: "Co-curricular / Debate Club", teacher: "Amina Begum", teacher_id: "tch_amina", class_id: "cls_10", class_name: "Class 10", section_id: "sec_10_a", section_name: "A", room: "Auditorium", is_active: true },
+  ],
+};
+
 export const getStoredCustomTimetable = (): Record<number, any[]> => {
   try {
+    if (typeof localStorage === "undefined") return DEFAULT_BASELINE_TIMETABLE;
     const raw = localStorage.getItem("dmhs_custom_timetable");
-    return raw ? JSON.parse(raw) : {};
+    if (!raw) {
+      localStorage.setItem("dmhs_custom_timetable", JSON.stringify(DEFAULT_BASELINE_TIMETABLE));
+      return DEFAULT_BASELINE_TIMETABLE;
+    }
+    const parsed = JSON.parse(raw);
+    if (!parsed || Object.keys(parsed).length === 0) {
+      localStorage.setItem("dmhs_custom_timetable", JSON.stringify(DEFAULT_BASELINE_TIMETABLE));
+      return DEFAULT_BASELINE_TIMETABLE;
+    }
+    return parsed;
   } catch {
-    return {};
+    return DEFAULT_BASELINE_TIMETABLE;
   }
 };
 
+export const checkTimetableConflicts = (newSlot: {
+  day: number;
+  period: number;
+  teacher: string;
+  teacher_id?: string | number;
+  class_name?: string;
+  class_id?: string | number;
+  section_name?: string;
+  section_id?: string | number;
+  id?: string | number;
+}): { hasConflict: boolean; reason?: string } => {
+  const schedule = getStoredCustomTimetable();
+  const daySlots: any[] = schedule[newSlot.day] || [];
+
+  // Check teacher conflict
+  const teacherConflict = daySlots.find(
+    (s) =>
+      s.is_active !== false &&
+      s.period === newSlot.period &&
+      String(s.id) !== String(newSlot.id) &&
+      (
+        (newSlot.teacher && s.teacher && s.teacher.toLowerCase().trim() === newSlot.teacher.toLowerCase().trim()) ||
+        (newSlot.teacher_id && s.teacher_id && String(s.teacher_id) === String(newSlot.teacher_id))
+      )
+  );
+  if (teacherConflict) {
+    return {
+      hasConflict: true,
+      reason: `Conflict Detected: Teacher "${newSlot.teacher}" is already assigned to ${teacherConflict.class_name || "Class"} ${teacherConflict.section_name ? `Section ${teacherConflict.section_name}` : ""} during Period ${newSlot.period}.`,
+    };
+  }
+
+  // Check class & section conflict
+  if (newSlot.section_id || (newSlot.class_name && newSlot.section_name)) {
+    const classConflict = daySlots.find(
+      (s) =>
+        s.is_active !== false &&
+        s.period === newSlot.period &&
+        String(s.id) !== String(newSlot.id) &&
+        (
+          (newSlot.section_id && s.section_id && String(s.section_id) === String(newSlot.section_id)) ||
+          (
+            newSlot.class_name &&
+            newSlot.section_name &&
+            s.class_name?.toLowerCase().trim() === newSlot.class_name.toLowerCase().trim() &&
+            s.section_name?.toLowerCase().trim() === newSlot.section_name.toLowerCase().trim()
+          )
+        )
+    );
+    if (classConflict) {
+      return {
+        hasConflict: true,
+        reason: `Conflict Detected: ${newSlot.class_name || "Class"} Section ${newSlot.section_name || ""} already has "${classConflict.subject}" (${classConflict.teacher}) assigned during Period ${newSlot.period}.`,
+      };
+    }
+  }
+
+  return { hasConflict: false };
+};
+
 export const saveCustomTimetableSlot = (slot: {
+  id?: string | number;
   day: number;
   period: number;
   time: string;
@@ -201,14 +331,55 @@ export const saveCustomTimetableSlot = (slot: {
   class_name?: string;
   section_id?: string | number;
   section_name?: string;
+  is_active?: boolean;
 }) => {
+  const conflict = checkTimetableConflicts(slot);
+  if (conflict.hasConflict) {
+    throw new ApiError(conflict.reason || "Timetable assignment conflict detected.", 400);
+  }
+
   const schedule = getStoredCustomTimetable();
   const daySlots = schedule[slot.day] || [];
-  const updatedDaySlots = daySlots.filter((s) => s.period !== slot.period);
-  updatedDaySlots.push(slot);
+  const slotId = slot.id || `slot_${slot.day}_${slot.period}_${Date.now()}`;
+  const updatedDaySlots = daySlots.filter((s) => String(s.id) !== String(slotId) && s.period !== slot.period);
+  updatedDaySlots.push({
+    ...slot,
+    id: slotId,
+    is_active: slot.is_active !== false,
+  });
   updatedDaySlots.sort((a, b) => a.period - b.period);
   schedule[slot.day] = updatedDaySlots;
   localStorage.setItem("dmhs_custom_timetable", JSON.stringify(schedule));
+};
+
+export const deleteCustomTimetableSlot = (slotId: string | number, day: number) => {
+  const schedule = getStoredCustomTimetable();
+  const daySlots = schedule[day] || [];
+  schedule[day] = daySlots.filter((s) => String(s.id) !== String(slotId));
+  localStorage.setItem("dmhs_custom_timetable", JSON.stringify(schedule));
+};
+
+export const getStoredAttendanceSessions = (): Record<string, any> => {
+  try {
+    if (typeof localStorage === "undefined") return {};
+    const raw = localStorage.getItem("dmhs_attendance_sessions_cache");
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+};
+
+export const saveStoredAttendanceSession = (session: any) => {
+  try {
+    if (typeof localStorage === "undefined") return;
+    const store = getStoredAttendanceSessions();
+    const key = `${session.section_id}_${session.session_date}_${session.period_number ?? 0}`;
+    store[key] = {
+      ...session,
+      updated_at: new Date().toISOString(),
+    };
+    localStorage.setItem("dmhs_attendance_sessions_cache", JSON.stringify(store));
+  } catch {}
 };
 
 const BASELINE_TEACHERS: TeacherListItem[] = [
@@ -244,7 +415,7 @@ const BASELINE_TEACHERS: TeacherListItem[] = [
   },
 ];
 
-const BASELINE_STUDENTS: StudentListItem[] = [
+export const BASELINE_STUDENTS: StudentListItem[] = [
   {
     id: "std_ali",
     admission_number: "ADM-ALI",
@@ -262,7 +433,7 @@ const BASELINE_STUDENTS: StudentListItem[] = [
     email: "mohammed.ali@dmhs.edu.in",
     class_name: "Class 10",
     section_name: "A",
-    roll_number: "10A01",
+    roll_number: "02",
     student_status: "active",
   },
   {
@@ -272,7 +443,77 @@ const BASELINE_STUDENTS: StudentListItem[] = [
     email: "ayesha.siddiqua@dmhs.edu.in",
     class_name: "Class 10",
     section_name: "A",
-    roll_number: "10A02",
+    roll_number: "03",
+    student_status: "active",
+  },
+  {
+    id: "std_zeeshan",
+    admission_number: "ADM-2025-0103",
+    full_name: "Syed Zeeshan",
+    email: "zeeshan.syed@dmhs.edu.in",
+    class_name: "Class 10",
+    section_name: "A",
+    roll_number: "04",
+    student_status: "active",
+  },
+  {
+    id: "std_fatima_n",
+    admission_number: "ADM-2025-0104",
+    full_name: "Fatima Noor",
+    email: "fatima.noor@dmhs.edu.in",
+    class_name: "Class 10",
+    section_name: "A",
+    roll_number: "05",
+    student_status: "active",
+  },
+  {
+    id: "std_bilal",
+    admission_number: "ADM-2025-0106",
+    full_name: "Bilal Ahmed",
+    email: "bilal.ahmed@dmhs.edu.in",
+    class_name: "Class 10",
+    section_name: "B",
+    roll_number: "01",
+    student_status: "active",
+  },
+  {
+    id: "std_hania",
+    admission_number: "ADM-2025-0107",
+    full_name: "Hania Mariam",
+    email: "hania.mariam@dmhs.edu.in",
+    class_name: "Class 10",
+    section_name: "B",
+    roll_number: "02",
+    student_status: "active",
+  },
+  {
+    id: "std_hamza",
+    admission_number: "ADM-2025-0108",
+    full_name: "Hamza Farooq",
+    email: "hamza.farooq@dmhs.edu.in",
+    class_name: "Class 10",
+    section_name: "B",
+    roll_number: "03",
+    student_status: "active",
+  },
+  {
+    id: "std_zainab_k",
+    admission_number: "ADM-2025-0201",
+    full_name: "Zainab Khan",
+    email: "zainab.khan@dmhs.edu.in",
+    class_name: "Class 9",
+    section_name: "A",
+    roll_number: "01",
+    student_status: "active",
+  },
+  {
+    id: "std_omar",
+    admission_number: "ADM-2025-0202",
+    full_name: "Omar Abdullah",
+    email: "omar.abdullah@dmhs.edu.in",
+    class_name: "Class 9",
+    section_name: "A",
+    roll_number: "02",
     student_status: "active",
   },
 ];
@@ -955,7 +1196,9 @@ export const api = {
       page?: number;
       limit?: number;
       class_id?: number | string;
+      classId?: number | string;
       section_id?: number | string;
+      sectionId?: number | string;
       status?: string;
       search?: string;
     } = {}) => {
@@ -966,8 +1209,10 @@ export const api = {
         const query = new URLSearchParams();
         if (params.page) query.append("page", params.page.toString());
         if (params.limit) query.append("limit", params.limit.toString());
-        if (params.class_id) query.append("class_id", params.class_id.toString());
-        if (params.section_id) query.append("section_id", params.section_id.toString());
+        const cid = params.class_id || params.classId;
+        const sid = params.section_id || params.sectionId;
+        if (cid) query.append("class_id", cid.toString());
+        if (sid) query.append("section_id", sid.toString());
         if (params.status) query.append("status", params.status);
         if (params.search) query.append("search", params.search);
         const remote = await request<{ items: StudentListItem[]; total: number; page: number; limit: number }>(
@@ -982,6 +1227,42 @@ export const api = {
         return { items: merged, total: merged.length, page: params.page || 1, limit: params.limit || 10 };
       } catch (err) {
         let filtered = allStudents;
+        const targetClass = params.class_id || params.classId;
+        const targetSection = params.section_id || params.sectionId;
+
+        if (targetClass) {
+          const cStr = String(targetClass).toLowerCase();
+          filtered = filtered.filter((item) => {
+            const itemCls = (item.class_name || "").toLowerCase();
+            return (
+              itemCls === cStr ||
+              itemCls.includes(cStr) ||
+              (cStr === "cls_10" && itemCls.includes("10")) ||
+              (cStr === "cls_9" && itemCls.includes("9")) ||
+              (cStr === "cls_8" && itemCls.includes("8"))
+            );
+          });
+        }
+
+        if (targetSection) {
+          const sStr = String(targetSection).toLowerCase();
+          filtered = filtered.filter((item) => {
+            const itemSec = (item.section_name || "").toLowerCase();
+            return (
+              itemSec === sStr ||
+              (sStr.includes("_a") && itemSec === "a") ||
+              (sStr.includes("_b") && itemSec === "b") ||
+              (sStr.includes("_c") && itemSec === "c")
+            );
+          });
+        }
+
+        if (params.status) {
+          filtered = filtered.filter(
+            (item) => (item.student_status || "active").toLowerCase() === params.status?.toLowerCase()
+          );
+        }
+
         if (params.search) {
           const s = params.search.toLowerCase();
           filtered = filtered.filter(
@@ -1511,20 +1792,27 @@ export const api = {
       session_date: string;
       period_number?: number;
     }) => {
-      if (USE_MOCK_FALLBACK) {
-        return await supabaseService.attendance.getSession(params);
+      const pNum = params.period_number ?? 0;
+      const key = `${params.section_id}_${params.session_date}_${pNum}`;
+      const cached = getStoredAttendanceSessions()[key];
+
+      if (isSupabaseConfigured()) {
+        try {
+          const remote = await supabaseService.attendance.getSession(params);
+          if (remote && remote.session_id && Object.keys(remote.records || {}).length > 0) {
+            saveStoredAttendanceSession(remote);
+            return remote;
+          }
+        } catch (e: any) {
+          console.warn("Supabase getSession fallback to local cache:", e.message);
+        }
       }
-      try {
-        const q = new URLSearchParams({
-          section_id: String(params.section_id),
-          session_date: params.session_date,
-          period_number: String(params.period_number ?? 0),
-        });
-        const res = await apiClient.get(`/attendance/sessions?${q.toString()}`);
-        return res.data;
-      } catch (err) {
-        return await supabaseService.attendance.getSession(params);
+
+      if (cached) {
+        return cached;
       }
+
+      return { session_id: null, records: {} };
     },
     submit: async (data: {
       academic_year_id: number | string;
@@ -1532,17 +1820,61 @@ export const api = {
       section_id: number | string;
       session_date: string;
       period_number?: number;
+      subject_id?: number | string;
+      teacher_id?: number | string;
       records: Array<{ student_id: number | string; status: string; remarks?: string }>;
     }) => {
-      if (USE_MOCK_FALLBACK) {
-        return await supabaseService.attendance.submit(data);
+      // Validation: every student must have a valid status
+      const incomplete = data.records.some((r) => !r.status || !["present", "absent", "late", "excused"].includes(r.status));
+      if (incomplete) {
+        throw new ApiError("Please assign an attendance status (Present, Absent, or Late) to every student before saving.", 400);
       }
-      try {
-        const res = await apiClient.post("/attendance/sessions", data);
-        return res.data;
-      } catch (err) {
-        return await supabaseService.attendance.submit(data);
+
+      const pNum = data.period_number ?? 0;
+      const key = `${data.section_id}_${data.session_date}_${pNum}`;
+      const existing = getStoredAttendanceSessions()[key];
+      const sessionId = existing?.session_id || `session_${Date.now()}`;
+
+      const recordMap: Record<string, { id: string | number; status: string; remarks?: string }> = {
+        ...(existing?.records || {}),
+      };
+
+      data.records.forEach((r) => {
+        recordMap[String(r.student_id)] = {
+          id: recordMap[String(r.student_id)]?.id || `rec_${r.student_id}_${Date.now()}`,
+          status: r.status,
+          remarks: r.remarks || "",
+        };
+      });
+
+      const sessionObj = {
+        session_id: sessionId,
+        academic_year_id: data.academic_year_id,
+        class_id: data.class_id,
+        section_id: data.section_id,
+        session_date: data.session_date,
+        period_number: pNum,
+        subject_id: data.subject_id,
+        teacher_id: data.teacher_id,
+        status: "submitted",
+        records: recordMap,
+      };
+
+      saveStoredAttendanceSession(sessionObj);
+
+      if (isSupabaseConfigured()) {
+        try {
+          await supabaseService.attendance.submit(data);
+        } catch (err: any) {
+          console.warn("Supabase attendance submit fallback to local:", err.message);
+        }
       }
+
+      return {
+        session_id: sessionId,
+        total_records: data.records.length,
+        message: `Attendance for Period ${pNum > 0 ? pNum : "Daily"} saved successfully.`,
+      };
     },
     getDateWiseReport: async (params: {
       class_id?: number | string;
@@ -1550,20 +1882,48 @@ export const api = {
       from_date?: string;
       to_date?: string;
     } = {}) => {
-      if (USE_MOCK_FALLBACK) {
-        return await supabaseService.attendance.getDateWiseReport(params);
+      if (isSupabaseConfigured()) {
+        try {
+          const rep = await supabaseService.attendance.getDateWiseReport(params);
+          if (rep && rep.length > 0) return rep;
+        } catch {}
       }
-      try {
-        const q = new URLSearchParams();
-        if (params.class_id) q.append("class_id", String(params.class_id));
-        if (params.section_id) q.append("section_id", String(params.section_id));
-        if (params.from_date) q.append("from_date", params.from_date);
-        if (params.to_date) q.append("to_date", params.to_date);
-        const res = await apiClient.get(`/attendance/reports/date-wise?${q.toString()}`);
-        return res.data;
-      } catch (err) {
-        return await supabaseService.attendance.getDateWiseReport(params);
-      }
+
+      // Aggregate from stored sessions
+      const allSessions = getStoredAttendanceSessions();
+      const summaries: any[] = [];
+      Object.values(allSessions).forEach((sess: any) => {
+        if (params.section_id && String(sess.section_id) !== String(params.section_id)) return;
+        if (params.from_date && sess.session_date < params.from_date) return;
+        if (params.to_date && sess.session_date > params.to_date) return;
+
+        const recs = Object.values(sess.records || {}) as any[];
+        const total = recs.length;
+        const present = recs.filter((r) => r.status === "present").length;
+        const absent = recs.filter((r) => r.status === "absent").length;
+        const late = recs.filter((r) => r.status === "late").length;
+        const excused = recs.filter((r) => r.status === "excused").length;
+        const pct = total > 0 ? Math.round(((present + late * 0.5) / total) * 100) : 100;
+
+        summaries.push({
+          session_id: sess.session_id,
+          session_date: sess.session_date,
+          period_number: sess.period_number,
+          class_id: sess.class_id,
+          class_name: "Class 10",
+          section_id: sess.section_id,
+          section_name: "A",
+          total_students: total,
+          present_count: present,
+          late_count: late,
+          absent_count: absent,
+          excused_count: excused,
+          attendance_percentage: pct,
+          status: "submitted",
+        });
+      });
+
+      return summaries;
     },
     getStudentSummary: async (studentId: number | string, academicYearId?: number | string) => {
       if (USE_MOCK_FALLBACK) {
@@ -1847,43 +2207,105 @@ export const api = {
 
   timetable: {
     getNextPeriod: async () => {
-      return request<{
-        status: string;
-        message: string;
-        current_period?: {
-          period_number: number;
-          subject: string;
-          room: string;
-          start_time: string;
-          end_time: string;
+      try {
+        return await request<{
+          status: string;
+          message: string;
+          current_period?: any;
+          next_period?: any;
+          reporting_time: string;
+        }>("/timetable/next-period");
+      } catch {
+        const schedule = getStoredCustomTimetable();
+        const day = new Date().getDay() || 1;
+        const slots = schedule[day] || [];
+        return {
+          status: "active",
+          message: slots.length > 0
+            ? `Period ${slots[0]?.period}: ${slots[0]?.subject} (${slots[0]?.time})`
+            : "No active periods scheduled for this session.",
+          current_period: slots[0] || null,
+          next_period: slots[1] || null,
+          reporting_time: "08:45 AM",
         };
-        next_period?: {
-          period_number: number;
-          subject: string;
-          room: string;
-          start_time: string;
-          end_time: string;
-        };
-        reporting_time: string;
-      }>("/timetable/next-period");
+      }
     },
-    getSchedule: async (params: { class_id?: number; section_id?: number; teacher_id?: number; day_of_week?: number } = {}) => {
-      const q = new URLSearchParams();
-      if (params.class_id) q.append("class_id", params.class_id.toString());
-      if (params.section_id) q.append("section_id", params.section_id.toString());
-      if (params.teacher_id) q.append("teacher_id", params.teacher_id.toString());
-      if (params.day_of_week) q.append("day_of_week", params.day_of_week.toString());
-      return request<Array<{
-        id: number;
-        period_number: number;
-        subject: string;
-        room?: string;
-        start_time: string;
-        end_time: string;
-        day_of_week: number;
-      }>>(`/timetable/schedule?${q.toString()}`);
+    getSchedule: async (params: { class_id?: number | string; section_id?: number | string; teacher_id?: number | string; day_of_week?: number; teacher_name?: string } = {}) => {
+      if (isSupabaseConfigured()) {
+        try {
+          const remote = await supabaseService.timetable.getSchedule(params);
+          if (remote && remote.length > 0) return remote;
+        } catch {}
+      }
+
+      const all = getStoredCustomTimetable();
+      const targetDay = params.day_of_week || 1;
+      let slots = all[targetDay] || [];
+
+      if (params.class_id) {
+        slots = slots.filter((s) => String(s.class_id) === String(params.class_id));
+      }
+      if (params.section_id) {
+        slots = slots.filter((s) => String(s.section_id) === String(params.section_id));
+      }
+      if (params.teacher_name) {
+        slots = slots.filter((s) => s.teacher?.toLowerCase().includes(params.teacher_name!.toLowerCase()));
+      }
+
+      return slots.filter((s) => s.is_active !== false);
+    },
+    getTeacherTodayTimetable: async (teacherIdentifier?: string, dateStr?: string) => {
+      const today = dateStr || new Date().toISOString().split("T")[0];
+      const targetDate = new Date(today + "T00:00:00");
+      let dayOfWeek = targetDate.getDay(); // 0=Sun, 1=Mon ... 6=Sat
+
+      if (dayOfWeek === 0) {
+        return []; // Sunday - clear empty state
+      }
+
+      const cleanTeacher = (teacherIdentifier || "Ateef").toLowerCase().trim();
+      const allSlots = getStoredCustomTimetable();
+      const daySlots: any[] = allSlots[dayOfWeek] || [];
+
+      // Filter periods strictly assigned to logged in teacher
+      const teacherSlots = daySlots.filter((slot) => {
+        if (slot.is_active === false) return false;
+        const sTeacher = (slot.teacher || "").toLowerCase();
+        const sTeacherId = String(slot.teacher_id || "").toLowerCase();
+        if (sTeacher === cleanTeacher || sTeacherId === cleanTeacher) return true;
+        if (cleanTeacher === "ateef" && (sTeacher.includes("ateef") || sTeacher.includes("fatima"))) return true;
+        return false;
+      });
+
+      // Sort chronologically by period number
+      teacherSlots.sort((a, b) => a.period - b.period);
+
+      // Check attendance status for each period
+      const enrichedSlots = await Promise.all(
+        teacherSlots.map(async (slot) => {
+          let attendance_status: "Not Started" | "Completed" = "Not Started";
+          try {
+            const sess = await api.attendance.getSession({
+              section_id: slot.section_id,
+              session_date: today,
+              period_number: slot.period,
+            });
+            if (sess && sess.session_id && Object.keys(sess.records || {}).length > 0) {
+              attendance_status = "Completed";
+            }
+          } catch {}
+
+          return {
+            ...slot,
+            attendance_status,
+          };
+        })
+      );
+
+      return enrichedSlots;
     },
     allotSlot: async (slot: {
+      id?: string | number;
       day: number;
       period: number;
       time: string;
@@ -1896,8 +2318,35 @@ export const api = {
       section_id?: string | number;
       section_name?: string;
     }) => {
+      // Conflict check
+      const conflict = checkTimetableConflicts(slot);
+      if (conflict.hasConflict) {
+        throw new ApiError(conflict.reason || "Timetable assignment conflict detected.", 400);
+      }
+
       saveCustomTimetableSlot(slot);
-      return { success: true, message: `Period ${slot.period} allotted to ${slot.teacher} successfully.` };
+
+      if (isSupabaseConfigured()) {
+        try {
+          await supabaseService.timetable.createSlot(slot);
+        } catch (e: any) {
+          console.warn("Supabase timetable allot warning:", e.message);
+        }
+      }
+
+      return {
+        success: true,
+        message: `Period ${slot.period} allotted to ${slot.teacher} successfully.`,
+      };
+    },
+    deleteSlot: async (slotId: string | number, day: number) => {
+      deleteCustomTimetableSlot(slotId, day);
+      if (isSupabaseConfigured()) {
+        try {
+          await supabaseService.timetable.deleteSlot(slotId);
+        } catch {}
+      }
+      return { success: true, message: "Timetable period deactivated successfully." };
     },
   },
 

@@ -5,13 +5,39 @@
     <link rel="icon" type="image/png" href="/dmhs-logo-128.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Deccan Mission High School ERP</title>
-    <!-- Google Fonts: Inter -->
+    <!-- Google Fonts: Inter & Cinzel -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Cinzel:wght@600;700;800&display=swap" rel="stylesheet">
+    <style>
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+      .initial-spinner {
+        width: 44px;
+        height: 44px;
+        border: 3.5px solid rgba(197, 168, 128, 0.25);
+        border-top-color: #C5A880;
+        border-radius: 50%;
+        animation: spin 0.85s linear infinite;
+      }
+    </style>
   </head>
   <body class="bg-[#F4F6FA] dark:bg-[#101827] text-[#182235] dark:text-[#F1F5F9] antialiased selection:bg-[#C6A45A] selection:text-[#101827]">
-    <div id="root"></div>
+    <div id="root">
+      <div style="min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #0A192F; color: #FFFFFF; font-family: 'Inter', system-ui, sans-serif; padding: 24px; text-align: center;">
+        <div style="width: 64px; height: 64px; background: #FFFFFF; border-radius: 18px; padding: 8px; margin-bottom: 20px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);">
+          <img src="/dmhs-logo-128.png" alt="DMHS Logo" style="width: 100%; height: 100%; object-fit: contain;" />
+        </div>
+        <div class="initial-spinner" style="margin-bottom: 18px;"></div>
+        <h2 style="font-size: 16px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: #FFFFFF; margin: 0 0 6px 0;">
+          DECCAN MISSION HIGH SCHOOL
+        </h2>
+        <p style="font-size: 12px; font-weight: 600; color: #C5A880; letter-spacing: 0.05em; margin: 0;">
+          SECURE SCHOOL ERP SYSTEM • LOADING...
+        </p>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
