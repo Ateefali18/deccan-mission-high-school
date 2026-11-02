@@ -176,7 +176,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div className="hidden md:flex items-center justify-between p-3 border-t border-[#1E3A5F] dark:border-dark-border">
         {!isCollapsed && (
           <div className="text-[11px] text-blue-200/80 truncate font-mono">
-            TS-HYD-CBSE-41092
+            TS-HYD-SSC-41092
           </div>
         )}
         <button

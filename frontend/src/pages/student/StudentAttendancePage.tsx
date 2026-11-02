@@ -54,7 +54,7 @@ export const StudentAttendancePage: React.FC = () => {
     <div className="space-y-6">
       <PageHeader
         title="My Attendance Record"
-        subtitle="Live academic attendance ledger and CBSE board examination eligibility status"
+        subtitle="Live academic attendance ledger and Telangana SSC board examination eligibility status"
       />
 
       {/* Main KPI Row */}
@@ -71,7 +71,7 @@ export const StudentAttendancePage: React.FC = () => {
               {pct}%
             </span>
             <Badge variant={isEligible ? "success" : "danger"} size="sm">
-              {isEligible ? "CBSE Eligible" : "Low Warning"}
+              {isEligible ? "SSC Eligible" : "Low Warning"}
             </Badge>
           </div>
           <p className="text-[11px] text-light-secondary dark:text-dark-secondary mt-1">
@@ -134,7 +134,7 @@ export const StudentAttendancePage: React.FC = () => {
               Deccan Mission High School Attendance Policy
             </h4>
             <p className="text-xs text-light-secondary dark:text-dark-secondary mt-1">
-              Under Central Board of Secondary Education (CBSE) regulations, students must maintain a minimum of 75% attendance during the academic term to appear for final summative examinations. In case of medical necessity or authorized representation, official leave applications must be submitted to the Principal’s office.
+              Under Telangana State SSC Board regulations, students must maintain a minimum of 75% attendance during the academic term to appear for final summative examinations. In case of medical necessity or authorized representation, official leave applications must be submitted to the Principal’s office.
             </p>
           </div>
         </div>

@@ -205,7 +205,7 @@ def test_notices_api_list_and_create(client, seeded_data):
 
     # 1. Admin creates notice
     payload = {
-        "title": "Annual CBSE Sports Meet 2026",
+        "title": "Annual SSC Sports Meet 2026",
         "content": "All students must submit athletic registration entries by Friday.",
         "target_audience": "all",
         "priority": "high",
@@ -226,7 +226,7 @@ def test_notices_api_list_and_create(client, seeded_data):
     )
     assert res_teacher.status_code == 200
     titles = [n["title"] for n in res_teacher.json()]
-    assert "Annual CBSE Sports Meet 2026" in titles
+    assert "Annual SSC Sports Meet 2026" in titles
 
     # 3. Student can read notices
     res_student = client.get(
@@ -235,7 +235,7 @@ def test_notices_api_list_and_create(client, seeded_data):
     )
     assert res_student.status_code == 200
     student_titles = [n["title"] for n in res_student.json()]
-    assert "Annual CBSE Sports Meet 2026" in student_titles
+    assert "Annual SSC Sports Meet 2026" in student_titles
 
     # 4. Student cannot publish notice (Forbidden 403)
     res_student_post = client.post(

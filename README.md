@@ -1,6 +1,6 @@
 # DECCAN MISSION HIGH SCHOOL ERP
 **Phase 1 Foundation: Architecture, Relational Database, RBAC Authentication & Royal Dark/Gold UI**  
-*Location: Hyderabad, Telangana, India • CBSE Affiliation No: TS-HYD-CBSE-41092*
+*Location: Hyderabad, Telangana, India • CBSE Affiliation No: TS-HYD-SSC-41092*
 
 ---
 
@@ -330,7 +330,7 @@ Phase 3 completes the school ERP with an enterprise AI assistant architecture, r
 - **Provider Abstraction**: Configured via server-side environment variables `AI_PROVIDER` (default `"gemini"`), `AI_MODEL` (`"gemini-1.5-pro"`), and `AI_API_KEY`.
 - **Zero Raw SQL Exposure**: The AI engine uses pre-validated, role-gated query functions. Arbitrary model-generated SQL execution is strictly prevented.
 - **Strict Role-Scoped Answering**:
-  - **Admin**: School-wide student lookups, low-attendance alerts (<75%), fee totals, upcoming CBSE exams, faculty assignments, notices.
+  - **Admin**: School-wide student lookups, low-attendance alerts (<75%), fee totals, upcoming SSC exams, faculty assignments, notices.
   - **Teacher**: Restricted strictly to assigned classes/sections. Timetable periods, student roll call, low-attendance alerts for assigned students. Financials and unassigned classes are blocked.
   - **Student**: Isolated strictly to their own student record, current period, overall attendance percentage, published marks, and principal announcements. Disclosing other student records is strictly blocked.
 - **Interactive Global AI Drawer**: Available across all portals via floating trigger pill and keyboard shortcut with role-tailored prompt suggestions and direct navigation links to student records and attendance.
@@ -338,7 +338,7 @@ Phase 3 completes the school ERP with an enterprise AI assistant architecture, r
 ### 2. Standardized Attendance Formula
 $$\text{Attendance Percentage} = \frac{\text{Present} + (\text{Late} \times \text{Weight})}{\text{Total Sessions} - \text{Excused Sessions}} \times 100$$
 - Configurable late weight (default `1.0`) and excused denominator exclusion.
-- Low-attendance alerts automatically flag students below the 75% CBSE requirement.
+- Low-attendance alerts automatically flag students below the 75% Telangana SSC requirement.
 
 ### 3. Timetable & Next Period Calculation
 - Timezone-aware calculation (`Asia/Kolkata`) comparing current time against the master timetable for today’s day-of-week.

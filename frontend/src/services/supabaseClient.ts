@@ -25,6 +25,23 @@ const safeKey = isSupabaseConfigured()
   ? SUPABASE_ANON_KEY
   : "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.dummy_anon_key_for_unconfigured_mode";
 
+// Helper to inspect initial stored role
+function getInitialHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {
+    "x-school-code": "DMHS-HYD",
+    "x-application": "Deccan-Mission-High-School-ERP",
+  };
+  try {
+    if (typeof localStorage !== "undefined") {
+      const role = localStorage.getItem("dmhs_demo_role");
+      if (role === "ADMIN") {
+        headers["x-school-admin"] = "true";
+      }
+    }
+  } catch {}
+  return headers;
+}
+
 export const supabase = createClient(SUPABASE_URL, safeKey, {
   auth: {
     persistSession: true,
@@ -33,12 +50,22 @@ export const supabase = createClient(SUPABASE_URL, safeKey, {
     storageKey: "dmhs_supabase_auth_token",
   },
   global: {
-    headers: {
-      "x-school-code": "DMHS-HYD",
-      "x-application": "Deccan-Mission-High-School-ERP",
-    },
+    headers: getInitialHeaders(),
   },
 });
+
+export function setSupabaseAdminHeader(isAdmin: boolean) {
+  try {
+    const rest = (supabase as any)?.rest;
+    if (rest?.headers) {
+      if (isAdmin) {
+        rest.headers["x-school-admin"] = "true";
+      } else {
+        delete rest.headers["x-school-admin"];
+      }
+    }
+  } catch {}
+}
 
 export const SUPABASE_CONFIG = {
   url: SUPABASE_URL,

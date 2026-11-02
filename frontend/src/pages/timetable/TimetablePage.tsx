@@ -69,7 +69,7 @@ export const TimetablePage: React.FC = () => {
     { id: 6, name: "Saturday" },
   ];
 
-  // Standard CBSE master schedule template for DMHS
+  // Standard SSC master schedule template for DMHS
   const standardPeriods: Record<number, TimetableSlot[]> = {
     1: [
       { period: 1, time: "09:00 - 09:45", subject: "Mathematics", teacher: "Fatima Zahra", room: "Room 301" },
@@ -192,7 +192,7 @@ export const TimetablePage: React.FC = () => {
     <div className="space-y-6">
       <PageHeader
         title="Master Academic Timetable"
-        subtitle="CBSE bell schedule, daily room allocations, and period timings"
+        subtitle="Telangana SSC bell schedule, daily room allocations, and period timings"
                 action={
           <div className="flex items-center gap-2">
             {isAdmin && (
@@ -232,7 +232,7 @@ export const TimetablePage: React.FC = () => {
                 <Badge variant="gold" size="sm">Asia/Kolkata (IST)</Badge>
               </div>
               <p className="text-xs text-light-secondary dark:text-dark-secondary mt-1">
-                {nextPeriodInfo?.message || "Operating within CBSE official academic hours (09:00 AM – 04:00 PM IST)."}
+                {nextPeriodInfo?.message || "Operating within official academic hours (09:00 AM – 04:00 PM IST)."}
               </p>
             </div>
           </div>

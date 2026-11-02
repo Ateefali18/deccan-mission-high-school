@@ -67,7 +67,7 @@ export const StudentResultsPage: React.FC = () => {
     },
     {
       key: "grade",
-      header: "CBSE Grade",
+      header: "SSC Grade",
       render: (row) => (
         <Badge variant={row.grade.startsWith("A") ? "success" : "gold"} size="sm">
           {row.grade} ({row.grade_point})
@@ -85,7 +85,7 @@ export const StudentResultsPage: React.FC = () => {
     <div className="space-y-6">
       <PageHeader
         title="Official Examination Results & Report Card"
-        subtitle="Central Board of Secondary Education (CBSE) 9-Point Scale Marksheet"
+        subtitle="Telangana State Board of Secondary Education (SSC) 9-Point Scale Marksheet"
         action={
           <Button
             variant="outline"
@@ -136,7 +136,7 @@ export const StudentResultsPage: React.FC = () => {
 
         <Card className="p-4 bg-emerald-500/5 border border-emerald-500/20">
           <span className="text-[10px] uppercase font-bold text-emerald-600 dark:text-emerald-400">
-            CBSE Examination Status
+            SSC Examination Status
           </span>
           <p className="text-2xl font-bold font-mono text-emerald-600 dark:text-emerald-400 mt-1">
             QUALIFIED

@@ -57,7 +57,7 @@ class AIService:
                 "Student Directory & Profile by Admission Number",
                 "Attendance Summary & Low Attendance (<75%) Alerts",
                 "Class-Wise Attendance & Enrollment Statistics",
-                "CBSE Examinations & Result Schedules",
+                "Telangana SSC Examinations & Result Schedules",
                 "Pending Marks Entry Tracking",
                 "Fee Balances & Overdue Ledgers (Role-Secured)",
                 "Official Notices & Announcements",
@@ -80,7 +80,7 @@ class AIService:
             f"You are the Deccan Mission High School (DMHS) Academic & School Assistant in Hyderabad, India. "
             f"You are answering an authorized user ({user_name}) who holds the role: {user_role}. "
             f"Guidelines: "
-            f"1. Be polite, concise, educational, and professional following CBSE academic standards. "
+            f"1. Be polite, concise, educational, and professional following Telangana State SSC academic standards. "
             f"2. Never disclose private personal details (phone numbers, home addresses, government IDs). "
             f"3. If asked about student personal records or confidential finances, guide the user to the official ERP pages."
         )
@@ -416,7 +416,7 @@ class AIService:
                 att = AttendanceService.get_student_attendance(db, ctx["student_profile_id"])
                 ans = f"Your current attendance is **{att['attendance_percentage']}%** ({att['present_count']} days present, {att['absent_count']} days absent, {att['late_count']} late) across {att['total_sessions']} verified school sessions."
                 if att["is_low_attendance"]:
-                    ans += " ⚠️ Warning: Your attendance is currently below the mandatory 75% CBSE threshold."
+                    ans += " ⚠️ Warning: Your attendance is currently below the mandatory 75% SSC threshold."
                 return {
                     "answer": ans,
                     "data": att,
@@ -523,7 +523,7 @@ class AIService:
             return {
                 "answer": f"Pending Marks Entry Report:\n\n{summary}",
                 "data": {"pending_count": len(pending)},
-                "source": "CBSE Examination Office",
+                "source": "Telangana SSC Examination Office",
                 "route": "/admin/marks",
                 "filters": {},
                 "is_grounded": True,
@@ -540,7 +540,7 @@ class AIService:
                 return {
                     "answer": "No upcoming examinations currently scheduled.",
                     "data": [],
-                    "source": "CBSE Examination Office",
+                    "source": "Telangana SSC Examination Office",
                     "route": f"/{role.lower()}/dashboard",
                     "filters": {},
                     "is_grounded": True,
@@ -551,7 +551,7 @@ class AIService:
             return {
                 "answer": f"Upcoming Examinations: {exam_desc}.",
                 "data": [{"id": e.id, "name": e.name, "start": str(e.start_date)} for e in exams],
-                "source": "CBSE Examination Registry",
+                "source": "Telangana SSC Examination Registry",
                 "route": f"/{role.lower()}/dashboard",
                 "filters": {"school_id": user.school_id},
                 "is_grounded": True,

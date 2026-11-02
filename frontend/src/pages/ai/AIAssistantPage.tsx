@@ -73,7 +73,7 @@ export const AIAssistantPage: React.FC = () => {
           "Master Timetable & Next Period",
           "Student Directory & Profile by Admission Number",
           "Attendance Summary & Low Attendance (<75%) Alerts",
-          "CBSE Examinations & Result Schedules",
+          "Telangana SSC Examinations & Result Schedules",
           "Fee Balances & Overdue Ledgers (Role-Secured)",
           "Official Notices & Announcements",
         ],
@@ -296,7 +296,7 @@ export const AIAssistantPage: React.FC = () => {
                 How can I assist you today?
               </h3>
               <p className="text-xs max-w-md leading-relaxed">
-                Ask about class schedules, student records by admission number, attendance summaries, CBSE exams, marks entry progress, or school circulars.
+                Ask about class schedules, student records by admission number, attendance summaries, SSC exams, marks entry progress, or school circulars.
               </p>
             </div>
           ) : (

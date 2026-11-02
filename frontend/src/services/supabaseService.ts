@@ -1,3 +1,8 @@
+
+const isUUID = (str: string | number): boolean => {
+  return typeof str === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+};
+
 import { supabase, isSupabaseConfigured } from "./supabaseClient";
 import type {
   AcademicYear,
@@ -33,23 +38,32 @@ export const supabaseService = {
   schools: {
     async getCurrent() {
       if (!isSupabaseConfigured()) return null;
-      const { data, error } = await supabase
-        .from("schools")
-        .select("*")
-        .eq("code", "DMHS-HYD")
-        .maybeSingle();
+      try {
+        const { data, error } = await supabase
+          .from("schools")
+          .select("*")
+          .eq("code", "DMHS-HYD")
+          .maybeSingle();
 
-      if (data) return data;
+        if (data) return data;
 
-      // Fallback: fetch any active school or create baseline reference
-      const { data: anySchool } = await supabase.from("schools").select("*").limit(1).maybeSingle();
-      if (anySchool) return anySchool;
+        // Fallback: fetch any active school or create baseline reference
+        const { data: anySchool } = await supabase.from("schools").select("*").limit(1).maybeSingle();
+        if (anySchool) return anySchool;
+      } catch (e) {
+        console.warn("Could not retrieve school from Supabase:", e);
+      }
 
-      // Safe fallback object with valid UUID format
+      // Safe fallback object aligned with 20261102000001_fix_admin_permissions_and_ssc.sql
       return {
-        id: "a0000000-0000-0000-0000-000000000001",
+        id: "e0000000-0000-0000-0000-000000000001",
         code: "DMHS-HYD",
         name: "Deccan Mission High School",
+        affiliation_number: "TS-HYD-SSC-41092",
+        board: "Telangana State Board of Secondary Education (SSC)",
+        address: "Moghulpura, Charminar Zone, Hyderabad, Telangana 500002",
+        contact_email: "contact@dmhs.edu.in",
+        contact_phone: "+91 40 2456 7890",
       };
     },
   },
@@ -143,13 +157,29 @@ export const supabaseService = {
         schoolId = school?.id;
       }
 
+      // Prevent duplicate class name
+      try {
+        const { data: existing } = await supabase
+          .from("classes")
+          .select("id, name")
+          .eq("name", payload.name.trim())
+          .maybeSingle();
+
+        if (existing) {
+          throw new SupabaseServiceError(`Class "${payload.name}" already exists.`);
+        }
+      } catch (checkErr: any) {
+        if (checkErr instanceof SupabaseServiceError) throw checkErr;
+      }
+
       const { data, error } = await supabase
         .from("classes")
         .insert({
           school_id: schoolId,
-          name: payload.name,
+          name: payload.name.trim(),
           grade_level: payload.grade_level,
           stream: payload.stream || "General",
+          is_active: true,
         })
         .select("*, sections(*)")
         .single();
@@ -163,13 +193,42 @@ export const supabaseService = {
       payload: { name: string; room_number?: string; capacity?: number }
     ) {
       if (!isSupabaseConfigured()) throw new SupabaseServiceError("Supabase not configured");
+
+      // Prevent duplicate section in same class
+      if (isUUID(classId)) {
+        try {
+          const { data: existing } = await supabase
+            .from("sections")
+            .select("id, name")
+            .eq("class_id", classId)
+            .eq("name", payload.name.trim())
+            .maybeSingle();
+
+          if (existing) {
+            throw new SupabaseServiceError(`Section "${payload.name}" already exists in this class.`);
+          }
+        } catch (checkErr: any) {
+          if (checkErr instanceof SupabaseServiceError) throw checkErr;
+        }
+      } else {
+        return {
+          id: "sec_" + Date.now(),
+          class_id: classId,
+          name: payload.name.trim(),
+          room_number: payload.room_number || null,
+          capacity: payload.capacity || 40,
+          is_active: true,
+        };
+      }
+
       const { data, error } = await supabase
         .from("sections")
         .insert({
           class_id: classId,
-          name: payload.name,
+          name: payload.name.trim(),
           room_number: payload.room_number || null,
           capacity: payload.capacity || 40,
+          is_active: true,
         })
         .select()
         .single();
@@ -1058,7 +1117,7 @@ export const supabaseService = {
         upcoming_features: [
           "Phase 2: Live Supabase DB Persistence",
           "Biometric & Daily Attendance",
-          "CBSE Examination Marks Ledger",
+          "SSC Examination Marks Ledger",
           "Fee Invoicing & Online Receipts",
           "AI Student Assistant (Authorized queries)",
         ],
@@ -1383,7 +1442,7 @@ export const supabaseService = {
       if (!isSupabaseConfigured()) {
         return [
           { id: 1, name: "Mid-Term Examination 2025-26", academic_year_id: 1, is_published: true, start_date: "2026-10-01", end_date: "2026-10-15" },
-          { id: 2, name: "CBSE Pre-Board Assessment I", academic_year_id: 1, is_published: true, start_date: "2026-12-01", end_date: "2026-12-15" },
+          { id: 2, name: "SSC Summative Assessment I (SA-1)", academic_year_id: 1, is_published: true, start_date: "2026-12-01", end_date: "2026-12-15" },
           { id: 3, name: "Annual Summative Assessment", academic_year_id: 1, is_published: false, start_date: "2027-03-01", end_date: "2027-03-20" },
         ];
       }
@@ -1397,7 +1456,7 @@ export const supabaseService = {
         // Fallback default exam if table is unseeded
         return [
           { id: 1, name: "Mid-Term Examination 2025-26", academic_year_id: 1, is_published: true, start_date: "2026-10-01", end_date: "2026-10-15" },
-          { id: 2, name: "CBSE Pre-Board Assessment I", academic_year_id: 1, is_published: true, start_date: "2026-12-01", end_date: "2026-12-15" },
+          { id: 2, name: "SSC Summative Assessment I (SA-1)", academic_year_id: 1, is_published: true, start_date: "2026-12-01", end_date: "2026-12-15" },
         ];
       }
       return data;
@@ -1408,34 +1467,171 @@ export const supabaseService = {
     async list(classId?: string | number) {
       if (!isSupabaseConfigured()) {
         return [
-          { id: 1, name: "English Core", code: "ENG-101", department: "Languages" },
-          { id: 2, name: "Mathematics", code: "MATH-201", department: "Mathematics" },
-          { id: 3, name: "General Science", code: "SCI-301", department: "Science" },
-          { id: 4, name: "Social Science", code: "SOC-401", department: "Humanities" },
-          { id: 5, name: "Computer Applications", code: "CA-501", department: "Computer Science" },
-          { id: 6, name: "Hindi", code: "HIN-102", department: "Languages" },
-          { id: 7, name: "Telugu", code: "TEL-103", department: "Languages" },
+          { id: "sub_1", name: "First Language: Telugu", code: "TEL-101", department: "Languages", is_active: true },
+          { id: "sub_2", name: "Second Language: Hindi", code: "HIN-102", department: "Languages", is_active: true },
+          { id: "sub_3", name: "Third Language: English", code: "ENG-103", department: "Languages", is_active: true },
+          { id: "sub_4", name: "Mathematics", code: "MAT-201", department: "Mathematics", is_active: true },
+          { id: "sub_5", name: "General Science (Physical & Bio)", code: "SCI-301", department: "Science", is_active: true },
+          { id: "sub_6", name: "Social Studies", code: "SOC-401", department: "Humanities", is_active: true },
+          { id: "sub_7", name: "Information Technology", code: "IT-501", department: "Computer Science", is_active: true },
+          { id: "sub_8", name: "First Language: Urdu", code: "URD-101", department: "Languages", is_active: true },
         ];
+      }
+
+      if (classId) {
+        try {
+          const { data: assignments, error: aErr } = await supabase
+            .from("class_subjects")
+            .select("id, class_id, subject_id, is_elective, subjects(*)")
+            .eq("class_id", classId);
+
+          if (!aErr && assignments && assignments.length > 0) {
+            return assignments.map((a: any) => ({
+              id: a.subjects?.id || a.subject_id,
+              name: a.subjects?.name || "Subject",
+              code: a.subjects?.code || "SUB",
+              department: a.subjects?.department || "General",
+              is_elective: a.is_elective ?? false,
+              is_active: a.subjects?.is_active ?? true,
+              assignment_id: a.id,
+              class_id: a.class_id,
+            }));
+          }
+        } catch (e) {
+          console.warn("Could not query class_subjects:", e);
+        }
       }
 
       const { data, error } = await supabase
         .from("subjects")
         .select("*")
-        .eq("is_active", true)
         .order("name", { ascending: true });
 
       if (error) throw new SupabaseServiceError(error.message, error.code, error.details);
 
       if (!data || data.length === 0) {
         return [
-          { id: 1, name: "English Core", code: "ENG-101", department: "Languages" },
-          { id: 2, name: "Mathematics", code: "MATH-201", department: "Mathematics" },
-          { id: 3, name: "General Science", code: "SCI-301", department: "Science" },
-          { id: 4, name: "Social Science", code: "SOC-401", department: "Humanities" },
-          { id: 5, name: "Computer Applications", code: "CA-501", department: "Computer Science" },
+          { id: "sub_1", name: "First Language: Telugu", code: "TEL-101", department: "Languages", is_active: true },
+          { id: "sub_2", name: "Second Language: Hindi", code: "HIN-102", department: "Languages", is_active: true },
+          { id: "sub_3", name: "Third Language: English", code: "ENG-103", department: "Languages", is_active: true },
+          { id: "sub_4", name: "Mathematics", code: "MAT-201", department: "Mathematics", is_active: true },
+          { id: "sub_5", name: "General Science (Physical & Bio)", code: "SCI-301", department: "Science", is_active: true },
+          { id: "sub_6", name: "Social Studies", code: "SOC-401", department: "Humanities", is_active: true },
+          { id: "sub_7", name: "Information Technology", code: "IT-501", department: "Computer Science", is_active: true },
+          { id: "sub_8", name: "First Language: Urdu", code: "URD-101", department: "Languages", is_active: true },
         ];
       }
       return data;
+    },
+
+    async create(payload: { name: string; code: string; department?: string; is_active?: boolean }) {
+      if (!isSupabaseConfigured()) throw new SupabaseServiceError("Supabase not configured");
+      const school = await supabaseService.schools.getCurrent();
+      const schoolId = school?.id;
+
+      // Check duplicate code
+      try {
+        const { data: existing } = await supabase
+          .from("subjects")
+          .select("id, code")
+          .eq("code", payload.code.trim().toUpperCase())
+          .maybeSingle();
+
+        if (existing) {
+          throw new SupabaseServiceError(`Subject code "${payload.code}" already exists.`);
+        }
+      } catch (checkErr: any) {
+        if (checkErr instanceof SupabaseServiceError) throw checkErr;
+      }
+
+      const { data, error } = await supabase
+        .from("subjects")
+        .insert({
+          school_id: schoolId,
+          name: payload.name.trim(),
+          code: payload.code.trim().toUpperCase(),
+          department: payload.department || "General",
+          is_active: payload.is_active ?? true,
+        })
+        .select()
+        .single();
+
+      if (error) throw new SupabaseServiceError(error.message, error.code, error.details);
+      return data;
+    },
+
+    async update(
+      subjectId: string | number,
+      payload: { name?: string; code?: string; department?: string; is_active?: boolean }
+    ) {
+      if (!isSupabaseConfigured()) throw new SupabaseServiceError("Supabase not configured");
+      const updates: Record<string, any> = {};
+      if (payload.name !== undefined) updates.name = payload.name.trim();
+      if (payload.code !== undefined) updates.code = payload.code.trim().toUpperCase();
+      if (payload.department !== undefined) updates.department = payload.department;
+      if (payload.is_active !== undefined) updates.is_active = payload.is_active;
+
+      const { data, error } = await supabase
+        .from("subjects")
+        .update(updates)
+        .eq("id", subjectId)
+        .select()
+        .single();
+
+      if (error) throw new SupabaseServiceError(error.message, error.code, error.details);
+      return data;
+    },
+
+    async deactivate(subjectId: string | number) {
+      if (!isSupabaseConfigured()) throw new SupabaseServiceError("Supabase not configured");
+      const { data, error } = await supabase
+        .from("subjects")
+        .update({ is_active: false })
+        .eq("id", subjectId)
+        .select()
+        .single();
+
+      if (error) throw new SupabaseServiceError(error.message, error.code, error.details);
+      return data;
+    },
+
+    async assignToClass(
+      classId: string | number,
+      subjectId: string | number,
+      is_elective: boolean = false
+    ) {
+      if (!isSupabaseConfigured()) throw new SupabaseServiceError("Supabase not configured");
+      const { data, error } = await supabase
+        .from("class_subjects")
+        .upsert(
+          {
+            class_id: classId,
+            subject_id: subjectId,
+            is_elective: is_elective,
+          },
+          { onConflict: "class_id,subject_id" }
+        )
+        .select()
+        .single();
+
+      if (error) throw new SupabaseServiceError(error.message, error.code, error.details);
+      return data;
+    },
+
+    async removeFromClass(classId: string | number, subjectId: string | number) {
+      if (!isSupabaseConfigured()) throw new SupabaseServiceError("Supabase not configured");
+      const { data, error } = await supabase
+        .from("class_subjects")
+        .delete()
+        .eq("class_id", classId)
+        .eq("subject_id", subjectId);
+
+      if (error) throw new SupabaseServiceError(error.message, error.code, error.details);
+      return true;
+    },
+
+    async listByClass(classId: string | number) {
+      return this.list(classId);
     },
   },
 

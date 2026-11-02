@@ -140,7 +140,7 @@ export const ReportsPage: React.FC = () => {
             <Award className="w-4 h-4 text-amber-500" />
           </div>
           <p className="text-2xl font-bold text-light-text dark:text-dark-text mt-1">98.4%</p>
-          <p className="text-xs text-light-muted dark:text-dark-muted mt-1">CBSE board readiness</p>
+          <p className="text-xs text-light-muted dark:text-dark-muted mt-1">Telangana SSC board readiness</p>
         </Card>
       </div>
 

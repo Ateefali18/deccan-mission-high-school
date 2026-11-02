@@ -34,7 +34,7 @@ class GradingScale(Base, TimestampMixin):
 
     id = Column(Integer, primary_key=True, index=True)
     school_id = Column(Integer, ForeignKey("schools.id", ondelete="CASCADE"), nullable=False)
-    name = Column(String(100), nullable=False, default="CBSE 9-Point Scale")
+    name = Column(String(100), nullable=False, default="Telangana SSC 9-Point Scale")
     grade = Column(String(10), nullable=False)  # A1, A2, B1, B2, C1, C2, D, E1, E2
     min_percentage = Column(Float, nullable=False)
     max_percentage = Column(Float, nullable=False)

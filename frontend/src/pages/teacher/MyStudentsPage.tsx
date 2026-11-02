@@ -212,7 +212,7 @@ export const MyStudentsPage: React.FC = () => {
       <div className="p-3.5 rounded-xl bg-brand-gold/10 border border-brand-gold/20 flex items-center gap-2.5 text-xs text-light-primary dark:text-dark-primary">
         <ShieldCheck className="w-4 h-4 text-brand-gold shrink-0" />
         <span>
-          <strong>Faculty Permission Boundary:</strong> You are viewing students authorized strictly under your CBSE Class Teacher and Subject Teacher assignments.
+          <strong>Faculty Permission Boundary:</strong> You are viewing students authorized strictly under your SSC Class Teacher and Subject Teacher assignments.
         </span>
       </div>
 

@@ -432,7 +432,7 @@ export const AttendancePage: React.FC = () => {
     <div className="space-y-6">
       <PageHeader
         title="Attendance Register & Daily Roll Call"
-        subtitle="CBSE compliant roll-call register, live database synchronization, and date-wise audit reports"
+        subtitle="Telangana SSC compliant roll-call register, live database synchronization, and date-wise audit reports"
         action={
           <div className="flex items-center gap-2">
             <Button

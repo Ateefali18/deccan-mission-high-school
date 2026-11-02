@@ -88,7 +88,7 @@ def test_marks_entry_sheet_and_validation(client, seeded_data):
     assert st1_entry["marks_obtained"] == 96.0
     assert st1_entry["remarks"] == "Re-evaluation +2"
 
-    # 5. Class Results Calculation with CBSE 9-Point Grade (96% -> A1)
+    # 5. Class Results Calculation with SSC 9-Point Grade (96% -> A1)
     res_results = client.get(
         f"/api/v1/examinations/results/class?exam_id={exam.id}&class_id={cls10.id}&section_id={sec10a.id}",
         headers=headers,

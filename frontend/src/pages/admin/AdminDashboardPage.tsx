@@ -111,7 +111,7 @@ export const AdminDashboardPage: React.FC = () => {
     <div className="space-y-6">
       <PageHeader
         title="Administrative Command Center"
-        subtitle="Real-time institutional oversight, verified attendance, and CBSE academic governance"
+        subtitle="Real-time institutional oversight, verified attendance, and Telangana State SSC academic governance"
         action={
           <div className="flex items-center gap-2">
             <Button
@@ -393,7 +393,7 @@ export const AdminDashboardPage: React.FC = () => {
                 <div>
                   <p className="text-xs font-bold text-light-primary dark:text-dark-primary">Attendance Register</p>
                   <p className="text-[11px] text-light-secondary dark:text-dark-secondary">
-                    Roll call entry & CBSE reports
+                    Roll call entry & SSC reports
                   </p>
                 </div>
               </div>
@@ -411,7 +411,7 @@ export const AdminDashboardPage: React.FC = () => {
                 <div>
                   <p className="text-xs font-bold text-light-primary dark:text-dark-primary">Examinations & Marks</p>
                   <p className="text-[11px] text-light-secondary dark:text-dark-secondary">
-                    CBSE scorecards, rankings, grading
+                    SSC scorecards, rankings, grading
                   </p>
                 </div>
               </div>

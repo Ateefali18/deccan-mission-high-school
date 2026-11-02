@@ -4,8 +4,26 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { ThemeProvider } from "../app/ThemeContext";
 import { ThemeSelector } from "../components/ui/ThemeSelector";
 
-// Mock matchMedia
+// Mock matchMedia & localStorage
 beforeEach(() => {
+  if (typeof window.localStorage === "undefined") {
+    let store: Record<string, string> = {};
+    const mockStorage = {
+      getItem: (key: string) => store[key] || null,
+      setItem: (key: string, value: string) => {
+        store[key] = value.toString();
+      },
+      removeItem: (key: string) => {
+        delete store[key];
+      },
+      clear: () => {
+        store = {};
+      },
+    };
+    Object.defineProperty(window, "localStorage", { value: mockStorage, writable: true });
+    Object.defineProperty(globalThis, "localStorage", { value: mockStorage, writable: true });
+  }
+
   window.matchMedia =
     window.matchMedia ||
     function () {

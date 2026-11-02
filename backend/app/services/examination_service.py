@@ -13,9 +13,9 @@ from app.core.exceptions import ValidationException, ResourceNotFoundException
 
 class ExaminationService:
     @staticmethod
-    def calculate_cbse_grade(pct: float, db: Optional[Session] = None, school_id: Optional[int] = None) -> Tuple[str, float]:
+    def calculate_ssc_grade(pct: float, db: Optional[Session] = None, school_id: Optional[int] = None) -> Tuple[str, float]:
         """
-        Determines grade based on school's grading_scales table or official CBSE 9-point scale.
+        Determines grade based on school's grading_scales table or official Telangana SSC 9-point scale.
         """
         if db and school_id:
             scales = (
@@ -28,7 +28,7 @@ class ExaminationService:
                 if pct >= s.min_percentage:
                     return s.grade, s.grade_point or 0.0
 
-        # Default CBSE 9-point secondary scale
+        # Default Telangana SSC 9-point secondary scale
         if pct >= 91.0:
             return "A1", 10.0
         elif pct >= 81.0:
@@ -335,7 +335,7 @@ class ExaminationService:
             )
 
             pct = (total_obtained / total_max * 100.0) if total_max > 0 else 0.0
-            grade, _ = ExaminationService.calculate_cbse_grade(pct, db=db, school_id=school_id)
+            grade, _ = ExaminationService.calculate_ssc_grade(pct, db=db, school_id=school_id)
 
             status = "Absent" if any_absent and len(marks) == len(es_ids) else "Failed" if failed_any else "Passed"
 

@@ -100,7 +100,7 @@ export const StudentDashboardPage: React.FC = () => {
               label="Overall Attendance"
               value="94.2%"
               icon={<CalendarCheck className="w-6 h-6" />}
-              subtitle="Verified in Database (≥75% CBSE Target)"
+              subtitle="Verified in Database (≥75% SSC Target)"
               trend="Eligible"
             />
           </Link>
@@ -146,7 +146,7 @@ export const StudentDashboardPage: React.FC = () => {
                 Official Student Enrollment Record
               </h3>
               <p className="text-xs text-light-secondary dark:text-dark-secondary">
-                Protected personal academic record under CBSE Affiliation #TS-HYD-CBSE-41092
+                Protected personal academic record under Telangana SSC Affiliation #TS-HYD-SSC-41092
               </p>
             </div>
             <ShieldCheck className="w-5 h-5 text-brand-blue dark:text-dark-accent" />
@@ -184,7 +184,7 @@ export const StudentDashboardPage: React.FC = () => {
             <div className="flex items-center justify-between mb-2">
               <h4 className="text-xs font-bold uppercase tracking-wider text-light-secondary dark:text-dark-secondary flex items-center gap-1.5">
                 <Award className="w-4 h-4 text-brand-blue dark:text-dark-accent" />
-                <span>Published CBSE Examination Records (Term 2025–2026)</span>
+                <span>Published SSC Examination Records (Term 2025–2026)</span>
               </h4>
               <Link to="/student/marks" className="text-xs font-bold text-brand-blue dark:text-dark-accent hover:underline flex items-center gap-1">
                 <span>View Full Report Card</span>

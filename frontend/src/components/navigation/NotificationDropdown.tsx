@@ -37,7 +37,7 @@ export const NotificationDropdown: React.FC = () => {
       // Add dynamic attendance/exam alert
       items.push({
         id: "sys-01",
-        title: "CBSE Affiliation TS-HYD-CBSE-41092 Verified",
+        title: "Telangana State SSC Affiliation TS-HYD-SSC-41092 Verified",
         message: "Deccan Mission High School academic portal active for Term 2025-2026.",
         time: "Today",
         type: "system",

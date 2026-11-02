@@ -198,7 +198,7 @@ def get_class_results(
     current_user: User = Depends(deps.get_current_active_user),
 ):
     """
-    Compute and view tabulated results for a class/section with CBSE grades and ranks.
+    Compute and view tabulated results for a class/section with SSC grades and ranks.
     """
     role = get_user_role(current_user)
     if role not in ["ADMIN", "TEACHER"]:

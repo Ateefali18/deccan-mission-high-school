@@ -98,7 +98,7 @@ export const NoticesPage: React.FC = () => {
     <div className="space-y-6">
       <PageHeader
         title="Official Notices & Circulars"
-        subtitle="Institutional announcements, CBSE notifications, and academic advisories"
+        subtitle="Institutional announcements, Telangana SSC notifications, and academic advisories"
         action={
           role === "ADMIN" ? (
             <Button
@@ -222,7 +222,7 @@ export const NoticesPage: React.FC = () => {
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Schedule for CBSE Periodic Assessment II (2025–26)"
+              placeholder="e.g. Schedule for SSC Summative Assessment I (2025–26)"
               required
               className="w-full px-3.5 py-2.5 rounded-xl border border-light-border dark:border-dark-border bg-gray-50 dark:bg-dark-elevated text-xs text-light-primary dark:text-dark-primary focus:border-brand-gold focus:outline-none"
             />

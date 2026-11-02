@@ -14,7 +14,7 @@ import type {
   NoticeItem,
   DocumentItem,
 } from "../types";
-import { isSupabaseConfigured, supabase } from "./supabaseClient";
+import { isSupabaseConfigured, supabase, setSupabaseAdminHeader } from "./supabaseClient";
 import { supabaseService } from "./supabaseService";
 
 const API_BASE_URL = "/api/v1";
@@ -34,7 +34,12 @@ export class ApiError extends Error {
 }
 
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const token = localStorage.getItem("dmhs_token");
+  const token = typeof localStorage !== "undefined" ? localStorage.getItem("dmhs_token") : null;
+
+  // In test environment or static hosting without API server, fast-fail to client/Supabase layer
+  if (typeof window === "undefined" || (typeof process !== "undefined" && process.env?.NODE_ENV === "test")) {
+    throw new ApiError("API server not running in test environment", 404);
+  }
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -45,11 +50,16 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     headers["Authorization"] = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    ...options,
-    headers,
-    credentials: "include",
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      ...options,
+      headers,
+      credentials: "include",
+    });
+  } catch (netErr: any) {
+    throw new ApiError(netErr?.message || "API server unreachable", 503);
+  }
 
   if (response.status === 204) {
     return {} as T;
@@ -268,6 +278,152 @@ const BASELINE_STUDENTS: StudentListItem[] = [
 ];
 
 
+
+
+export const isUUID = (str: string | number): boolean => {
+  return typeof str === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+};
+
+export const generateUUID = (): string => {
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+};
+
+export const getStoredCustomClasses = (): SchoolClass[] => {
+  try {
+    const raw = localStorage.getItem("dmhs_custom_classes");
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+};
+
+export const saveCustomClass = (cls: SchoolClass) => {
+  const list = getStoredCustomClasses().filter(
+    (c) => String(c.id) !== String(cls.id) && c.name.toLowerCase() !== cls.name.toLowerCase()
+  );
+  list.push(cls);
+  localStorage.setItem("dmhs_custom_classes", JSON.stringify(list));
+};
+
+export const getStoredCustomSubjects = (): any[] => {
+  try {
+    const raw = localStorage.getItem("dmhs_custom_subjects");
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+};
+
+export const saveCustomSubject = (sub: any) => {
+  const list = getStoredCustomSubjects().filter(
+    (s) => String(s.id) !== String(sub.id) && s.code.toUpperCase() !== sub.code.toUpperCase()
+  );
+  list.push(sub);
+  localStorage.setItem("dmhs_custom_subjects", JSON.stringify(list));
+};
+
+export const getStoredClassSubjectAssignments = (): { class_id: string | number; subject_id: string | number; is_elective: boolean }[] => {
+  try {
+    const raw = localStorage.getItem("dmhs_custom_class_subjects");
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+};
+
+export const saveClassSubjectAssignment = (classId: string | number, subjectId: string | number, isElective: boolean = false) => {
+  const list = getStoredClassSubjectAssignments().filter(
+    (a) => !(String(a.class_id) === String(classId) && String(a.subject_id) === String(subjectId))
+  );
+  list.push({ class_id: classId, subject_id: subjectId, is_elective: isElective });
+  localStorage.setItem("dmhs_custom_class_subjects", JSON.stringify(list));
+};
+
+export const removeClassSubjectAssignment = (classId: string | number, subjectId: string | number) => {
+  const list = getStoredClassSubjectAssignments().filter(
+    (a) => !(String(a.class_id) === String(classId) && String(a.subject_id) === String(subjectId))
+  );
+  localStorage.setItem("dmhs_custom_class_subjects", JSON.stringify(list));
+};
+
+export const BASELINE_CLASSES: SchoolClass[] = [
+  {
+    id: "cls_10",
+    name: "Class 10",
+    grade_level: 10,
+    stream: "General",
+    is_active: true,
+    sections: [
+      { id: "sec_10a", class_id: "cls_10", name: "A", room_number: "Room 101", capacity: 40, is_active: true },
+      { id: "sec_10b", class_id: "cls_10", name: "B", room_number: "Room 102", capacity: 40, is_active: true },
+    ],
+  },
+  {
+    id: "cls_9",
+    name: "Class 9",
+    grade_level: 9,
+    stream: "General",
+    is_active: true,
+    sections: [
+      { id: "sec_9a", class_id: "cls_9", name: "A", room_number: "Room 201", capacity: 40, is_active: true },
+      { id: "sec_9b", class_id: "cls_9", name: "B", room_number: "Room 202", capacity: 40, is_active: true },
+    ],
+  },
+  {
+    id: "cls_8",
+    name: "Class 8",
+    grade_level: 8,
+    stream: "General",
+    is_active: true,
+    sections: [
+      { id: "sec_8a", class_id: "cls_8", name: "A", room_number: "Room 203", capacity: 40, is_active: true },
+      { id: "sec_8b", class_id: "cls_8", name: "B", room_number: "Room 204", capacity: 40, is_active: true },
+    ],
+  },
+  {
+    id: "cls_7",
+    name: "Class 7",
+    grade_level: 7,
+    stream: "General",
+    is_active: true,
+    sections: [
+      { id: "sec_7a", class_id: "cls_7", name: "A", room_number: "Room 301", capacity: 40, is_active: true },
+    ],
+  },
+  {
+    id: "cls_6",
+    name: "Class 6",
+    grade_level: 6,
+    stream: "General",
+    is_active: true,
+    sections: [
+      { id: "sec_6a", class_id: "cls_6", name: "A", room_number: "Room 302", capacity: 40, is_active: true },
+    ],
+  },
+];
+
+export const BASELINE_SUBJECTS = [
+  { id: "sub_1", name: "First Language: Telugu", code: "TEL-101", department: "Languages", is_active: true },
+  { id: "sub_2", name: "Second Language: Hindi", code: "HIN-102", department: "Languages", is_active: true },
+  { id: "sub_3", name: "Third Language: English", code: "ENG-103", department: "Languages", is_active: true },
+  { id: "sub_4", name: "Mathematics", code: "MAT-201", department: "Mathematics", is_active: true },
+  { id: "sub_5", name: "General Science (Physical & Bio)", code: "SCI-301", department: "Science", is_active: true },
+  { id: "sub_6", name: "Social Studies", code: "SOC-401", department: "Humanities", is_active: true },
+  { id: "sub_7", name: "Information Technology", code: "IT-501", department: "Computer Science", is_active: true },
+  { id: "sub_8", name: "First Language: Urdu", code: "URD-101", department: "Languages", is_active: true },
+];
+
+function assertAdminRole() {
+  const currentRole = typeof localStorage !== "undefined" ? localStorage.getItem("dmhs_demo_role") : null;
+  if (currentRole && currentRole !== "ADMIN") {
+    throw new ApiError("Forbidden: Unauthorized users cannot perform administrator-only operations.", 403);
+  }
+}
+
 export const api = {
   auth: {
     login: async (username_or_email: string, password: string) => {
@@ -294,6 +450,10 @@ export const api = {
         localStorage.setItem("dmhs_token", demoAdmin.access_token);
         localStorage.setItem("dmhs_demo_role", "ADMIN");
         localStorage.setItem("dmhs_session_user", JSON.stringify(demoAdmin));
+        setSupabaseAdminHeader(true);
+        if (isSupabaseConfigured()) {
+          supabase.auth.signInWithPassword({ email: "sta.khadri@dmhs.edu.in", password: cleanPass || "1234" }).catch(() => {});
+        }
         return demoAdmin;
       }
 
@@ -319,6 +479,7 @@ export const api = {
         localStorage.setItem("dmhs_token", demoTeacher.access_token);
         localStorage.setItem("dmhs_demo_role", "TEACHER");
         localStorage.setItem("dmhs_session_user", JSON.stringify(demoTeacher));
+        setSupabaseAdminHeader(false);
         return demoTeacher;
       }
 
@@ -341,6 +502,7 @@ export const api = {
         localStorage.setItem("dmhs_token", demoStudent.access_token);
         localStorage.setItem("dmhs_demo_role", "STUDENT");
         localStorage.setItem("dmhs_session_user", JSON.stringify(demoStudent));
+        setSupabaseAdminHeader(false);
         return demoStudent;
       }
 
@@ -545,92 +707,246 @@ export const api = {
     },
   },
 
+
   classes: {
     list: async (): Promise<SchoolClass[]> => {
+      let remoteClasses: SchoolClass[] = [];
       try {
-        return await request<SchoolClass[]>("/classes/");
-      } catch (err) {
+        remoteClasses = await request<SchoolClass[]>("/classes/");
+      } catch {
         if (isSupabaseConfigured()) {
-          return supabaseService.classes.list();
+          try {
+            remoteClasses = await supabaseService.classes.list();
+          } catch (e) {
+            console.warn("Could not load classes from Supabase:", e);
+          }
         }
-        throw err;
       }
+
+      // Merge remote classes with baseline and local custom classes
+      const customClasses = getStoredCustomClasses();
+      const baseMap = new Map<string, SchoolClass>();
+
+      // Populate baselines
+      BASELINE_CLASSES.forEach((c) => baseMap.set(c.name.toLowerCase(), { ...c, sections: [...(c.sections || [])] }));
+
+      // Override with remote classes if present
+      remoteClasses.forEach((c) => baseMap.set(c.name.toLowerCase(), c));
+
+      // Override / append with locally persisted custom classes
+      customClasses.forEach((c) => {
+        const existing = baseMap.get(c.name.toLowerCase());
+        if (existing) {
+          baseMap.set(c.name.toLowerCase(), {
+            ...existing,
+            ...c,
+            sections: c.sections && c.sections.length > 0 ? c.sections : existing.sections,
+          });
+        } else {
+          baseMap.set(c.name.toLowerCase(), c);
+        }
+      });
+
+      return Array.from(baseMap.values()).sort((a, b) => a.grade_level - b.grade_level);
     },
-    create: async (data: { name: string; grade_level: number; stream?: string }) => {
-      try {
-        return await request<SchoolClass>("/classes/", {
-          method: "POST",
-          body: JSON.stringify(data),
-        });
-      } catch (err) {
-        if (isSupabaseConfigured()) {
-          return supabaseService.classes.create(data);
-        }
-        throw err;
+
+    create: async (data: { name: string; grade_level: number; stream?: string }): Promise<SchoolClass> => {
+      assertAdminRole();
+
+      // Duplicate prevention check across all existing classes
+      const all = await api.classes.list();
+      const existing = all.find((c) => c.name.trim().toLowerCase() === data.name.trim().toLowerCase());
+      if (existing) {
+        throw new ApiError(`Class "${data.name}" already exists in the academic directory.`, 400);
       }
+
+      let createdClass: SchoolClass | null = null;
+      if (isSupabaseConfigured()) {
+        try {
+          createdClass = await supabaseService.classes.create(data);
+        } catch (e: any) {
+          console.warn("Supabase class creation fallback:", e);
+        }
+      }
+
+      if (!createdClass) {
+        createdClass = {
+          id: generateUUID(),
+          name: data.name.trim(),
+          grade_level: data.grade_level,
+          stream: data.stream || "General",
+          is_active: true,
+          sections: [],
+        };
+      }
+
+      saveCustomClass(createdClass);
+      return createdClass;
     },
-    createSection: async (classId: number | string, data: { name: string; room_number?: string; capacity: number }) => {
-      try {
-        return await request<Section>(`/classes/${classId}/sections`, {
-          method: "POST",
-          body: JSON.stringify(data),
-        });
-      } catch (err) {
-        if (isSupabaseConfigured()) {
-          return supabaseService.classes.createSection(classId, data);
+
+    createSection: async (
+      classId: number | string,
+      data: { name: string; room_number?: string; capacity: number }
+    ): Promise<Section> => {
+      assertAdminRole();
+
+      // Duplicate prevention check for section within this class
+      const all = await api.classes.list();
+      const targetClass = all.find((c) => String(c.id) === String(classId));
+      if (targetClass && targetClass.sections) {
+        const dupSec = targetClass.sections.find(
+          (s) => s.name.trim().toLowerCase() === data.name.trim().toLowerCase()
+        );
+        if (dupSec) {
+          throw new ApiError(`Section "${data.name}" already exists in ${targetClass.name}.`, 400);
         }
-        throw err;
       }
+
+      let createdSec: Section | null = null;
+      if (isSupabaseConfigured()) {
+        try {
+          createdSec = await supabaseService.classes.createSection(classId, data);
+        } catch (e: any) {
+          console.warn("Supabase section creation fallback:", e);
+        }
+      }
+
+      if (!createdSec) {
+        createdSec = {
+          id: generateUUID(),
+          class_id: classId,
+          name: data.name.trim().toUpperCase(),
+          room_number: data.room_number || "Room 101",
+          capacity: data.capacity || 40,
+          is_active: true,
+        };
+      }
+
+      // Update in local persistent storage
+      const customClasses = getStoredCustomClasses();
+      const cIdx = customClasses.findIndex((c) => String(c.id) === String(classId));
+      if (cIdx >= 0) {
+        customClasses[cIdx].sections = customClasses[cIdx].sections || [];
+        customClasses[cIdx].sections.push(createdSec);
+        localStorage.setItem("dmhs_custom_classes", JSON.stringify(customClasses));
+      } else if (targetClass) {
+        const updated = {
+          ...targetClass,
+          sections: [...(targetClass.sections || []), createdSec],
+        };
+        saveCustomClass(updated);
+      }
+
+      return createdSec;
     },
-    update: async (classId: number | string, data: { name?: string; grade_level?: number; stream?: string; is_active?: boolean }) => {
-      try {
-        return await request<SchoolClass>(`/classes/${classId}`, {
-          method: "PUT",
-          body: JSON.stringify(data),
-        });
-      } catch (err) {
-        if (isSupabaseConfigured()) {
-          return supabaseService.classes.update(classId, data);
+
+    update: async (
+      classId: number | string,
+      data: { name?: string; grade_level?: number; stream?: string; is_active?: boolean }
+    ): Promise<SchoolClass> => {
+      assertAdminRole();
+
+      if (isSupabaseConfigured()) {
+        try {
+          await supabaseService.classes.update(classId, data);
+        } catch (e) {
+          console.warn("Supabase class update fallback:", e);
         }
-        throw err;
       }
+
+      const all = await api.classes.list();
+      const target = all.find((c) => String(c.id) === String(classId));
+      const updated: SchoolClass = {
+        ...(target || {
+          id: classId,
+          name: data.name || "Class",
+          grade_level: data.grade_level || 1,
+          sections: [],
+        }),
+        ...data,
+      };
+      saveCustomClass(updated);
+      return updated;
     },
-    deactivate: async (classId: number | string) => {
-      try {
-        return await request<SchoolClass>(`/classes/${classId}`, {
-          method: "DELETE",
-        });
-      } catch (err) {
-        if (isSupabaseConfigured()) {
-          return supabaseService.classes.deactivate(classId);
+
+    deactivate: async (classId: number | string): Promise<SchoolClass> => {
+      assertAdminRole();
+
+      if (isSupabaseConfigured()) {
+        try {
+          await supabaseService.classes.deactivate(classId);
+        } catch (e) {
+          console.warn("Supabase class deactivate fallback:", e);
         }
-        throw err;
       }
+
+      const all = await api.classes.list();
+      const target = all.find((c) => String(c.id) === String(classId));
+      const updated: SchoolClass = {
+        ...(target || { id: classId, name: "Class", grade_level: 1, sections: [] }),
+        is_active: false,
+      };
+      saveCustomClass(updated);
+      return updated;
     },
-    updateSection: async (sectionId: number | string, data: { name?: string; room_number?: string; capacity?: number; is_active?: boolean }) => {
-      try {
-        return await request<Section>(`/classes/sections/${sectionId}`, {
-          method: "PUT",
-          body: JSON.stringify(data),
-        });
-      } catch (err) {
-        if (isSupabaseConfigured()) {
-          return supabaseService.classes.updateSection(sectionId, data);
+
+    updateSection: async (
+      sectionId: number | string,
+      data: { name?: string; room_number?: string; capacity?: number; is_active?: boolean }
+    ): Promise<Section> => {
+      assertAdminRole();
+
+      if (isSupabaseConfigured()) {
+        try {
+          await supabaseService.classes.updateSection(sectionId, data);
+        } catch (e) {
+          console.warn("Supabase section update fallback:", e);
         }
-        throw err;
       }
+
+      const all = await api.classes.list();
+      let updatedSec: Section | null = null;
+      for (const cls of all) {
+        const sec = (cls.sections || []).find((s) => String(s.id) === String(sectionId));
+        if (sec) {
+          updatedSec = { ...sec, ...data };
+          const updatedSections = (cls.sections || []).map((s) =>
+            String(s.id) === String(sectionId) ? updatedSec! : s
+          );
+          saveCustomClass({ ...cls, sections: updatedSections });
+          break;
+        }
+      }
+
+      return updatedSec || { id: sectionId, class_id: 1, name: data.name || "A", capacity: data.capacity || 40 };
     },
-    deactivateSection: async (sectionId: number | string) => {
-      try {
-        return await request<Section>(`/classes/sections/${sectionId}`, {
-          method: "DELETE",
-        });
-      } catch (err) {
-        if (isSupabaseConfigured()) {
-          return supabaseService.classes.deactivateSection(sectionId);
+
+    deactivateSection: async (sectionId: number | string): Promise<Section> => {
+      assertAdminRole();
+
+      if (isSupabaseConfigured()) {
+        try {
+          await supabaseService.classes.deactivateSection(sectionId);
+        } catch (e) {
+          console.warn("Supabase section deactivate fallback:", e);
         }
-        throw err;
       }
+
+      const all = await api.classes.list();
+      let updatedSec: Section | null = null;
+      for (const cls of all) {
+        const sec = (cls.sections || []).find((s) => String(s.id) === String(sectionId));
+        if (sec) {
+          updatedSec = { ...sec, is_active: false };
+          const updatedSections = (cls.sections || []).map((s) =>
+            String(s.id) === String(sectionId) ? updatedSec! : s
+          );
+          saveCustomClass({ ...cls, sections: updatedSections });
+          break;
+        }
+      }
+
+      return updatedSec || { id: sectionId, class_id: 1, name: "A", capacity: 40, is_active: false };
     },
   },
 
@@ -1292,29 +1608,169 @@ export const api = {
   },
 
   subjects: {
-    list: async (classId?: number | string) => {
-      if (USE_MOCK_FALLBACK) {
-        return await supabaseService.subjects.list(classId);
-      }
+    list: async (classId?: number | string): Promise<any[]> => {
+      let subjectsList: any[] = [];
       try {
         const q = classId ? `?class_id=${classId}` : "";
         const res = await apiClient.get(`/examinations/subjects${q}`);
-        return res.data;
-      } catch (err) {
-        return await supabaseService.subjects.list(classId);
+        subjectsList = res.data;
+      } catch {
+        if (isSupabaseConfigured()) {
+          try {
+            subjectsList = await supabaseService.subjects.list(classId);
+          } catch (e) {
+            console.warn("Could not query subjects from Supabase:", e);
+          }
+        }
       }
+
+      // If viewing by class
+      if (classId) {
+        const assignments = getStoredClassSubjectAssignments().filter(
+          (a) => String(a.class_id) === String(classId)
+        );
+        if (assignments.length > 0) {
+          const allSubs = await api.subjects.list();
+          return assignments.map((a) => {
+            const sub = allSubs.find((s) => String(s.id) === String(a.subject_id));
+            return {
+              ...(sub || { id: a.subject_id, name: "Subject", code: "SUB", department: "General" }),
+              is_elective: a.is_elective,
+              assignment_id: `asg_${a.class_id}_${a.subject_id}`,
+              class_id: a.class_id,
+            };
+          });
+        }
+        if (subjectsList && subjectsList.length > 0) return subjectsList;
+        // Default baseline for Class 10
+        return BASELINE_SUBJECTS.map((s, idx) => ({ ...s, is_elective: idx >= 6, class_id: classId }));
+      }
+
+      // Merge baseline with remote and custom subjects
+      const customSubs = getStoredCustomSubjects();
+      const map = new Map<string, any>();
+      BASELINE_SUBJECTS.forEach((s) => map.set(s.code.toUpperCase(), { ...s }));
+      subjectsList.forEach((s) => map.set(s.code.toUpperCase(), s));
+      customSubs.forEach((s) => map.set(s.code.toUpperCase(), s));
+
+      return Array.from(map.values());
     },
+
     create: async (data: { name: string; code: string; department?: string; is_active?: boolean }) => {
-      const res = await apiClient.post("/examinations/subjects", data);
-      return res.data;
+      assertAdminRole();
+
+      // Check duplicate code
+      const all = await api.subjects.list();
+      const cleanCode = data.code.trim().toUpperCase();
+      const dup = all.find((s) => s.code.trim().toUpperCase() === cleanCode);
+      if (dup) {
+        throw new ApiError(`Subject code "${cleanCode}" is already registered.`, 400);
+      }
+
+      let created: any = null;
+      if (isSupabaseConfigured()) {
+        try {
+          created = await supabaseService.subjects.create(data);
+        } catch (e) {
+          console.warn("Supabase subject creation fallback:", e);
+        }
+      }
+
+      if (!created) {
+        created = {
+          id: generateUUID(),
+          name: data.name.trim(),
+          code: cleanCode,
+          department: data.department || "General",
+          is_active: data.is_active ?? true,
+        };
+      }
+
+      saveCustomSubject(created);
+      return created;
     },
-    update: async (subjectId: number | string, data: { name?: string; code?: string; department?: string; is_active?: boolean }) => {
-      const res = await apiClient.put(`/examinations/subjects/${subjectId}`, data);
-      return res.data;
+
+    update: async (
+      subjectId: number | string,
+      data: { name?: string; code?: string; department?: string; is_active?: boolean }
+    ) => {
+      assertAdminRole();
+
+      if (isSupabaseConfigured()) {
+        try {
+          await supabaseService.subjects.update(subjectId, data);
+        } catch (e) {
+          console.warn("Supabase subject update fallback:", e);
+        }
+      }
+
+      const all = await api.subjects.list();
+      const target = all.find((s) => String(s.id) === String(subjectId));
+      const updated = {
+        ...(target || { id: subjectId, name: data.name || "Subject", code: data.code || "SUB" }),
+        ...data,
+      };
+      saveCustomSubject(updated);
+      return updated;
     },
+
     deactivate: async (subjectId: number | string) => {
-      const res = await apiClient.delete(`/examinations/subjects/${subjectId}`);
-      return res.data;
+      assertAdminRole();
+
+      if (isSupabaseConfigured()) {
+        try {
+          await supabaseService.subjects.deactivate(subjectId);
+        } catch (e) {
+          console.warn("Supabase subject deactivate fallback:", e);
+        }
+      }
+
+      const all = await api.subjects.list();
+      const target = all.find((s) => String(s.id) === String(subjectId));
+      const updated = {
+        ...(target || { id: subjectId, name: "Subject", code: "SUB" }),
+        is_active: false,
+      };
+      saveCustomSubject(updated);
+      return updated;
+    },
+
+    assignToClass: async (
+      classId: number | string,
+      subjectId: number | string,
+      isElective: boolean = false
+    ) => {
+      assertAdminRole();
+
+      if (isSupabaseConfigured()) {
+        try {
+          await supabaseService.subjects.assignToClass(classId, subjectId, isElective);
+        } catch (e) {
+          console.warn("Supabase class_subjects assignment fallback:", e);
+        }
+      }
+
+      saveClassSubjectAssignment(classId, subjectId, isElective);
+      return { class_id: classId, subject_id: subjectId, is_elective: isElective };
+    },
+
+    removeFromClass: async (classId: number | string, subjectId: number | string) => {
+      assertAdminRole();
+
+      if (isSupabaseConfigured()) {
+        try {
+          await supabaseService.subjects.removeFromClass(classId, subjectId);
+        } catch (e) {
+          console.warn("Supabase class_subjects removal fallback:", e);
+        }
+      }
+
+      removeClassSubjectAssignment(classId, subjectId);
+      return { success: true };
+    },
+
+    listByClass: async (classId: number | string) => {
+      return api.subjects.list(classId);
     },
   },
 

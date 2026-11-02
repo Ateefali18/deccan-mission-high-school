@@ -26,7 +26,7 @@ export const SettingsPage: React.FC = () => {
 
   // Form
   const [schoolName, setSchoolName] = useState("");
-  const [affiliationNo, setAffiliationNo] = useState("TS-HYD-CBSE-41092");
+  const [affiliationNo, setAffiliationNo] = useState("TS-HYD-SSC-41092");
   const [contactEmail, setContactEmail] = useState("");
   const [contactPhone, setContactPhone] = useState("");
   const [address, setAddress] = useState("");
@@ -40,7 +40,7 @@ export const SettingsPage: React.FC = () => {
         const data = await api.schools.getCurrent();
         setConfig(data);
         setSchoolName(data.name || "Deccan Mission High School");
-        setAffiliationNo(data.affiliation_number || "TS-HYD-CBSE-41092");
+        setAffiliationNo(data.affiliation_number || "TS-HYD-SSC-41092");
         setContactEmail(data.contact_email || "admin@deccanmission.edu.in");
         setContactPhone(data.contact_phone || "+91 40 2456 7890");
         setAddress(data.address || "Old City, Hyderabad, Telangana 500002, India");
@@ -85,7 +85,7 @@ export const SettingsPage: React.FC = () => {
     <div className="space-y-6 max-w-4xl">
       <PageHeader
         title="Institution Settings"
-        description="Manage school legal identification, CBSE affiliation credentials, official contact lines, and campus profile."
+        description="Manage school legal identification, Telangana SSC affiliation credentials, official contact lines, and campus profile."
         icon={<Settings className="w-6 h-6 text-brand-blue" />}
       />
 
@@ -102,7 +102,7 @@ export const SettingsPage: React.FC = () => {
               </h2>
               <div className="flex flex-wrap items-center gap-2 mt-1">
                 <Badge variant="blue">Code: {config?.code || "DMHS-HYD"}</Badge>
-                <Badge variant="green">CBSE Board Affiliated</Badge>
+                <Badge variant="green">Telangana State SSC Board</Badge>
                 <span className="text-xs text-light-muted dark:text-dark-muted">
                   Affiliation: {affiliationNo}
                 </span>
@@ -124,7 +124,7 @@ export const SettingsPage: React.FC = () => {
 
             <div>
               <label className="block text-xs font-semibold uppercase text-light-muted dark:text-dark-muted mb-1">
-                CBSE Affiliation Number *
+                SSC Affiliation Number *
               </label>
               <Input
                 value={affiliationNo}

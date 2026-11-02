@@ -2,7 +2,8 @@
 -- DECCAN MISSION HIGH SCHOOL ERP - COMPLETE SUPABASE SCHEMA & POLICIES (CORRECTED)
 -- Project: https://snnzmgbkiiydboujublj.supabase.co
 -- School: Deccan Mission High School, Hyderabad, Telangana, India
--- CBSE Affiliation: TS-HYD-CBSE-41092
+-- SSC Affiliation: TS-HYD-SSC-41092
+-- Board: Telangana State Board of Secondary Education (SSC)
 -- Version: 2.1.0 (Audited & Hardened)
 -- Safe Migration: Non-destructive, idempotent, preserves all existing data.
 -- Audit Status: ON DELETE RESTRICT on financial & academic records, zero data loss risk.
@@ -20,7 +21,7 @@ create table if not exists public.schools (
   id uuid default gen_random_uuid() primary key,
   name text not null,
   code text unique not null,
-  affiliation_number text default 'TS-HYD-CBSE-41092',
+  affiliation_number text default 'TS-HYD-SSC-41092',
   contact_email text default 'admin@deccanmission.edu.in',
   contact_phone text default '+91 40 2456 7890',
   address text default 'Old City, Hyderabad, Telangana 500002, India',
@@ -415,7 +416,7 @@ create table if not exists public.exam_subjects (
   created_at timestamptz default now() not null
 );
 
--- 27. MARKS (Official CBSE Academic Results)
+-- 27. MARKS (Official SSC Academic Results)
 create table if not exists public.marks (
   id uuid default gen_random_uuid() primary key,
   exam_subject_id uuid not null references public.exam_subjects(id) on delete restrict,
@@ -1115,7 +1116,7 @@ create policy "Attendance records managed by staff" on public.attendance_records
   using (public.is_admin() or public.is_teacher())
   with check (public.is_admin() or public.is_teacher());
 
--- 12. EXAMS & MARKS (CBSE Marks Isolation)
+-- 12. EXAMS & MARKS (SSC Marks Isolation)
 drop policy if exists "Grading scales readable by authenticated" on public.grading_scales;
 create policy "Grading scales readable by authenticated" on public.grading_scales
   for select to authenticated using (true);
@@ -1564,7 +1565,7 @@ begin
   ) values (
     'Deccan Mission High School',
     'DMHS-HYD',
-    'TS-HYD-CBSE-41092',
+    'TS-HYD-SSC-41092',
     'admin@deccanmission.edu.in',
     '+91 40 2456 7890',
     'Old City, Hyderabad, Telangana 500002, India',
@@ -1678,8 +1679,8 @@ begin
   insert into public.notices (school_id, title, content, target_audience, priority, is_published, publish_date)
   values (
     v_school_id,
-    'CBSE Board Examination Registration Schedule for Class 10',
-    'Final verification of student biodata and subject choice forms for CBSE Class 10 board examinations will take place next week.',
+    'SSC Board Examination Registration Schedule for Class 10',
+    'Final verification of student biodata and subject choice forms for Telangana SSC Class 10 board examinations will take place next week.',
     'students',
     'urgent',
     true,

@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     SCHOOL_NAME: str = "Deccan Mission High School"
     SCHOOL_CODE: str = "DMHS-HYD"
     TIMEZONE: str = "Asia/Kolkata"
-    AFFILIATION_NUMBER: str = "TS-HYD-CBSE-41092"
+    AFFILIATION_NUMBER: str = "TS-HYD-SSC-41092"
     CONTACT_EMAIL: str = "admin@deccanmission.edu.in"
     CONTACT_PHONE: str = "+91 40 2456 7890"
     ADDRESS: str = "Old City, Hyderabad, Telangana 500002, India"

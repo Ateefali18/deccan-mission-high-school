@@ -32,7 +32,7 @@ class SchoolService:
                 contact_email="admin@deccanmission.edu.in",
                 contact_phone="+91 40 2456 7890",
                 address="Old City, Hyderabad, Telangana 500002, India",
-                affiliation_number="TS-HYD-CBSE-41092",
+                affiliation_number="TS-HYD-SSC-41092",
             )
             db.add(school)
             db.commit()

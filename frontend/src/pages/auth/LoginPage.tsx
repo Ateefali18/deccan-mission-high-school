@@ -198,7 +198,7 @@ export const LoginPage: React.FC = () => {
 
       {/* Footer Info */}
       <div className="text-center text-xs text-light-secondary dark:text-dark-secondary">
-        <p>Deccan Mission High School • CBSE Affiliated #TS-HYD-CBSE-41092</p>
+        <p>Deccan Mission High School • Telangana State SSC Board #TS-HYD-SSC-41092</p>
         <p className="text-[11px] mt-0.5">Hyderabad, Telangana 500002, India</p>
       </div>
     </div>

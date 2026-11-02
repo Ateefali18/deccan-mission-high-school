@@ -221,7 +221,7 @@ export const MarksPage: React.FC = () => {
     );
   };
 
-  // Compute CBSE Grade
+  // Compute SSC Grade
   const getGradeForMark = (markStr: string | number, isAbsent: boolean) => {
     if (isAbsent) return { grade: "ABS", variant: "neutral" as const };
     if (markStr === "" || markStr === null || markStr === undefined) return { grade: "—", variant: "neutral" as const };
@@ -325,7 +325,7 @@ export const MarksPage: React.FC = () => {
       toast.error("No results to export");
       return;
     }
-    const headers = "Rank,Admission No,Student Name,Total Obtained,Max Marks,Percentage,CBSE Grade,Status\n";
+    const headers = "Rank,Admission No,Student Name,Total Obtained,Max Marks,Percentage,SSC Grade,Status\n";
     const body = results
       .map(
         (r) =>
@@ -413,7 +413,7 @@ export const MarksPage: React.FC = () => {
     },
     {
       key: "grade",
-      header: "CBSE Grade",
+      header: "SSC Grade",
       render: (row) => (
         <Badge
           variant={
@@ -446,7 +446,7 @@ export const MarksPage: React.FC = () => {
     <div className="space-y-6">
       <PageHeader
         title="Examination Marks & Results Ledger"
-        subtitle="CBSE standard grading, multi-subject marks ledger, validation against maximum marks, and class rankings"
+        subtitle="Telangana SSC grading, multi-subject marks ledger, validation against maximum marks, and class rankings"
         action={
           <div className="flex items-center gap-2">
             <Button
@@ -665,7 +665,7 @@ export const MarksPage: React.FC = () => {
               />
             </div>
             <p className="text-xs text-light-secondary dark:text-dark-secondary hidden sm:block">
-              Grades auto-calculated according to CBSE 9-point scale
+              Grades auto-calculated according to Telangana SSC 9-point scale
             </p>
           </div>
 
@@ -692,7 +692,7 @@ export const MarksPage: React.FC = () => {
                       <th className="py-3 px-4">Student</th>
                       <th className="py-3 px-4 text-center">Marks Obtained (Max: {maxMarks})</th>
                       <th className="py-3 px-4 text-center">Absent</th>
-                      <th className="py-3 px-4 text-center">CBSE Grade</th>
+                      <th className="py-3 px-4 text-center">SSC Grade</th>
                       <th className="py-3 px-4">Remarks</th>
                     </tr>
                   </thead>
@@ -794,10 +794,10 @@ export const MarksPage: React.FC = () => {
           <div className="flex items-center justify-between p-4 bg-white dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl">
             <div>
               <h4 className="text-sm font-bold text-light-primary dark:text-dark-primary">
-                Tabulated Class Results & CBSE Standing
+                Tabulated Class Results & SSC Standing
               </h4>
               <p className="text-xs text-light-secondary dark:text-dark-secondary">
-                Computed live across all examination subjects with CBSE 9-point grades
+                Computed live across all examination subjects with Telangana SSC 9-point grades
               </p>
             </div>
             <Button

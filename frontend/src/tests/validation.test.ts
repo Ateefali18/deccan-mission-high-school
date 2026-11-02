@@ -51,7 +51,7 @@ describe("Form Validation Schemas", () => {
 });
 
 
-describe("Examination Marks Validation & CBSE 9-Point Grading Scale", () => {
+describe("Examination Marks Validation & SSC 9-Point Grading Scale", () => {
   const validateMarkEntry = (mark: number | null, isAbsent: boolean, maxMarks: number = 100) => {
     if (isAbsent) return { valid: true, error: null };
     if (mark === null || mark === undefined) return { valid: true, error: null };
@@ -60,7 +60,7 @@ describe("Examination Marks Validation & CBSE 9-Point Grading Scale", () => {
     return { valid: true, error: null };
   };
 
-  const getCBSEGrade = (pct: number) => {
+  const getSSCGrade = (pct: number) => {
     if (pct >= 91) return "A1";
     if (pct >= 81) return "A2";
     if (pct >= 71) return "B1";
@@ -80,17 +80,17 @@ describe("Examination Marks Validation & CBSE 9-Point Grading Scale", () => {
     expect(validateMarkEntry(null, true, 100).valid).toBe(true); // Absent is valid
   });
 
-  it("accurately computes standard CBSE 9-point grade boundaries", () => {
-    expect(getCBSEGrade(95)).toBe("A1");
-    expect(getCBSEGrade(91)).toBe("A1");
-    expect(getCBSEGrade(90.5)).toBe("A2");
-    expect(getCBSEGrade(81)).toBe("A2");
-    expect(getCBSEGrade(75)).toBe("B1");
-    expect(getCBSEGrade(65)).toBe("B2");
-    expect(getCBSEGrade(55)).toBe("C1");
-    expect(getCBSEGrade(45)).toBe("C2");
-    expect(getCBSEGrade(35)).toBe("D");
-    expect(getCBSEGrade(28)).toBe("E1");
-    expect(getCBSEGrade(15)).toBe("E2");
+  it("accurately computes standard SSC 9-point grade boundaries", () => {
+    expect(getSSCGrade(95)).toBe("A1");
+    expect(getSSCGrade(91)).toBe("A1");
+    expect(getSSCGrade(90.5)).toBe("A2");
+    expect(getSSCGrade(81)).toBe("A2");
+    expect(getSSCGrade(75)).toBe("B1");
+    expect(getSSCGrade(65)).toBe("B2");
+    expect(getSSCGrade(55)).toBe("C1");
+    expect(getSSCGrade(45)).toBe("C2");
+    expect(getSSCGrade(35)).toBe("D");
+    expect(getSSCGrade(28)).toBe("E1");
+    expect(getSSCGrade(15)).toBe("E2");
   });
 });
