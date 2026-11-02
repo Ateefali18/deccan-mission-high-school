@@ -14,6 +14,8 @@ import {
   Award,
   DollarSign,
   FileCheck,
+  Receipt,
+  CreditCard,
   Download,
   Filter,
   CheckCircle2,
@@ -434,6 +436,42 @@ export const AdminDashboardPage: React.FC = () => {
                 </div>
               </div>
               <ArrowRight className="w-4 h-4 text-light-secondary group-hover:text-brand-blue dark:group-hover:text-dark-accent group-hover:translate-x-1 transition-all" />
+            </Link>
+
+            <Link
+              to="/admin/fees"
+              className="flex items-center justify-between p-3 rounded-xl border border-light-border dark:border-dark-border hover:border-brand-gold/60 dark:hover:border-brand-gold/60 hover:bg-brand-gold/5 dark:hover:bg-brand-gold/10 transition-all group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-brand-gold/15 text-brand-gold">
+                  <CreditCard className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-light-primary dark:text-dark-primary">Fees &amp; Collections</p>
+                  <p className="text-[11px] text-light-secondary dark:text-dark-secondary">
+                    Total collected, remaining fees &amp; student billing
+                  </p>
+                </div>
+              </div>
+              <ArrowRight className="w-4 h-4 text-light-secondary group-hover:text-brand-gold group-hover:translate-x-1 transition-all" />
+            </Link>
+
+            <Link
+              to="/admin/expenses"
+              className="flex items-center justify-between p-3 rounded-xl border border-light-border dark:border-dark-border hover:border-red-500/60 dark:hover:border-red-500/60 hover:bg-red-500/5 dark:hover:bg-red-500/10 transition-all group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-red-500/15 text-red-600 dark:text-red-400">
+                  <Receipt className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-light-primary dark:text-dark-primary">Expenses Management</p>
+                  <p className="text-[11px] text-light-secondary dark:text-dark-secondary">
+                    Staff salaries, rent, electric &amp; water vouchers
+                  </p>
+                </div>
+              </div>
+              <ArrowRight className="w-4 h-4 text-light-secondary group-hover:text-red-600 group-hover:translate-x-1 transition-all" />
             </Link>
 
             <Link

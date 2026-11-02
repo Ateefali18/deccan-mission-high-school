@@ -14,7 +14,12 @@ import {
   Layers,
   GraduationCap,
   TrendingUp,
+  Printer,
+  ShieldCheck,
+  Eye,
+  X,
 } from "lucide-react";
+import { Dialog } from "../../components/ui/Dialog";
 import { api } from "../../services/api";
 import { useAuth } from "../../app/AuthContext";
 import type { SchoolClass } from "../../types";
@@ -66,7 +71,11 @@ interface ClassResultRow {
 export const MarksPage: React.FC = () => {
   const { session } = useAuth();
   const toast = useToast();
-  const [activeTab, setActiveTab] = useState<"entry" | "results">("entry");
+  const isAdmin = session?.role === "ADMIN";
+  const isFaculty = session?.role === "TEACHER";
+  const [activeTab, setActiveTab] = useState<"entry" | "results">(isAdmin ? "results" : "entry");
+  const [isReportCardOpen, setIsReportCardOpen] = useState(false);
+  const [selectedStudentForReport, setSelectedStudentForReport] = useState<ClassResultRow | null>(null);
 
   // Selection state
   const [exams, setExams] = useState<ExamItem[]>([]);
@@ -449,14 +458,18 @@ export const MarksPage: React.FC = () => {
         subtitle="Telangana SSC grading, multi-subject marks ledger, validation against maximum marks, and class rankings"
         action={
           <div className="flex items-center gap-2">
-            <Button
-              variant={activeTab === "entry" ? "primary" : "outline"}
-              size="sm"
-              leftIcon={<FileSpreadsheet className="w-4 h-4" />}
-              onClick={() => setActiveTab("entry")}
-            >
-              Enter Marks
-            </Button>
+            {/* ONLY Faculty sees 'Enter Marks' / 'Add Marks' button */}
+            {isFaculty && (
+              <Button
+                variant={activeTab === "entry" ? "primary" : "outline"}
+                size="sm"
+                leftIcon={<FileSpreadsheet className="w-4 h-4" />}
+                onClick={() => setActiveTab("entry")}
+              >
+                Enter Marks
+              </Button>
+            )}
+
             <Button
               variant={activeTab === "results" ? "primary" : "outline"}
               size="sm"
@@ -465,6 +478,31 @@ export const MarksPage: React.FC = () => {
             >
               View Results & Rankings
             </Button>
+
+            {isAdmin && (
+              <Button
+                variant={activeTab === "entry" ? "primary" : "outline"}
+                size="sm"
+                leftIcon={<BookOpen className="w-4 h-4" />}
+                onClick={() => setActiveTab("entry")}
+              >
+                View Subject Marks
+              </Button>
+            )}
+
+            {results.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                leftIcon={<Printer className="w-4 h-4" />}
+                onClick={() => {
+                  setSelectedStudentForReport(results[0] || null);
+                  setIsReportCardOpen(true);
+                }}
+              >
+                Generate Report Cards
+              </Button>
+            )}
           </div>
         }
       />
@@ -545,6 +583,19 @@ export const MarksPage: React.FC = () => {
             </select>
           </div>
         </div>
+
+        {/* Administrator Inspection Notice */}
+        {isAdmin && activeTab === "entry" && (
+          <div className="mb-4 p-3.5 rounded-xl bg-blue-50/80 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/40 flex items-center justify-between text-xs text-blue-900 dark:text-blue-300">
+            <div className="flex items-center gap-2.5">
+              <ShieldCheck className="w-4 h-4 text-brand-blue shrink-0" />
+              <span>
+                <strong>Administrator Verification Mode:</strong> You are viewing marks submitted by authorized faculty. To maintain academic grading integrity, direct mark modifications are performed by assigned subject teachers.
+              </span>
+            </div>
+            <Badge variant="neutral" size="sm">Audit View</Badge>
+          </div>
+        )}
 
         {/* Paper settings & Status Mode */}
         {activeTab === "entry" && (
@@ -718,7 +769,7 @@ export const MarksPage: React.FC = () => {
                           <td className="py-3 px-4 text-center">
                             <input
                               type="number"
-                              disabled={row.is_absent}
+                              disabled={isAdmin || row.is_absent}
                               value={row.marks_obtained}
                               onChange={(e) => handleMarkChange(row.student_id, e.target.value)}
                               placeholder={`0 - ${maxMarks}`}
@@ -739,6 +790,7 @@ export const MarksPage: React.FC = () => {
                           <td className="py-3 px-4 text-center">
                             <input
                               type="checkbox"
+                              disabled={isAdmin}
                               checked={row.is_absent}
                               onChange={(e) => handleAbsentToggle(row.student_id, e.target.checked)}
                               className="rounded border-light-border dark:border-dark-border text-brand-gold focus:ring-brand-gold cursor-pointer"
@@ -752,6 +804,7 @@ export const MarksPage: React.FC = () => {
                           <td className="py-3 px-4">
                             <input
                               type="text"
+                              disabled={isAdmin}
                               value={row.remarks}
                               onChange={(e) => handleRemarksChange(row.student_id, e.target.value)}
                               placeholder="Feedback / remarks..."
@@ -766,7 +819,7 @@ export const MarksPage: React.FC = () => {
               </div>
             )}
 
-            {/* Bottom Save Action Bar */}
+            {/* Bottom Action Bar */}
             <div className="p-4 bg-gray-50 dark:bg-dark-elevated/40 border-t border-light-border dark:border-dark-border flex items-center justify-between">
               <div className="text-xs text-light-secondary dark:text-dark-secondary">
                 <span>Subject: </span>
@@ -774,15 +827,23 @@ export const MarksPage: React.FC = () => {
                   {selectedSubjectName} (Max: {maxMarks}, Pass: {passingMarks})
                 </span>
               </div>
-              <Button
-                variant="primary"
-                onClick={handleSaveMarks}
-                isLoading={isSaving}
-                disabled={rows.length === 0 || Boolean(validationError)}
-                leftIcon={<Save className="w-4 h-4" />}
-              >
-                {hasExistingMarks ? "Update Subject Marks" : "Save Subject Marks"}
-              </Button>
+              {isFaculty ? (
+                <Button
+                  variant="primary"
+                  onClick={handleSaveMarks}
+                  isLoading={isSaving}
+                  disabled={rows.length === 0 || Boolean(validationError)}
+                  leftIcon={<Save className="w-4 h-4" />}
+                >
+                  {hasExistingMarks ? "Update Subject Marks" : "Save Subject Marks"}
+                </Button>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Badge variant="neutral" size="sm">
+                    Verified Subject Marks (Faculty Authorized)
+                  </Badge>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -819,6 +880,136 @@ export const MarksPage: React.FC = () => {
           />
         </div>
       )}
+      {/* ==================================================================== */}
+      {/* SSC REPORT CARD GENERATION & PREVIEW MODAL */}
+      {/* ==================================================================== */}
+      <Dialog
+        isOpen={isReportCardOpen}
+        onClose={() => setIsReportCardOpen(false)}
+        title="Telangana State SSC Board - Student Report Card"
+      >
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-light-secondary dark:text-dark-secondary">
+              Select Student to Generate Report Card:
+            </span>
+            <select
+              value={selectedStudentForReport?.student_id || ""}
+              onChange={(e) => {
+                const s = results.find((r) => String(r.student_id) === e.target.value);
+                if (s) setSelectedStudentForReport(s);
+              }}
+              className="text-xs px-2.5 py-1.5 rounded-lg bg-gray-50 dark:bg-dark-elevated border border-light-border dark:border-dark-border font-semibold"
+            >
+              {results.map((r) => (
+                <option key={String(r.student_id)} value={String(r.student_id)}>
+                  {r.full_name} ({r.admission_number}) - Rank #{r.rank}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {selectedStudentForReport && (
+            <div className="p-6 rounded-2xl bg-white dark:bg-dark-card border-2 border-[#142B4A]/20 dark:border-white/10 shadow-sm space-y-4">
+              {/* Report Header */}
+              <div className="text-center border-b pb-4 border-light-border dark:border-dark-border">
+                <div className="w-12 h-12 mx-auto mb-2 rounded-xl bg-white p-1 border shadow-xs">
+                  <img src="/dmhs-logo-128.png" alt="DMHS Logo" className="w-full h-full object-contain" />
+                </div>
+                <h3 className="text-base font-extrabold uppercase tracking-wider text-[#142B4A] dark:text-white">
+                  Deccan Mission High School
+                </h3>
+                <p className="text-[11px] font-semibold text-brand-gold uppercase tracking-widest">
+                  Telangana State SSC Board • Hyderabad
+                </p>
+                <p className="text-xs font-bold text-light-primary dark:text-dark-primary mt-1">
+                  OFFICIAL PROGRESS REPORT &amp; GRADE MEMORANDUM
+                </p>
+              </div>
+
+              {/* Student Metadata */}
+              <div className="grid grid-cols-2 gap-3 text-xs bg-gray-50/70 dark:bg-dark-elevated/40 p-3 rounded-xl border border-light-border dark:border-dark-border">
+                <div>
+                  <span className="text-light-secondary dark:text-dark-secondary block text-[10px] uppercase font-bold">Student Name</span>
+                  <span className="font-bold text-light-primary dark:text-dark-primary">{selectedStudentForReport.full_name}</span>
+                </div>
+                <div>
+                  <span className="text-light-secondary dark:text-dark-secondary block text-[10px] uppercase font-bold">Admission No</span>
+                  <span className="font-mono font-bold text-light-primary dark:text-dark-primary">{selectedStudentForReport.admission_number}</span>
+                </div>
+                <div>
+                  <span className="text-light-secondary dark:text-dark-secondary block text-[10px] uppercase font-bold">Class Standing</span>
+                  <span className="font-mono font-bold text-brand-gold">Rank #{selectedStudentForReport.rank}</span>
+                </div>
+                <div>
+                  <span className="text-light-secondary dark:text-dark-secondary block text-[10px] uppercase font-bold">Result Status</span>
+                  <Badge variant={selectedStudentForReport.status === "Passed" ? "success" : "danger"} size="sm">
+                    {selectedStudentForReport.status}
+                  </Badge>
+                </div>
+              </div>
+
+              {/* Marks Summary Box */}
+              <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                <div className="p-2.5 rounded-xl border border-light-border dark:border-dark-border bg-gray-50/50 dark:bg-dark-elevated/30">
+                  <span className="text-[10px] uppercase font-bold text-light-secondary block">Total Marks</span>
+                  <span className="text-sm font-extrabold font-mono text-light-primary dark:text-dark-primary">
+                    {selectedStudentForReport.total_obtained} / {selectedStudentForReport.total_max}
+                  </span>
+                </div>
+                <div className="p-2.5 rounded-xl border border-light-border dark:border-dark-border bg-gray-50/50 dark:bg-dark-elevated/30">
+                  <span className="text-[10px] uppercase font-bold text-light-secondary block">Percentage</span>
+                  <span className="text-sm font-extrabold font-mono text-brand-gold">
+                    {selectedStudentForReport.percentage}%
+                  </span>
+                </div>
+                <div className="p-2.5 rounded-xl border border-light-border dark:border-dark-border bg-gray-50/50 dark:bg-dark-elevated/30">
+                  <span className="text-[10px] uppercase font-bold text-light-secondary block">SSC Grade</span>
+                  <span className="text-sm font-extrabold font-mono text-emerald-600 dark:text-emerald-400">
+                    {selectedStudentForReport.grade}
+                  </span>
+                </div>
+              </div>
+
+              {/* Signatures */}
+              <div className="pt-6 border-t border-dashed border-light-border dark:border-dark-border flex items-center justify-between text-[11px] text-light-secondary dark:text-dark-secondary">
+                <div className="text-center">
+                  <div className="w-24 border-b border-light-secondary/40 mb-1 mx-auto" />
+                  <span>Class Teacher</span>
+                </div>
+                <div className="text-center">
+                  <div className="w-24 border-b border-light-secondary/40 mb-1 mx-auto" />
+                  <span>Exam Controller</span>
+                </div>
+                <div className="text-center">
+                  <div className="w-24 border-b border-light-secondary/40 mb-1 mx-auto" />
+                  <span className="font-bold text-light-primary dark:text-dark-primary">Principal (DMHS)</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="flex items-center justify-end gap-2 pt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsReportCardOpen(false)}
+            >
+              Close
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              leftIcon={<Printer className="w-4 h-4" />}
+              onClick={() => {
+                window.print();
+              }}
+            >
+              Print Report Card
+            </Button>
+          </div>
+        </div>
+      </Dialog>
     </div>
   );
 };

@@ -13,6 +13,10 @@ import type {
   SearchResultItem,
   NoticeItem,
   DocumentItem,
+  ExpenseItem,
+  ExpenseStats,
+  FeeFinancialSummary,
+  ExpenseCategory,
 } from "../types";
 import { isSupabaseConfigured, supabase, setSupabaseAdminHeader } from "./supabaseClient";
 import { supabaseService } from "./supabaseService";
@@ -589,6 +593,319 @@ export const removeClassSubjectAssignment = (classId: string | number, subjectId
     (a) => !(String(a.class_id) === String(classId) && String(a.subject_id) === String(subjectId))
   );
   localStorage.setItem("dmhs_custom_class_subjects", JSON.stringify(list));
+};
+
+// ----------------------------------------------------------------------------
+// EXPENSES & FEES PERSISTENT LOCAL STORAGE
+// ----------------------------------------------------------------------------
+const STORAGE_KEY_EXPENSES = "dmhs_custom_expenses";
+const STORAGE_KEY_INVOICES = "dmhs_custom_invoices";
+const STORAGE_KEY_PAYMENTS = "dmhs_custom_payments";
+
+const INITIAL_EXPENSES: ExpenseItem[] = [
+  {
+    id: "exp_001",
+    expense_date: new Date().toISOString().slice(0, 10),
+    category: "Staff Salaries",
+    description: "Monthly faculty salary disbursement - Primary & High School staff",
+    amount: 185000,
+    payment_method: "Bank Transfer",
+    reference_number: "SAL-2026-04",
+    notes: "Approved by Principal & Secretary",
+    recorded_by_name: "STA Khadri",
+    is_active: true,
+    created_at: new Date(Date.now() - 86400000 * 2).toISOString(),
+  },
+  {
+    id: "exp_002",
+    expense_date: new Date().toISOString().slice(0, 10),
+    category: "Aaya’s Salaries",
+    description: "Support staff & school aayas monthly remuneration",
+    amount: 32000,
+    payment_method: "Cash",
+    reference_number: "VOUCHER-084",
+    notes: "Disbursed to 4 campus aayas",
+    recorded_by_name: "STA Khadri",
+    is_active: true,
+    created_at: new Date(Date.now() - 86400000 * 3).toISOString(),
+  },
+  {
+    id: "exp_003",
+    expense_date: new Date().toISOString().slice(0, 10),
+    category: "Building Rent",
+    description: "Deccan Mission High School main campus building lease",
+    amount: 65000,
+    payment_method: "Bank Transfer",
+    reference_number: "RENT-APR-2026",
+    notes: "Property owner receipt received",
+    recorded_by_name: "STA Khadri",
+    is_active: true,
+    created_at: new Date(Date.now() - 86400000 * 4).toISOString(),
+  },
+  {
+    id: "exp_004",
+    expense_date: new Date().toISOString().slice(0, 10),
+    category: "Electricity Bill",
+    description: "TSSPDCL commercial electric bill for school blocks & computer lab",
+    amount: 18450,
+    payment_method: "UPI",
+    reference_number: "TSSPDCL-918237",
+    notes: "Paid online via Telangana state power portal",
+    recorded_by_name: "STA Khadri",
+    is_active: true,
+    created_at: new Date(Date.now() - 86400000 * 5).toISOString(),
+  },
+  {
+    id: "exp_005",
+    expense_date: new Date().toISOString().slice(0, 10),
+    category: "Drinking Water Expenses",
+    description: "20L mineral RO water cans for student dispensers and faculty room",
+    amount: 6500,
+    payment_method: "Cash",
+    reference_number: "WATER-741",
+    notes: "Total 65 cans supplied this month",
+    recorded_by_name: "STA Khadri",
+    is_active: true,
+    created_at: new Date(Date.now() - 86400000 * 6).toISOString(),
+  },
+  {
+    id: "exp_006",
+    expense_date: new Date().toISOString().slice(0, 10),
+    category: "Usable Water Expenses",
+    description: "Ground water tanker delivery for campus sanitation & washrooms",
+    amount: 8200,
+    payment_method: "Cash",
+    reference_number: "TANKER-19",
+    notes: "Two 5,000-liter tankers supplied",
+    recorded_by_name: "STA Khadri",
+    is_active: true,
+    created_at: new Date(Date.now() - 86400000 * 7).toISOString(),
+  },
+  {
+    id: "exp_007",
+    expense_date: new Date().toISOString().slice(0, 10),
+    category: "Other Expenses",
+    description: "Exam answer booklets, chalk boxes, and duster replacements",
+    amount: 4500,
+    payment_method: "Cash",
+    reference_number: "STAT-042",
+    notes: "Purchased from Royal Stationery Mart, Hyderabad",
+    recorded_by_name: "STA Khadri",
+    is_active: true,
+    created_at: new Date(Date.now() - 86400000 * 8).toISOString(),
+  },
+];
+
+export const getStoredCustomExpenses = (): ExpenseItem[] => {
+  if (typeof localStorage === "undefined") return INITIAL_EXPENSES;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_EXPENSES);
+    if (!raw) {
+      localStorage.setItem(STORAGE_KEY_EXPENSES, JSON.stringify(INITIAL_EXPENSES));
+      return INITIAL_EXPENSES;
+    }
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : INITIAL_EXPENSES;
+  } catch {
+    return INITIAL_EXPENSES;
+  }
+};
+
+export const saveCustomExpense = (item: ExpenseItem): void => {
+  if (typeof localStorage === "undefined") return;
+  const list = getStoredCustomExpenses().filter((e) => String(e.id) !== String(item.id));
+  list.unshift(item);
+  localStorage.setItem(STORAGE_KEY_EXPENSES, JSON.stringify(list));
+};
+
+export const updateCustomExpense = (id: string, updates: Partial<ExpenseItem>): ExpenseItem | null => {
+  if (typeof localStorage === "undefined") return null;
+  const list = getStoredCustomExpenses();
+  const index = list.findIndex((e) => String(e.id) === String(id));
+  if (index === -1) return null;
+  const updated = { ...list[index], ...updates, updated_at: new Date().toISOString() };
+  list[index] = updated;
+  localStorage.setItem(STORAGE_KEY_EXPENSES, JSON.stringify(list));
+  return updated;
+};
+
+export const deleteCustomExpense = (id: string): boolean => {
+  if (typeof localStorage === "undefined") return false;
+  const list = getStoredCustomExpenses();
+  const index = list.findIndex((e) => String(e.id) === String(id));
+  if (index === -1) return false;
+  list[index].is_active = false;
+  localStorage.setItem(STORAGE_KEY_EXPENSES, JSON.stringify(list));
+  return true;
+};
+
+// Initial student invoices
+const INITIAL_INVOICES = [
+  {
+    id: 1,
+    invoice_number: "DMHS-INV-2025-001",
+    student_id: 1,
+    student_name: "Zeeshan Khan",
+    admission_number: "DMHS-2025-0001",
+    total_amount: 45000,
+    paid_amount: 45000,
+    balance: 0,
+    status: "paid",
+    due_date: "2025-08-15",
+    created_at: "2025-06-10",
+  },
+  {
+    id: 2,
+    invoice_number: "DMHS-INV-2025-002",
+    student_id: 2,
+    student_name: "Ayesha Siddiqa",
+    admission_number: "DMHS-2025-0002",
+    total_amount: 45000,
+    paid_amount: 30000,
+    balance: 15000,
+    status: "partial",
+    due_date: "2025-08-15",
+    created_at: "2025-06-10",
+  },
+  {
+    id: 3,
+    invoice_number: "DMHS-INV-2025-003",
+    student_id: 3,
+    student_name: "Mohammed Ali Khan",
+    admission_number: "DMHS-2025-0003",
+    total_amount: 42000,
+    paid_amount: 20000,
+    balance: 22000,
+    status: "partial",
+    due_date: "2025-08-15",
+    created_at: "2025-06-12",
+  },
+  {
+    id: 4,
+    invoice_number: "DMHS-INV-2025-004",
+    student_id: 4,
+    student_name: "Fatima Noor",
+    admission_number: "DMHS-2025-0004",
+    total_amount: 40000,
+    paid_amount: 40000,
+    balance: 0,
+    status: "paid",
+    due_date: "2025-08-15",
+    created_at: "2025-06-15",
+  },
+  {
+    id: 5,
+    invoice_number: "DMHS-INV-2025-005",
+    student_id: 5,
+    student_name: "Syed Omar",
+    admission_number: "DMHS-2025-0005",
+    total_amount: 40000,
+    paid_amount: 0,
+    balance: 40000,
+    status: "pending",
+    due_date: "2025-08-15",
+    created_at: "2025-06-18",
+  },
+];
+
+// Initial completed payments
+const INITIAL_PAYMENTS = [
+  {
+    id: 1,
+    invoice_id: 1,
+    student_id: 1,
+    receipt_number: "REC-2025-101",
+    amount: 45000,
+    payment_mode: "Cash",
+    status: "completed",
+    payment_date: "2025-07-02",
+  },
+  {
+    id: 2,
+    invoice_id: 2,
+    student_id: 2,
+    receipt_number: "REC-2025-102",
+    amount: 30000,
+    payment_mode: "Bank Transfer",
+    status: "completed",
+    payment_date: "2025-07-10",
+  },
+  {
+    id: 3,
+    invoice_id: 3,
+    student_id: 3,
+    receipt_number: "REC-2025-103",
+    amount: 20000,
+    payment_mode: "UPI",
+    status: "completed",
+    payment_date: "2025-07-15",
+  },
+  {
+    id: 4,
+    invoice_id: 4,
+    student_id: 4,
+    receipt_number: "REC-2025-104",
+    amount: 40000,
+    payment_mode: "Cash",
+    status: "completed",
+    payment_date: "2025-07-20",
+  },
+];
+
+export const getStoredInvoices = (): any[] => {
+  if (typeof localStorage === "undefined") return INITIAL_INVOICES;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_INVOICES);
+    if (!raw) {
+      localStorage.setItem(STORAGE_KEY_INVOICES, JSON.stringify(INITIAL_INVOICES));
+      return INITIAL_INVOICES;
+    }
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : INITIAL_INVOICES;
+  } catch {
+    return INITIAL_INVOICES;
+  }
+};
+
+export const getStoredPayments = (): any[] => {
+  if (typeof localStorage === "undefined") return INITIAL_PAYMENTS;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_PAYMENTS);
+    if (!raw) {
+      localStorage.setItem(STORAGE_KEY_PAYMENTS, JSON.stringify(INITIAL_PAYMENTS));
+      return INITIAL_PAYMENTS;
+    }
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : INITIAL_PAYMENTS;
+  } catch {
+    return INITIAL_PAYMENTS;
+  }
+};
+
+export const saveCustomPayment = (payment: any): void => {
+  if (typeof localStorage === "undefined") return;
+  const payments = getStoredPayments();
+  payments.unshift(payment);
+  localStorage.setItem(STORAGE_KEY_PAYMENTS, JSON.stringify(payments));
+
+  // Update associated invoice
+  if (payment.invoice_id) {
+    const invoices = getStoredInvoices();
+    const invIndex = invoices.findIndex((i) => String(i.id) === String(payment.invoice_id));
+    if (invIndex !== -1) {
+      const inv = invoices[invIndex];
+      const newPaid = Number(inv.paid_amount || 0) + Number(payment.amount);
+      const newBalance = Math.max(0, Number(inv.total_amount) - newPaid);
+      const newStatus = newBalance <= 0 ? "paid" : "partial";
+      invoices[invIndex] = {
+        ...inv,
+        paid_amount: newPaid,
+        balance: newBalance,
+        status: newStatus,
+      };
+      localStorage.setItem(STORAGE_KEY_INVOICES, JSON.stringify(invoices));
+    }
+  }
 };
 
 export const BASELINE_CLASSES: SchoolClass[] = [
@@ -2350,30 +2667,255 @@ export const api = {
     },
   },
 
-  fees: {
-    getStats: async () => {
-      return request<{
-        total_billed: number;
-        total_collected: number;
-        outstanding: number;
-        collection_rate: number;
-      }>("/fees/stats");
+  // --------------------------------------------------------------------------
+  // EXPENSES MANAGEMENT
+  // --------------------------------------------------------------------------
+  expenses: {
+    list: async (filters: {
+      category?: string;
+      from_date?: string;
+      to_date?: string;
+      search?: string;
+    } = {}): Promise<ExpenseItem[]> => {
+      if (isSupabaseConfigured()) {
+        try {
+          const remote = await supabaseService.expenses.list(filters);
+          if (remote.length > 0) return remote;
+        } catch (e) {
+          console.warn("Supabase expenses list fallback:", e);
+        }
+      }
+
+      let list = getStoredCustomExpenses().filter((e) => e.is_active);
+
+      if (filters.category && filters.category !== "all") {
+        list = list.filter((e) => e.category === filters.category);
+      }
+      if (filters.from_date) {
+        list = list.filter((e) => e.expense_date >= filters.from_date!);
+      }
+      if (filters.to_date) {
+        list = list.filter((e) => e.expense_date <= filters.to_date!);
+      }
+      if (filters.search) {
+        const q = filters.search.toLowerCase();
+        list = list.filter(
+          (e) =>
+            e.description.toLowerCase().includes(q) ||
+            (e.reference_number && e.reference_number.toLowerCase().includes(q)) ||
+            e.category.toLowerCase().includes(q)
+        );
+      }
+
+      return list.sort((a, b) => b.expense_date.localeCompare(a.expense_date));
     },
-    getCategories: async () => {
-      return request<Array<{ id: number; name: string; description?: string }>>("/fees/categories");
+
+    create: async (data: {
+      expense_date: string;
+      category: ExpenseCategory;
+      description: string;
+      amount: number;
+      payment_method?: string;
+      reference_number?: string;
+      notes?: string;
+    }): Promise<ExpenseItem> => {
+      if (data.amount <= 0) {
+        throw new ApiError("Expense amount must be greater than zero.", 400);
+      }
+      if (!data.description?.trim()) {
+        throw new ApiError("Expense description is required.", 400);
+      }
+
+      const newExpense: ExpenseItem = {
+        id: `exp_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+        expense_date: data.expense_date || new Date().toISOString().slice(0, 10),
+        category: data.category,
+        description: data.description.trim(),
+        amount: Number(data.amount),
+        payment_method: data.payment_method || "Cash",
+        reference_number: data.reference_number?.trim() || null,
+        notes: data.notes?.trim() || null,
+        recorded_by_name: "STA Khadri",
+        is_active: true,
+        created_at: new Date().toISOString(),
+      };
+
+      if (isSupabaseConfigured()) {
+        try {
+          const remote = await supabaseService.expenses.create(data);
+          saveCustomExpense(remote);
+          return remote;
+        } catch (err) {
+          console.warn("Supabase create expense fallback to local:", err);
+        }
+      }
+
+      saveCustomExpense(newExpense);
+      return newExpense;
     },
-    createCategory: async (data: { name: string; description?: string }) => {
-      return request<any>("/fees/categories", {
-        method: "POST",
-        body: JSON.stringify(data),
+
+    update: async (id: string, data: Partial<ExpenseItem>): Promise<ExpenseItem> => {
+      if (data.amount !== undefined && data.amount <= 0) {
+        throw new ApiError("Expense amount must be greater than zero.", 400);
+      }
+
+      if (isSupabaseConfigured() && id.length === 36) {
+        try {
+          const remote = await supabaseService.expenses.update(id, data);
+          saveCustomExpense(remote);
+          return remote;
+        } catch (err) {
+          console.warn("Supabase update expense fallback to local:", err);
+        }
+      }
+
+      const updated = updateCustomExpense(id, data);
+      if (!updated) throw new ApiError("Expense record not found.", 404);
+      return updated;
+    },
+
+    delete: async (id: string): Promise<boolean> => {
+      if (isSupabaseConfigured() && id.length === 36) {
+        try {
+          await supabaseService.expenses.delete(id);
+        } catch (err) {
+          console.warn("Supabase delete expense fallback to local:", err);
+        }
+      }
+      return deleteCustomExpense(id);
+    },
+
+    getStats: async (filters: { from_date?: string; to_date?: string } = {}): Promise<ExpenseStats> => {
+      if (isSupabaseConfigured()) {
+        try {
+          const remoteStats = await supabaseService.expenses.getStats(filters);
+          if (remoteStats.total_count > 0) return remoteStats;
+        } catch (err) {
+          console.warn("Supabase expense stats fallback:", err);
+        }
+      }
+
+      let list = getStoredCustomExpenses().filter((e) => e.is_active);
+      if (filters.from_date) list = list.filter((e) => e.expense_date >= filters.from_date!);
+      if (filters.to_date) list = list.filter((e) => e.expense_date <= filters.to_date!);
+
+      const currentMonthPrefix = new Date().toISOString().slice(0, 7);
+      let total_expenses = 0;
+      let current_month_expenses = 0;
+      const category_breakdown: Record<string, number> = {
+        "Staff Salaries": 0,
+        "Aaya’s Salaries": 0,
+        "Building Rent": 0,
+        "Electricity Bill": 0,
+        "Drinking Water Expenses": 0,
+        "Usable Water Expenses": 0,
+        "Other Expenses": 0,
+      };
+
+      list.forEach((e) => {
+        const amt = Number(e.amount) || 0;
+        total_expenses += amt;
+        if (e.expense_date && e.expense_date.startsWith(currentMonthPrefix)) {
+          current_month_expenses += amt;
+        }
+        category_breakdown[e.category] = (category_breakdown[e.category] || 0) + amt;
       });
+
+      return {
+        total_expenses,
+        current_month_expenses,
+        category_breakdown,
+        total_count: list.length,
+      };
     },
+  },
+
+  // --------------------------------------------------------------------------
+  // FEES & FINANCIAL SUMMARY
+  // --------------------------------------------------------------------------
+  fees: {
+    getFinancialSummary: async (): Promise<FeeFinancialSummary> => {
+      if (isSupabaseConfigured()) {
+        try {
+          const remote = await supabaseService.fees.getFinancialSummary();
+          if (remote.total_applicable_fees > 0) return remote;
+        } catch (e) {
+          console.warn("Supabase fee summary fallback:", e);
+        }
+      }
+
+      const invoices = getStoredInvoices();
+      const payments = getStoredPayments();
+
+      // Calculation:
+      // Total Fees Collected = Sum of successfully recorded payments (completed/paid)
+      const validPayments = payments.filter(
+        (p) => !p.status || p.status === "completed" || p.status === "paid" || p.status === "success"
+      );
+      const total_collected_fees = validPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+
+      // Total Applicable Fees = Sum of active invoices
+      const total_applicable_fees = invoices
+        .filter((i) => i.status !== "cancelled")
+        .reduce((sum, i) => sum + (Number(i.total_amount) || 0), 0);
+
+      // Remaining Fees = Total Applicable Fees - Total Fees Collected
+      const total_remaining_fees = Math.max(0, total_applicable_fees - total_collected_fees);
+      const collection_rate = total_applicable_fees > 0
+        ? Math.round((total_collected_fees / total_applicable_fees) * 10000) / 100
+        : 0;
+
+      return {
+        total_applicable_fees,
+        total_collected_fees,
+        total_remaining_fees,
+        collection_rate,
+        completed_payments_count: validPayments.length,
+      };
+    },
+
+    getStats: async () => {
+      const summary = await api.fees.getFinancialSummary();
+      return {
+        total_billed: summary.total_applicable_fees,
+        total_collected: summary.total_collected_fees,
+        outstanding: summary.total_remaining_fees,
+        collection_rate: summary.collection_rate,
+      };
+    },
+
+    getCategories: async () => {
+      return [
+        { id: 1, name: "Tuition Fee", description: "Term-wise Telangana SSC academic tuition" },
+        { id: 2, name: "Computer Lab Fee", description: "Digital classroom & practical IT fee" },
+        { id: 3, name: "Annual Sports & Library Fee", description: "Sports kit & reference library" },
+      ];
+    },
+
+    createCategory: async (data: { name: string; description?: string }) => {
+      return { id: Date.now(), ...data };
+    },
+
     getInvoices: async (params: { student_id?: number | string; status?: string } = {}) => {
-      const q = new URLSearchParams();
-      if (params.student_id) q.append("student_id", String(params.student_id));
-      if (params.status) q.append("status", params.status);
-      return request<any[]>(`/fees/invoices?${q.toString()}`);
+      if (isSupabaseConfigured()) {
+        try {
+          const remote = await supabaseService.fees.getInvoices(params);
+          if (remote.length > 0) return remote;
+        } catch (e) {
+          console.warn("Supabase invoices fallback:", e);
+        }
+      }
+
+      let invoices = getStoredInvoices();
+      if (params.student_id) {
+        invoices = invoices.filter((i) => String(i.student_id) === String(params.student_id));
+      }
+      if (params.status && params.status !== "all") {
+        invoices = invoices.filter((i) => i.status === params.status);
+      }
+      return invoices;
     },
+
     createInvoice: async (data: {
       student_id: number;
       academic_year_id: number;
@@ -2381,23 +2923,66 @@ export const api = {
       total_amount: number;
       due_date: string;
     }) => {
-      return request<any>("/fees/invoices", {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
+      const invoices = getStoredInvoices();
+      const newInv = {
+        id: Date.now(),
+        invoice_number: data.invoice_number,
+        student_id: data.student_id,
+        student_name: "Student",
+        admission_number: `DMHS-${Date.now().toString().slice(-4)}`,
+        total_amount: Number(data.total_amount),
+        paid_amount: 0,
+        balance: Number(data.total_amount),
+        status: "pending",
+        due_date: data.due_date,
+        created_at: new Date().toISOString().slice(0, 10),
+      };
+      invoices.unshift(newInv);
+      localStorage.setItem(STORAGE_KEY_INVOICES, JSON.stringify(invoices));
+      return newInv;
     },
+
     recordPayment: async (data: {
-      invoice_id: number;
-      student_id: number;
+      invoice_id: number | string;
+      student_id: number | string;
       receipt_number: string;
       amount: number;
       payment_mode: string;
       transaction_reference?: string;
     }) => {
-      return request<any>("/fees/payments", {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
+      if (data.amount <= 0) {
+        throw new ApiError("Payment amount must be greater than zero.", 400);
+      }
+
+      const paymentRecord = {
+        id: Date.now(),
+        invoice_id: data.invoice_id,
+        student_id: data.student_id,
+        receipt_number: data.receipt_number || `REC-${Date.now().toString().slice(-6)}`,
+        amount: Number(data.amount),
+        payment_mode: data.payment_mode || "Cash",
+        transaction_reference: data.transaction_reference || null,
+        status: "completed",
+        payment_date: new Date().toISOString().slice(0, 10),
+      };
+
+      if (isSupabaseConfigured()) {
+        try {
+          await supabaseService.fees.recordPayment({
+            invoice_id: data.invoice_id,
+            student_id: data.student_id,
+            receipt_number: paymentRecord.receipt_number,
+            amount: paymentRecord.amount,
+            payment_mode: paymentRecord.payment_mode,
+            transaction_reference: data.transaction_reference,
+          });
+        } catch (e) {
+          console.warn("Supabase record payment fallback:", e);
+        }
+      }
+
+      saveCustomPayment(paymentRecord);
+      return { success: true, payment: paymentRecord };
     },
   },
 

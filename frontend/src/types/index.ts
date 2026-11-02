@@ -209,3 +209,46 @@ export interface DocumentItem {
   status: string;
   created_at: string;
 }
+
+export type ExpenseCategory =
+  | "Staff Salaries"
+  | "Aaya’s Salaries"
+  | "Building Rent"
+  | "Electricity Bill"
+  | "Drinking Water Expenses"
+  | "Usable Water Expenses"
+  | "Other Expenses";
+
+export interface ExpenseItem {
+  id: string;
+  school_id?: string;
+  academic_year_id?: string | null;
+  expense_date: string;
+  category: ExpenseCategory;
+  description: string;
+  amount: number;
+  payment_method: string;
+  reference_number?: string | null;
+  notes?: string | null;
+  recorded_by?: string | null;
+  recorded_by_name?: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface ExpenseStats {
+  total_expenses: number;
+  current_month_expenses: number;
+  category_breakdown: Record<string, number>;
+  total_count: number;
+}
+
+export interface FeeFinancialSummary {
+  total_applicable_fees: number;
+  total_collected_fees: number;
+  total_remaining_fees: number;
+  collection_rate: number;
+  completed_payments_count: number;
+}
+

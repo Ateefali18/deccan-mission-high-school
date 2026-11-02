@@ -25,6 +25,7 @@ import { NoticesPage } from "../pages/notices/NoticesPage";
 import { TimetablePage } from "../pages/timetable/TimetablePage";
 import { SubjectsPage } from "../pages/admin/SubjectsPage";
 import { FeesPage } from "../pages/fees/FeesPage";
+import { ExpensesPage } from "../pages/admin/ExpensesPage";
 import { AssignmentsPage } from "../pages/assignments/AssignmentsPage";
 import { ReportsPage } from "../pages/reports/ReportsPage";
 import { SettingsPage } from "../pages/settings/SettingsPage";
@@ -167,6 +168,14 @@ export const AppRoutes: React.FC = () => {
           element={
             <ProtectedRoute allowedRoles={["ADMIN"]}>
               <FeesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/expenses"
+          element={
+            <ProtectedRoute allowedRoles={["ADMIN"]}>
+              <ExpensesPage />
             </ProtectedRoute>
           }
         />

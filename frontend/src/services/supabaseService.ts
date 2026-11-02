@@ -17,6 +17,9 @@ import type {
   SearchResultItem,
   NoticeItem,
   DocumentItem,
+  ExpenseItem,
+  ExpenseStats,
+  FeeFinancialSummary,
 } from "../types";
 
 export class SupabaseServiceError extends Error {
@@ -2018,6 +2021,368 @@ export const supabaseService = {
         .eq("id", id);
       if (error) console.warn("Supabase timetable delete error:", error.message);
       return { success: !error };
+    },
+  },
+
+  // --------------------------------------------------------------------------
+  // EXPENSES MANAGEMENT
+  // --------------------------------------------------------------------------
+  expenses: {
+    async list(filters: {
+      category?: string;
+      from_date?: string;
+      to_date?: string;
+      search?: string;
+    } = {}): Promise<ExpenseItem[]> {
+      if (!isSupabaseConfigured()) return [];
+      let query = supabase
+        .from("expenses")
+        .select("*, profiles(first_name, last_name)")
+        .eq("is_active", true)
+        .order("expense_date", { ascending: false });
+
+      if (filters.category && filters.category !== "all") {
+        query = query.eq("category", filters.category);
+      }
+      if (filters.from_date) {
+        query = query.gte("expense_date", filters.from_date);
+      }
+      if (filters.to_date) {
+        query = query.lte("expense_date", filters.to_date);
+      }
+      if (filters.search) {
+        query = query.ilike("description", `%${filters.search}%`);
+      }
+
+      const { data, error } = await query;
+      if (error) {
+        console.warn("Supabase expenses list error:", error.message);
+        return [];
+      }
+
+      return (data || []).map((e: any) => ({
+        id: e.id,
+        school_id: e.school_id,
+        academic_year_id: e.academic_year_id,
+        expense_date: e.expense_date,
+        category: e.category,
+        description: e.description,
+        amount: Number(e.amount),
+        payment_method: e.payment_method,
+        reference_number: e.reference_number,
+        notes: e.notes,
+        recorded_by: e.recorded_by,
+        recorded_by_name: e.profiles ? `${e.profiles.first_name} ${e.profiles.last_name || ""}`.trim() : "Administrator",
+        is_active: e.is_active,
+        created_at: e.created_at,
+        updated_at: e.updated_at,
+      }));
+    },
+
+    async create(payload: {
+      expense_date: string;
+      category: string;
+      description: string;
+      amount: number;
+      payment_method?: string;
+      reference_number?: string;
+      notes?: string;
+    }): Promise<ExpenseItem> {
+      if (!isSupabaseConfigured()) {
+        throw new SupabaseServiceError("Supabase is not configured");
+      }
+      const school = await supabaseService.schools.getCurrent();
+      const schoolId = school?.id;
+      const { data: userRes } = await supabase.auth.getUser();
+
+      const { data, error } = await supabase
+        .from("expenses")
+        .insert({
+          school_id: schoolId || null,
+          expense_date: payload.expense_date,
+          category: payload.category,
+          description: payload.description,
+          amount: payload.amount,
+          payment_method: payload.payment_method || "Cash",
+          reference_number: payload.reference_number || null,
+          notes: payload.notes || null,
+          recorded_by: userRes?.user?.id || null,
+          is_active: true,
+        })
+        .select("*, profiles(first_name, last_name)")
+        .single();
+
+      if (error) {
+        throw new SupabaseServiceError(error.message, error.code, error.details);
+      }
+
+      return {
+        id: data.id,
+        school_id: data.school_id,
+        academic_year_id: data.academic_year_id,
+        expense_date: data.expense_date,
+        category: data.category,
+        description: data.description,
+        amount: Number(data.amount),
+        payment_method: data.payment_method,
+        reference_number: data.reference_number,
+        notes: data.notes,
+        recorded_by: data.recorded_by,
+        recorded_by_name: data.profiles ? `${data.profiles.first_name} ${data.profiles.last_name || ""}`.trim() : "Administrator",
+        is_active: data.is_active,
+        created_at: data.created_at,
+        updated_at: data.updated_at,
+      };
+    },
+
+    async update(id: string, payload: Partial<ExpenseItem>): Promise<ExpenseItem> {
+      if (!isSupabaseConfigured()) {
+        throw new SupabaseServiceError("Supabase is not configured");
+      }
+
+      const updates: any = {};
+      if (payload.expense_date !== undefined) updates.expense_date = payload.expense_date;
+      if (payload.category !== undefined) updates.category = payload.category;
+      if (payload.description !== undefined) updates.description = payload.description;
+      if (payload.amount !== undefined) updates.amount = payload.amount;
+      if (payload.payment_method !== undefined) updates.payment_method = payload.payment_method;
+      if (payload.reference_number !== undefined) updates.reference_number = payload.reference_number;
+      if (payload.notes !== undefined) updates.notes = payload.notes;
+      if (payload.is_active !== undefined) updates.is_active = payload.is_active;
+
+      const { data, error } = await supabase
+        .from("expenses")
+        .update(updates)
+        .eq("id", id)
+        .select("*, profiles(first_name, last_name)")
+        .single();
+
+      if (error) {
+        throw new SupabaseServiceError(error.message, error.code, error.details);
+      }
+
+      return {
+        id: data.id,
+        school_id: data.school_id,
+        academic_year_id: data.academic_year_id,
+        expense_date: data.expense_date,
+        category: data.category,
+        description: data.description,
+        amount: Number(data.amount),
+        payment_method: data.payment_method,
+        reference_number: data.reference_number,
+        notes: data.notes,
+        recorded_by: data.recorded_by,
+        recorded_by_name: data.profiles ? `${data.profiles.first_name} ${data.profiles.last_name || ""}`.trim() : "Administrator",
+        is_active: data.is_active,
+        created_at: data.created_at,
+        updated_at: data.updated_at,
+      };
+    },
+
+    async delete(id: string): Promise<boolean> {
+      if (!isSupabaseConfigured()) return true;
+      const { error } = await supabase
+        .from("expenses")
+        .update({ is_active: false })
+        .eq("id", id);
+
+      if (error) throw new SupabaseServiceError(error.message, error.code, error.details);
+      return true;
+    },
+
+    async getStats(filters: { from_date?: string; to_date?: string } = {}): Promise<ExpenseStats> {
+      if (!isSupabaseConfigured()) {
+        return {
+          total_expenses: 0,
+          current_month_expenses: 0,
+          category_breakdown: {},
+          total_count: 0,
+        };
+      }
+
+      let query = supabase
+        .from("expenses")
+        .select("amount, category, expense_date")
+        .eq("is_active", true);
+
+      if (filters.from_date) query = query.gte("expense_date", filters.from_date);
+      if (filters.to_date) query = query.lte("expense_date", filters.to_date);
+
+      const { data, error } = await query;
+      if (error) {
+        console.warn("Supabase expense stats warning:", error.message);
+        return {
+          total_expenses: 0,
+          current_month_expenses: 0,
+          category_breakdown: {},
+          total_count: 0,
+        };
+      }
+
+      const rows = data || [];
+      const currentMonthPrefix = new Date().toISOString().slice(0, 7);
+
+      let total_expenses = 0;
+      let current_month_expenses = 0;
+      const category_breakdown: Record<string, number> = {};
+
+      rows.forEach((r: any) => {
+        const amt = Number(r.amount) || 0;
+        total_expenses += amt;
+        if (r.expense_date && r.expense_date.startsWith(currentMonthPrefix)) {
+          current_month_expenses += amt;
+        }
+        category_breakdown[r.category] = (category_breakdown[r.category] || 0) + amt;
+      });
+
+      return {
+        total_expenses,
+        current_month_expenses,
+        category_breakdown,
+        total_count: rows.length,
+      };
+    },
+  },
+
+  // --------------------------------------------------------------------------
+  // FEES & PAYMENTS MANAGEMENT
+  // --------------------------------------------------------------------------
+  fees: {
+    async getFinancialSummary(): Promise<FeeFinancialSummary> {
+      if (!isSupabaseConfigured()) {
+        return {
+          total_applicable_fees: 1850000,
+          total_collected_fees: 1420000,
+          total_remaining_fees: 430000,
+          collection_rate: 76.76,
+          completed_payments_count: 42,
+        };
+      }
+
+      const [invoicesRes, paymentsRes] = await Promise.all([
+        supabase
+          .from("invoices")
+          .select("total_amount, status")
+          .neq("status", "cancelled"),
+        supabase
+          .from("payments")
+          .select("amount")
+      ]);
+
+      const invoices = invoicesRes.data || [];
+      const payments = paymentsRes.data || [];
+
+      const total_applicable_fees = invoices.reduce(
+        (sum: number, inv: any) => sum + (Number(inv.total_amount) || 0),
+        0
+      );
+
+      const total_collected_fees = payments.reduce(
+        (sum: number, p: any) => sum + (Number(p.amount) || 0),
+        0
+      );
+
+      const total_remaining_fees = Math.max(0, total_applicable_fees - total_collected_fees);
+      const collection_rate = total_applicable_fees > 0
+        ? Math.round((total_collected_fees / total_applicable_fees) * 10000) / 100
+        : 0;
+
+      return {
+        total_applicable_fees,
+        total_collected_fees,
+        total_remaining_fees,
+        collection_rate,
+        completed_payments_count: payments.length,
+      };
+    },
+
+    async getInvoices(params: { student_id?: string | number; status?: string } = {}) {
+      if (!isSupabaseConfigured()) return [];
+      let query = supabase
+        .from("invoices")
+        .select("*, students(first_name, last_name, admission_number)")
+        .order("created_at", { ascending: false });
+
+      if (params.student_id) query = query.eq("student_id", params.student_id);
+      if (params.status && params.status !== "all") query = query.eq("status", params.status);
+
+      const { data, error } = await query;
+      if (error) {
+        console.warn("Supabase invoices error:", error.message);
+        return [];
+      }
+
+      return (data || []).map((inv: any) => ({
+        id: inv.id,
+        invoice_number: inv.invoice_number,
+        student_id: inv.student_id,
+        student_name: inv.students ? `${inv.students.first_name} ${inv.students.last_name || ""}`.trim() : "Student",
+        admission_number: inv.students?.admission_number || "—",
+        total_amount: Number(inv.total_amount),
+        paid_amount: Number(inv.paid_amount || 0),
+        balance: Number(inv.balance_amount || 0),
+        status: inv.status,
+        due_date: inv.due_date,
+        created_at: inv.created_at,
+      }));
+    },
+
+    async recordPayment(payload: {
+      invoice_id?: string | number;
+      student_id: string | number;
+      receipt_number: string;
+      amount: number;
+      payment_mode: string;
+      transaction_reference?: string;
+      remarks?: string;
+    }) {
+      if (!isSupabaseConfigured()) {
+        return { success: true, receipt_number: payload.receipt_number };
+      }
+
+      const { data: userRes } = await supabase.auth.getUser();
+
+      const { data, error } = await supabase
+        .from("payments")
+        .insert({
+          invoice_id: payload.invoice_id && String(payload.invoice_id).length === 36 ? payload.invoice_id : null,
+          student_id: payload.student_id,
+          receipt_number: payload.receipt_number,
+          amount: payload.amount,
+          payment_method: payload.payment_mode ? payload.payment_mode.toLowerCase() : "cash",
+          transaction_reference: payload.transaction_reference || null,
+          collected_by: userRes?.user?.id || null,
+          remarks: payload.remarks || null,
+        })
+        .select()
+        .single();
+
+      if (error) throw new SupabaseServiceError(error.message, error.code, error.details);
+
+      if (payload.invoice_id && String(payload.invoice_id).length === 36) {
+        const { data: currentInv } = await supabase
+          .from("invoices")
+          .select("total_amount, paid_amount")
+          .eq("id", payload.invoice_id)
+          .single();
+
+        if (currentInv) {
+          const newPaid = Number(currentInv.paid_amount || 0) + Number(payload.amount);
+          const newBalance = Math.max(0, Number(currentInv.total_amount) - newPaid);
+          const newStatus = newBalance <= 0 ? "paid" : "partially_paid";
+          await supabase
+            .from("invoices")
+            .update({
+              paid_amount: newPaid,
+              balance_amount: newBalance,
+              status: newStatus,
+            })
+            .eq("id", payload.invoice_id);
+        }
+      }
+
+      return data;
     },
   },
 };
