@@ -6,6 +6,7 @@ import { PageHeader } from "../../components/shared/PageHeader";
 import { Card } from "../../components/ui/Card";
 import { Badge } from "../../components/ui/Badge";
 import { Skeleton } from "../../components/ui/Skeleton";
+import { ChangePasswordCard } from "../../components/shared/ChangePasswordCard";
 
 export const TeacherProfilePage: React.FC = () => {
   const [profile, setProfile] = useState<TeacherProfile | null>(null);
@@ -118,6 +119,9 @@ export const TeacherProfilePage: React.FC = () => {
               )}
             </Card>
           </div>
+
+          {/* Change Password Component */}
+          <ChangePasswordCard userRoleLabel="Faculty" />
         </div>
       ) : null}
     </div>

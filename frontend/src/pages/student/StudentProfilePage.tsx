@@ -6,6 +6,7 @@ import { PageHeader } from "../../components/shared/PageHeader";
 import { Card } from "../../components/ui/Card";
 import { Badge } from "../../components/ui/Badge";
 import { Skeleton } from "../../components/ui/Skeleton";
+import { ChangePasswordCard } from "../../components/shared/ChangePasswordCard";
 
 export const StudentProfilePage: React.FC = () => {
   const [profile, setProfile] = useState<StudentProfile | null>(null);
@@ -104,7 +105,7 @@ export const StudentProfilePage: React.FC = () => {
 
             <Card className="p-5 space-y-3">
               <h4 className="text-xs font-bold uppercase tracking-wider text-light-secondary dark:text-dark-secondary">
-                Guardian & Personal Data
+                Guardian &amp; Personal Data
               </h4>
               <div className="space-y-2 text-xs">
                 <div className="flex justify-between py-1 border-b border-light-border dark:border-dark-border">
@@ -134,6 +135,9 @@ export const StudentProfilePage: React.FC = () => {
               </div>
             </Card>
           </div>
+
+          {/* Change Password Component */}
+          <ChangePasswordCard userRoleLabel="Student" />
         </div>
       ) : null}
     </div>

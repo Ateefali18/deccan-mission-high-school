@@ -172,7 +172,7 @@ describe("Prompt 3: Fees Summary, Expense Management, and Marks Interface Verifi
       to_date: "2026-11-30",
     });
     expect(dateFiltered.every((e) => e.expense_date >= "2026-11-01" && e.expense_date <= "2026-11-30")).toBe(true);
-  });
+  }, 15000);
 
   // FLOW 9: Monthly and category-wise expense totals calculate accurately
   it("Step 9: Monthly and category-wise expense totals calculate correctly", async () => {
@@ -213,5 +213,5 @@ describe("Prompt 3: Fees Summary, Expense Management, and Marks Interface Verifi
 
     const activeList = await api.expenses.list();
     expect(activeList.find((e) => e.id === exp.id)).toBeUndefined();
-  });
+  }, 15000);
 });

@@ -1,6 +1,6 @@
 # DECCAN MISSION HIGH SCHOOL ERP
 **Phase 1 Foundation: Architecture, Relational Database, RBAC Authentication & Royal Dark/Gold UI**  
-*Location: Hyderabad, Telangana, India • CBSE Affiliation No: TS-HYD-SSC-41092*
+*Location: Hyderabad, Telangana, India • Telangana State SSC Affiliation No: TS-HYD-SSC-41092*
 
 ---
 

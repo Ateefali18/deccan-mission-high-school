@@ -96,6 +96,7 @@ export const TeachersPage: React.FC = () => {
     register: registerCreate,
     handleSubmit: handleSubmitCreate,
     reset: resetCreate,
+    setValue: setCreateValue,
     formState: { errors: createErrors, isSubmitting: isSubmittingCreate },
   } = useForm<TeacherCreateFormData>({
     resolver: zodResolver(teacherCreateSchema),
@@ -515,14 +516,30 @@ export const TeachersPage: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <Input
-              label="Temporary Password"
-              type="password"
-              placeholder="At least 6 characters"
-              error={createErrors.password?.message}
-              required
-              {...registerCreate("password")}
-            />
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-semibold uppercase tracking-wider text-light-secondary dark:text-dark-secondary">
+                  Portal Password *
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const randomPass = "TCH@" + Math.floor(1000 + Math.random() * 9000);
+                    setCreateValue("password", randomPass);
+                    toast.success(`Generated faculty password: ${randomPass}`);
+                  }}
+                  className="text-[11px] font-bold text-brand-blue dark:text-dark-accent hover:underline"
+                >
+                  Auto-Generate
+                </button>
+              </div>
+              <Input
+                placeholder="e.g. 1234 or TCH@2026"
+                error={createErrors.password?.message}
+                required
+                {...registerCreate("password")}
+              />
+            </div>
             <Input
               label="Designation"
               placeholder="e.g. Senior Faculty"
