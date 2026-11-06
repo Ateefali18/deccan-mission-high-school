@@ -112,7 +112,7 @@ export const AdminDashboardPage: React.FC = () => {
 
   // Real-time Supabase sync: refresh stats when student, teacher, or attendance changes
   useRealtimeSync({
-    tables: ["students", "teachers", "attendance_records", "notices", "invoices"],
+    tables: ["students", "teachers", "attendance_records", "notices", "invoices", "academic_years", "academic_terms", "classes", "sections"],
     onSync: (table, eventType) => {
       fetchDashboard();
       toast.success(`Live sync: ${table} updated (${eventType})`);
@@ -269,10 +269,10 @@ export const AdminDashboardPage: React.FC = () => {
             subtitle="Grades 1 through 10"
           />
           <MetricCard
-            label="Academic Term"
-            value={stats.current_academic_year || "2025-2026"}
+            label="Academic Session & Term"
+            value={stats.current_academic_year || "2026-2027"}
             icon={<Calendar className="w-6 h-6" />}
-            subtitle="Active School Session"
+            subtitle={stats.current_academic_term ? `Active: ${stats.current_academic_term}` : "Active School Session"}
             trend="Current"
           />
         </div>
@@ -343,6 +343,167 @@ export const AdminDashboardPage: React.FC = () => {
             Student identity & certificates
           </p>
         </div>
+      </div>
+
+      {/* Category-Wise Academic Hierarchy & Student Distribution */}
+      {stats && stats.class_distribution && stats.class_distribution.length > 0 && (
+        <Card className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-base font-bold text-light-primary dark:text-dark-primary flex items-center gap-2">
+                <Layers className="w-4 h-4 text-brand-gold" />
+                <span>Academic Hierarchy & Category-Wise Student Distribution</span>
+              </h3>
+              <p className="text-xs text-light-secondary dark:text-dark-secondary mt-0.5">
+                Pre-Primary (Nursery, LKG, UKG), Primary (1–5), and Higher Classes (6–10) under Telangana State SSC
+              </p>
+            </div>
+            <Link to="/admin/classes" className="text-xs text-brand-gold hover:underline font-semibold flex items-center gap-1">
+              <span>Manage Classes</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {stats.class_distribution.map((dist, idx) => {
+              const totalStd = stats.total_active_students || 1;
+              const pct = Math.round((dist.student_count / totalStd) * 100) || 0;
+              const isPrePrimary = dist.category.toLowerCase().includes("pre");
+              const isPrimary = dist.category.toLowerCase().includes("primary") && !isPrePrimary;
+              const colorClass = isPrePrimary
+                ? "bg-purple-500"
+                : isPrimary
+                ? "bg-blue-500"
+                : "bg-amber-500";
+
+              return (
+                <div
+                  key={idx}
+                  className="p-4 rounded-xl bg-gray-50 dark:bg-dark-elevated border border-light-border dark:border-dark-border flex flex-col justify-between"
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-bold text-light-primary dark:text-dark-primary">
+                        {dist.category}
+                      </span>
+                      <Badge variant="neutral" size="sm">
+                        {dist.count} {dist.count === 1 ? "Class" : "Classes"}
+                      </Badge>
+                    </div>
+                    <div className="flex items-baseline justify-between mb-1.5">
+                      <span className="text-2xl font-extrabold text-light-primary dark:text-dark-primary font-mono">
+                        {dist.student_count}
+                      </span>
+                      <span className="text-xs font-semibold text-light-secondary dark:text-dark-secondary">
+                        {pct}% of Enrolled
+                      </span>
+                    </div>
+                  </div>
+                  <div className="w-full bg-gray-200 dark:bg-gray-700 h-2 rounded-full overflow-hidden mt-3">
+                    <div
+                      className={`h-full rounded-full transition-all duration-500 ${colorClass}`}
+                      style={{ width: `${Math.max(pct, 5)}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
+
+      {/* Dual Recent Feeds: Student Admissions & Faculty Additions */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Recent Student Admissions */}
+        <Card className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-base font-bold text-light-primary dark:text-dark-primary flex items-center gap-2">
+                <GraduationCap className="w-4 h-4 text-brand-blue" />
+                <span>Recent Student Admissions</span>
+              </h3>
+              <p className="text-xs text-light-secondary dark:text-dark-secondary mt-0.5">
+                Newly admitted students registered in persistent database
+              </p>
+            </div>
+            <Link to="/admin/students" className="text-xs text-brand-blue dark:text-dark-accent hover:underline font-semibold flex items-center gap-1">
+              <span>View All</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+
+          {stats && stats.recent_students && stats.recent_students.length > 0 ? (
+            <div className="divide-y divide-light-border dark:divide-dark-border">
+              {stats.recent_students.map((std: any) => (
+                <div key={std.id} className="py-2.5 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-light-primary dark:text-dark-primary truncate">
+                      {std.full_name}
+                    </p>
+                    <p className="text-[11px] text-light-secondary dark:text-dark-secondary flex items-center gap-2 mt-0.5">
+                      <span className="font-mono text-brand-gold">{std.admission_number}</span>
+                      <span>•</span>
+                      <span>{std.class_name || "Enrolled"}</span>
+                      {std.section_name && <span>({std.section_name})</span>}
+                    </p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <Badge variant="green" size="sm">
+                      {std.student_status || "Active"}
+                    </Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-light-secondary py-6 text-center">No recent student admissions recorded.</p>
+          )}
+        </Card>
+
+        {/* Recent Faculty Additions */}
+        <Card className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-base font-bold text-light-primary dark:text-dark-primary flex items-center gap-2">
+                <Users className="w-4 h-4 text-brand-gold" />
+                <span>Recent Teaching Faculty</span>
+              </h3>
+              <p className="text-xs text-light-secondary dark:text-dark-secondary mt-0.5">
+                Staff appointments and academic subject instructors
+              </p>
+            </div>
+            <Link to="/admin/teachers" className="text-xs text-brand-gold hover:underline font-semibold flex items-center gap-1">
+              <span>View All</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+
+          {stats && stats.recent_teachers && stats.recent_teachers.length > 0 ? (
+            <div className="divide-y divide-light-border dark:divide-dark-border">
+              {stats.recent_teachers.map((tch: any) => (
+                <div key={tch.id} className="py-2.5 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-light-primary dark:text-dark-primary truncate">
+                      {tch.full_name}
+                    </p>
+                    <p className="text-[11px] text-light-secondary dark:text-dark-secondary flex items-center gap-2 mt-0.5">
+                      <span className="font-mono text-brand-blue dark:text-dark-accent">{tch.employee_id}</span>
+                      <span>•</span>
+                      <span className="truncate">{tch.designation || "Faculty"}</span>
+                    </p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <Badge variant={tch.is_active !== false ? "green" : "neutral"} size="sm">
+                      {tch.employment_status || (tch.is_active !== false ? "Active" : "Inactive")}
+                    </Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-light-secondary py-6 text-center">No faculty members registered.</p>
+          )}
+        </Card>
       </div>
 
       {/* Grid: Quick Navigation & Real Audit Activity */}

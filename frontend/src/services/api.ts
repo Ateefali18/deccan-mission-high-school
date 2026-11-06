@@ -1,6 +1,7 @@
 import type {
   CurrentUserSession,
   AcademicYear,
+  AcademicTerm,
   SchoolClass,
   Section,
   StudentListItem,
@@ -474,6 +475,158 @@ export const updateStoredAcademicYear = (id: string | number, ay: Partial<Academ
   return updatedItem || (current[0] as AcademicYear);
 };
 
+export const broadcastDataMutation = (table: string, eventType: string, data?: any) => {
+  try {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("dmhs_data_mutation", { detail: { table, eventType, data } }));
+      if ("BroadcastChannel" in window) {
+        const bc = new BroadcastChannel("dmhs_sync_channel");
+        bc.postMessage({ table, eventType, data, timestamp: Date.now() });
+        bc.close();
+      }
+    }
+  } catch {}
+};
+
+const DEFAULT_BASELINE_ACADEMIC_TERMS: AcademicTerm[] = [
+  {
+    id: "term_1",
+    academic_year_id: 1, // 2026-2027
+    name: "Term 1 (FA1 + SA1)",
+    term_type: "term",
+    start_date: "2026-06-01",
+    end_date: "2026-10-31",
+    is_current: true,
+    status: "active",
+    created_at: "2026-06-01T00:00:00Z",
+    updated_at: "2026-06-01T00:00:00Z",
+  },
+  {
+    id: "term_2",
+    academic_year_id: 1,
+    name: "Term 2 (FA2 + SA2)",
+    term_type: "term",
+    start_date: "2026-11-01",
+    end_date: "2027-04-30",
+    is_current: false,
+    status: "planned",
+    created_at: "2026-06-01T00:00:00Z",
+    updated_at: "2026-06-01T00:00:00Z",
+  },
+  {
+    id: "term_3",
+    academic_year_id: 2, // 2025-2026
+    name: "Annual Academic Term",
+    term_type: "annual",
+    start_date: "2025-06-01",
+    end_date: "2026-04-30",
+    is_current: false,
+    status: "completed",
+    created_at: "2025-06-01T00:00:00Z",
+    updated_at: "2026-04-30T00:00:00Z",
+  },
+];
+
+export const getStoredAcademicTerms = (academicYearId?: string | number): AcademicTerm[] => {
+  try {
+    if (typeof localStorage === "undefined") return DEFAULT_BASELINE_ACADEMIC_TERMS;
+    const raw = localStorage.getItem("dmhs_academic_terms");
+    let terms: AcademicTerm[] = DEFAULT_BASELINE_ACADEMIC_TERMS;
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        terms = parsed;
+      }
+    } else {
+      localStorage.setItem("dmhs_academic_terms", JSON.stringify(DEFAULT_BASELINE_ACADEMIC_TERMS));
+    }
+    if (academicYearId) {
+      return terms.filter((t) => String(t.academic_year_id) === String(academicYearId));
+    }
+    return terms;
+  } catch {
+    return DEFAULT_BASELINE_ACADEMIC_TERMS;
+  }
+};
+
+export const saveStoredAcademicTerm = (term: Partial<AcademicTerm>): AcademicTerm => {
+  const current = getStoredAcademicTerms();
+  let updated = current;
+  if (term.is_current) {
+    updated = updated.map((t) => ({ ...t, is_current: false }));
+  }
+  const newTerm: AcademicTerm = {
+    id: "term_" + Date.now(),
+    academic_year_id: term.academic_year_id || 1,
+    name: (term.name || "Academic Term").trim(),
+    term_type: term.term_type || "term",
+    start_date: term.start_date || new Date().toISOString().slice(0, 10),
+    end_date: term.end_date || new Date().toISOString().slice(0, 10),
+    is_current: term.is_current ?? false,
+    status: term.status || "active",
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+  updated = [newTerm, ...updated];
+  if (typeof localStorage !== "undefined") {
+    localStorage.setItem("dmhs_academic_terms", JSON.stringify(updated));
+  }
+  return newTerm;
+};
+
+export const updateStoredAcademicTerm = (id: string | number, term: Partial<AcademicTerm>): AcademicTerm => {
+  let current = getStoredAcademicTerms();
+  if (term.is_current) {
+    current = current.map((t) => ({ ...t, is_current: false }));
+  }
+  let updatedItem: AcademicTerm | null = null;
+  current = current.map((t) => {
+    if (String(t.id) === String(id)) {
+      updatedItem = {
+        ...t,
+        ...term,
+        updated_at: new Date().toISOString(),
+      };
+      return updatedItem;
+    }
+    return t;
+  });
+  if (typeof localStorage !== "undefined") {
+    localStorage.setItem("dmhs_academic_terms", JSON.stringify(current));
+  }
+  return updatedItem || (current[0] as AcademicTerm);
+};
+
+export const deleteStoredAcademicTerm = (id: string | number): boolean => {
+  let current = getStoredAcademicTerms();
+  current = current.filter((t) => String(t.id) !== String(id));
+  if (typeof localStorage !== "undefined") {
+    localStorage.setItem("dmhs_academic_terms", JSON.stringify(current));
+  }
+  return true;
+};
+
+export const setStoredCurrentAcademicTerm = (id: string | number): AcademicTerm => {
+  let current = getStoredAcademicTerms();
+  let updatedItem: AcademicTerm | null = null;
+  current = current.map((t) => {
+    if (String(t.id) === String(id)) {
+      updatedItem = {
+        ...t,
+        is_current: true,
+        status: "active",
+        updated_at: new Date().toISOString(),
+      };
+      return updatedItem;
+    }
+    return { ...t, is_current: false };
+  });
+  if (typeof localStorage !== "undefined") {
+    localStorage.setItem("dmhs_academic_terms", JSON.stringify(current));
+  }
+  return updatedItem || (current[0] as AcademicTerm);
+};
+
 export const setStoredCurrentAcademicYear = (id: string | number): AcademicYear => {
   let current = getStoredAcademicYears();
   let updatedItem: AcademicYear | null = null;
@@ -849,57 +1002,136 @@ export const saveCustomPayment = (payment: any): void => {
 };
 
 export const BASELINE_CLASSES: SchoolClass[] = [
+  // 1. Pre-Primary
   {
-    id: "cls_10",
-    name: "Class 10",
-    grade_level: 10,
-    stream: "General",
+    id: "cls_nursery",
+    name: "Nursery",
+    grade_level: 0,
+    category: "Pre-Primary",
+    stream: "Early Childhood",
     is_active: true,
+    class_teacher_name: "Mrs. Asma Begum",
     sections: [
-      { id: "sec_10a", class_id: "cls_10", name: "A", room_number: "Room 101", capacity: 40, is_active: true },
-      { id: "sec_10b", class_id: "cls_10", name: "B", room_number: "Room 102", capacity: 40, is_active: true },
+      { id: "sec_nur_a", class_id: "cls_nursery", name: "A", room_number: "PP-101", capacity: 30, is_active: true },
     ],
   },
   {
-    id: "cls_9",
-    name: "Class 9",
-    grade_level: 9,
-    stream: "General",
+    id: "cls_lkg",
+    name: "LKG",
+    grade_level: 0,
+    category: "Pre-Primary",
+    stream: "Kindergarten",
     is_active: true,
+    class_teacher_name: "Mrs. Sana Khan",
     sections: [
-      { id: "sec_9a", class_id: "cls_9", name: "A", room_number: "Room 201", capacity: 40, is_active: true },
-      { id: "sec_9b", class_id: "cls_9", name: "B", room_number: "Room 202", capacity: 40, is_active: true },
+      { id: "sec_lkg_a", class_id: "cls_lkg", name: "A", room_number: "PP-102", capacity: 30, is_active: true },
     ],
   },
   {
-    id: "cls_8",
-    name: "Class 8",
-    grade_level: 8,
-    stream: "General",
+    id: "cls_ukg",
+    name: "UKG",
+    grade_level: 0,
+    category: "Pre-Primary",
+    stream: "Kindergarten",
     is_active: true,
+    class_teacher_name: "Mrs. Hina Kausar",
     sections: [
-      { id: "sec_8a", class_id: "cls_8", name: "A", room_number: "Room 203", capacity: 40, is_active: true },
-      { id: "sec_8b", class_id: "cls_8", name: "B", room_number: "Room 204", capacity: 40, is_active: true },
+      { id: "sec_ukg_a", class_id: "cls_ukg", name: "A", room_number: "PP-103", capacity: 35, is_active: true },
+    ],
+  },
+
+  // 2. Primary
+  {
+    id: "cls_1",
+    name: "Class 1",
+    grade_level: 1,
+    category: "Primary",
+    stream: "Foundational SSC",
+    is_active: true,
+    class_teacher_name: "Mrs. Bushra Tahseen",
+    sections: [
+      { id: "sec_1a", class_id: "cls_1", name: "A", room_number: "Room 101", capacity: 35, is_active: true },
+      { id: "sec_1b", class_id: "cls_1", name: "B", room_number: "Room 102", capacity: 35, is_active: true },
+    ],
+  },
+  {
+    id: "cls_2",
+    name: "Class 2",
+    grade_level: 2,
+    category: "Primary",
+    stream: "Foundational SSC",
+    is_active: true,
+    class_teacher_name: "Mrs. Shaheen Begum",
+    sections: [
+      { id: "sec_2a", class_id: "cls_2", name: "A", room_number: "Room 103", capacity: 35, is_active: true },
+      { id: "sec_2b", class_id: "cls_2", name: "B", room_number: "Room 104", capacity: 35, is_active: true },
+    ],
+  },
+
+  // 3. Higher Classes
+  {
+    id: "cls_6",
+    name: "Class 6",
+    grade_level: 6,
+    category: "Higher Classes",
+    stream: "Secondary SSC",
+    is_active: true,
+    class_teacher_name: "Mr. Abdul Raheem",
+    sections: [
+      { id: "sec_6a", class_id: "cls_6", name: "A", room_number: "Room 201", capacity: 40, is_active: true },
+      { id: "sec_6b", class_id: "cls_6", name: "B", room_number: "Room 202", capacity: 40, is_active: true },
     ],
   },
   {
     id: "cls_7",
     name: "Class 7",
     grade_level: 7,
-    stream: "General",
+    category: "Higher Classes",
+    stream: "Secondary SSC",
     is_active: true,
+    class_teacher_name: "Mrs. Tabassum Jahan",
     sections: [
-      { id: "sec_7a", class_id: "cls_7", name: "A", room_number: "Room 301", capacity: 40, is_active: true },
+      { id: "sec_7a", class_id: "cls_7", name: "A", room_number: "Room 203", capacity: 40, is_active: true },
+      { id: "sec_7b", class_id: "cls_7", name: "B", room_number: "Room 204", capacity: 40, is_active: true },
     ],
   },
   {
-    id: "cls_6",
-    name: "Class 6",
-    grade_level: 6,
-    stream: "General",
+    id: "cls_8",
+    name: "Class 8",
+    grade_level: 8,
+    category: "Higher Classes",
+    stream: "Secondary SSC",
     is_active: true,
+    class_teacher_name: "Mr. Tariq Jameel",
     sections: [
-      { id: "sec_6a", class_id: "cls_6", name: "A", room_number: "Room 302", capacity: 40, is_active: true },
+      { id: "sec_8a", class_id: "cls_8", name: "A", room_number: "Room 205", capacity: 40, is_active: true },
+      { id: "sec_8b", class_id: "cls_8", name: "B", room_number: "Room 206", capacity: 40, is_active: true },
+    ],
+  },
+  {
+    id: "cls_9",
+    name: "Class 9",
+    grade_level: 9,
+    category: "Higher Classes",
+    stream: "Secondary SSC",
+    is_active: true,
+    class_teacher_name: "Mrs. Fatima Zahra",
+    sections: [
+      { id: "sec_9a", class_id: "cls_9", name: "A", room_number: "Room 301", capacity: 40, is_active: true },
+      { id: "sec_9b", class_id: "cls_9", name: "B", room_number: "Room 302", capacity: 40, is_active: true },
+    ],
+  },
+  {
+    id: "cls_10",
+    name: "Class 10",
+    grade_level: 10,
+    category: "Higher Classes",
+    stream: "Telangana State SSC Board",
+    is_active: true,
+    class_teacher_name: "Mr. Ateef",
+    sections: [
+      { id: "sec_10a", class_id: "cls_10", name: "A", room_number: "Room 303", capacity: 40, is_active: true },
+      { id: "sec_10b", class_id: "cls_10", name: "B", room_number: "Room 304", capacity: 40, is_active: true },
     ],
   },
 ];
@@ -1314,6 +1546,7 @@ export const api = {
           body: JSON.stringify(data),
         });
         saveStoredAcademicYear(res);
+        broadcastDataMutation("academic_years", "INSERT", res);
         return res;
       } catch (err) {
         if (isSupabaseConfigured()) {
@@ -1340,6 +1573,7 @@ export const api = {
           body: JSON.stringify(data),
         });
         updateStoredAcademicYear(id, res);
+        broadcastDataMutation("academic_years", "UPDATE", res);
         return res;
       } catch (err) {
         if (isSupabaseConfigured()) {
@@ -1373,8 +1607,157 @@ export const api = {
             console.warn("Supabase academic_years setCurrent fallback:", sbErr);
           }
         }
-        return setStoredCurrentAcademicYear(id);
+        const res = setStoredCurrentAcademicYear(id);
+        broadcastDataMutation("academic_years", "UPDATE", res);
+        return res;
       }
+    },
+  },
+
+  academicTerms: {
+    list: async (academicYearId?: string | number): Promise<AcademicTerm[]> => {
+      let remote: AcademicTerm[] = [];
+      try {
+        const query = academicYearId ? `?academic_year_id=${academicYearId}` : "";
+        remote = await request<AcademicTerm[]>(`/academic-terms/${query}`);
+      } catch (err) {
+        if (isSupabaseConfigured()) {
+          try {
+            remote = await supabaseService.academicTerms.list(academicYearId);
+          } catch {}
+        }
+      }
+      if (remote && remote.length > 0) {
+        if (typeof localStorage !== "undefined") {
+          localStorage.setItem("dmhs_academic_terms", JSON.stringify(remote));
+        }
+        return remote;
+      }
+      return getStoredAcademicTerms(academicYearId);
+    },
+
+    getCurrent: async (academicYearId?: string | number): Promise<AcademicTerm | null> => {
+      const all = await api.academicTerms.list(academicYearId);
+      return all.find((t) => t.is_current) || all[0] || null;
+    },
+
+    create: async (data: {
+      academic_year_id: string | number;
+      name: string;
+      term_type?: string;
+      start_date: string;
+      end_date: string;
+      is_current?: boolean;
+      status?: string;
+    }) => {
+      assertAdminRole();
+      const all = await api.academicTerms.list(data.academic_year_id);
+      if (all.some((t) => t.name.trim().toLowerCase() === data.name.trim().toLowerCase())) {
+        throw new ApiError(`Academic term "${data.name}" already exists for this session.`, 400);
+      }
+      if (new Date(data.end_date) <= new Date(data.start_date)) {
+        throw new ApiError("End date must be after start date.", 400);
+      }
+
+      try {
+        const res = await request<AcademicTerm>("/academic-terms/", {
+          method: "POST",
+          body: JSON.stringify(data),
+        });
+        saveStoredAcademicTerm(res);
+        broadcastDataMutation("academic_terms", "INSERT", res);
+        return res;
+      } catch (err) {
+        if (isSupabaseConfigured()) {
+          try {
+            const res = await supabaseService.academicTerms.create(data);
+            saveStoredAcademicTerm(res);
+            broadcastDataMutation("academic_terms", "INSERT", res);
+            return res;
+          } catch {}
+        }
+        const res = saveStoredAcademicTerm(data);
+        broadcastDataMutation("academic_terms", "INSERT", res);
+        return res;
+      }
+    },
+
+    update: async (
+      id: string | number,
+      data: Partial<{
+        name: string;
+        term_type?: string;
+        start_date: string;
+        end_date: string;
+        is_current?: boolean;
+        status?: string;
+      }>
+    ) => {
+      assertAdminRole();
+      if (data.start_date && data.end_date && new Date(data.end_date) <= new Date(data.start_date)) {
+        throw new ApiError("End date must be after start date.", 400);
+      }
+      try {
+        const res = await request<AcademicTerm>(`/academic-terms/${id}`, {
+          method: "PUT",
+          body: JSON.stringify(data),
+        });
+        updateStoredAcademicTerm(id, res);
+        broadcastDataMutation("academic_terms", "UPDATE", res);
+        return res;
+      } catch (err) {
+        if (isSupabaseConfigured()) {
+          try {
+            const res = await supabaseService.academicTerms.update(id, data);
+            updateStoredAcademicTerm(id, res);
+            broadcastDataMutation("academic_terms", "UPDATE", res);
+            return res;
+          } catch {}
+        }
+        const res = updateStoredAcademicTerm(id, data);
+        broadcastDataMutation("academic_terms", "UPDATE", res);
+        return res;
+      }
+    },
+
+    setCurrent: async (id: string | number) => {
+      assertAdminRole();
+      try {
+        const res = await request<AcademicTerm>(`/academic-terms/${id}/set-current`, {
+          method: "PUT",
+        });
+        setStoredCurrentAcademicTerm(id);
+        broadcastDataMutation("academic_terms", "UPDATE", res);
+        return res;
+      } catch (err) {
+        if (isSupabaseConfigured()) {
+          try {
+            const res = await supabaseService.academicTerms.setCurrent(id);
+            setStoredCurrentAcademicTerm(id);
+            broadcastDataMutation("academic_terms", "UPDATE", res);
+            return res;
+          } catch {}
+        }
+        const res = setStoredCurrentAcademicTerm(id);
+        broadcastDataMutation("academic_terms", "UPDATE", res);
+        return res;
+      }
+    },
+
+    delete: async (id: string | number) => {
+      assertAdminRole();
+      try {
+        await request(`/academic-terms/${id}`, { method: "DELETE" });
+      } catch {
+        if (isSupabaseConfigured()) {
+          try {
+            await supabaseService.academicTerms.delete(id);
+          } catch {}
+        }
+      }
+      deleteStoredAcademicTerm(id);
+      broadcastDataMutation("academic_terms", "DELETE", { id });
+      return true;
     },
   },
 
@@ -1418,7 +1801,24 @@ export const api = {
         }
       });
 
-      return Array.from(baseMap.values()).sort((a, b) => a.grade_level - b.grade_level);
+      const allStudents = getStoredCustomStudents().concat(BASELINE_STUDENTS);
+      return Array.from(baseMap.values()).map((cls) => {
+        const count = allStudents.filter((s) => (s.class_name || "").toLowerCase() === cls.name.toLowerCase()).length;
+        const cat =
+          cls.category ||
+          (cls.grade_level === 0 || ["nursery", "lkg", "ukg"].includes(cls.name.toLowerCase())
+            ? "Pre-Primary"
+            : cls.grade_level >= 1 && cls.grade_level <= 5
+            ? "Primary"
+            : cls.grade_level >= 6 && cls.grade_level <= 10
+            ? "Higher Classes"
+            : "Higher Secondary");
+        return {
+          ...cls,
+          category: cat,
+          student_count: count,
+        };
+      }).sort((a, b) => a.grade_level - b.grade_level);
     },
 
     create: async (data: { name: string; grade_level: number; stream?: string }): Promise<SchoolClass> => {
@@ -1776,6 +2176,7 @@ export const api = {
 
       // 1. Save in local persistent custom storage
       saveCustomStudent(newStudentItem);
+      broadcastDataMutation("students", "INSERT", newStudentItem);
 
       // 2. Save credentials in custom user registry so student can log in immediately
       saveCustomUser({
@@ -2003,6 +2404,7 @@ export const api = {
 
       // 1. Save in local persistent custom storage
       saveCustomTeacher(newTeacherItem);
+      broadcastDataMutation("teachers", "INSERT", newTeacherItem);
 
       // 2. Save credentials in custom user registry so teacher can log in immediately
       saveCustomUser({
@@ -2073,42 +2475,88 @@ export const api = {
       const payload: any = { ...data };
       if (payload.joining_date === "") delete payload.joining_date;
 
+      const customTeachers = getStoredCustomTeachers();
+      const updated = customTeachers.map((t) =>
+        String(t.id) === String(id) ? { ...t, ...payload } : t
+      );
+      saveStoredCustomTeachers(updated);
+
+      if (!isUUID(id)) {
+        broadcastDataMutation("teachers", "UPDATE", { id, ...payload });
+        return payload;
+      }
+
       try {
-        return await request<TeacherProfile>(`/teachers/${id}`, {
+        const res = await request<TeacherProfile>(`/teachers/${id}`, {
           method: "PUT",
           body: JSON.stringify(payload),
         });
+        broadcastDataMutation("teachers", "UPDATE", res);
+        return res;
       } catch (err) {
         if (isSupabaseConfigured()) {
-          return supabaseService.teachers.update(id, payload);
+          await supabaseService.teachers.update(id, payload);
         }
+        broadcastDataMutation("teachers", "UPDATE", { id, ...payload });
         return payload;
       }
     },
 
     toggleStatus: async (id: number | string, isActive: boolean) => {
+      const customTeachers = getStoredCustomTeachers();
+      const updated = customTeachers.map((t) =>
+        String(t.id) === String(id)
+          ? { ...t, is_active: isActive, employment_status: isActive ? "active" : "inactive" }
+          : t
+      );
+      saveStoredCustomTeachers(updated);
+
+      if (!isUUID(id)) {
+        broadcastDataMutation("teachers", "UPDATE", { id, is_active: isActive });
+        return { is_active: isActive };
+      }
+
       try {
-        return await request<TeacherProfile>(`/teachers/${id}/status`, {
+        const res = await request<TeacherProfile>(`/teachers/${id}/status`, {
           method: "PATCH",
           body: JSON.stringify({ is_active: isActive }),
         });
+        broadcastDataMutation("teachers", "UPDATE", res);
+        return res;
       } catch (err) {
         if (isSupabaseConfigured()) {
-          return supabaseService.teachers.toggleStatus(id, isActive);
+          await supabaseService.teachers.toggleStatus(id, isActive);
         }
+        broadcastDataMutation("teachers", "UPDATE", { id, is_active: isActive });
         return { is_active: isActive };
       }
     },
 
     deactivate: async (id: number | string) => {
+      const customTeachers = getStoredCustomTeachers();
+      const updated = customTeachers.map((t) =>
+        String(t.id) === String(id)
+          ? { ...t, is_active: false, employment_status: "inactive" }
+          : t
+      );
+      saveStoredCustomTeachers(updated);
+
+      if (!isUUID(id)) {
+        broadcastDataMutation("teachers", "DELETE", { id });
+        return { message: "Deactivated" };
+      }
+
       try {
-        return await request<TeacherProfile>(`/teachers/${id}`, {
+        const res = await request<TeacherProfile>(`/teachers/${id}`, {
           method: "DELETE",
         });
+        broadcastDataMutation("teachers", "DELETE", { id });
+        return res;
       } catch (err) {
         if (isSupabaseConfigured()) {
-          return supabaseService.teachers.deactivate(id);
+          await supabaseService.teachers.deactivate(id);
         }
+        broadcastDataMutation("teachers", "DELETE", { id });
         return { message: "Deactivated" };
       }
     },
@@ -2116,14 +2564,93 @@ export const api = {
 
   dashboards: {
     getAdmin: async (): Promise<AdminDashboardStats> => {
-      try {
-        return await request<AdminDashboardStats>("/dashboards/admin");
-      } catch (err) {
-        if (isSupabaseConfigured()) {
-          return supabaseService.dashboards.getAdmin();
+      // 1. Fetch real student list, teacher list, classes, academic years and terms in parallel
+      const [studentsData, teachersData, classesList, currentAy, currentTerm] = await Promise.all([
+        api.students.list({ limit: 1000 }).catch(() => ({ items: [], total: 0 })),
+        api.teachers.list({ limit: 1000 }).catch(() => ({ items: [], total: 0 })),
+        api.classes.list().catch(() => []),
+        api.academicYears.getCurrent().catch(() => null),
+        api.academicTerms.getCurrent().catch(() => null),
+      ]);
+
+      const allStudents = studentsData.items || [];
+      const allTeachers = teachersData.items || [];
+      const activeStudents = allStudents.filter((s) => s.student_status === "active");
+      const activeTeachers = allTeachers.filter((t) => t.is_active !== false && t.employment_status !== "inactive");
+
+      // Count sections
+      const totalSections = classesList.reduce((acc, c) => acc + (Array.isArray(c.sections) ? c.sections.length : 0), 0);
+
+      // Class distribution calculation
+      let prePrimaryCount = 0;
+      let primaryCount = 0;
+      let higherCount = 0;
+
+      allStudents.forEach((s) => {
+        const cName = (s.class_name || "").toLowerCase();
+        if (cName.includes("nursery") || cName.includes("lkg") || cName.includes("ukg")) {
+          prePrimaryCount++;
+        } else if (
+          cName.includes("class 1") ||
+          cName.includes("class 2") ||
+          cName.includes("class 3") ||
+          cName.includes("class 4") ||
+          cName.includes("class 5")
+        ) {
+          primaryCount++;
+        } else {
+          higherCount++;
         }
-        throw err;
-      }
+      });
+
+      // Recent students & teachers
+      const recentStudents = allStudents.slice(0, 5);
+      const recentTeachers = allTeachers.slice(0, 5);
+
+      // Recent activity
+      const recentActivity = [
+        ...recentStudents.map((s, idx) => ({
+          id: `act_std_${s.id || idx}`,
+          action: "Student Admission",
+          resource_type: "students",
+          details: `Admitted ${s.full_name} (${s.admission_number}) to ${s.class_name || "Class"}`,
+          created_at: new Date(Date.now() - idx * 3600000).toISOString(),
+          user_name: "Administrator",
+        })),
+        ...recentTeachers.map((t, idx) => ({
+          id: `act_tch_${t.id || idx}`,
+          action: "Faculty Addition",
+          resource_type: "teachers",
+          details: `Registered ${t.full_name} (${t.employee_id}) - ${t.designation}`,
+          created_at: new Date(Date.now() - (idx + 1) * 7200000).toISOString(),
+          user_name: "Administrator",
+        })),
+      ].slice(0, 6);
+
+      return {
+        total_active_students: activeStudents.length || allStudents.length,
+        total_active_teachers: activeTeachers.length || allTeachers.length,
+        total_classes: classesList.length,
+        total_sections: totalSections,
+        current_academic_year: currentAy?.name || "2026-2027",
+        current_academic_year_id: currentAy?.id || null,
+        current_academic_term: currentTerm?.name || "Term 1 (FA1 + SA1)",
+        current_academic_term_id: currentTerm?.id || null,
+        recent_students: recentStudents,
+        recent_teachers: recentTeachers,
+        class_distribution: [
+          { category: "Pre-Primary (Nursery, LKG, UKG)", count: 3, student_count: prePrimaryCount },
+          { category: "Primary (Classes 1 - 5)", count: 5, student_count: primaryCount },
+          { category: "Higher Classes (Classes 6 - 10)", count: 5, student_count: higherCount },
+        ],
+        recent_activity: recentActivity,
+        upcoming_features: [
+          "Telangana State SSC Board Compliance",
+          "Real-time Academic Session Synchronization",
+          "Automated Marks Ledger & Grade Reports",
+          "Daily Period-wise Attendance Verification",
+        ],
+      };
     },
 
     getTeacher: async (): Promise<TeacherDashboardStats> => {

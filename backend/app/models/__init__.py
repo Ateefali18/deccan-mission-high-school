@@ -1,5 +1,6 @@
 from app.models.school import School
 from app.models.academic_year import AcademicYear
+from app.models.academic_term import AcademicTerm
 from app.models.role import Role, UserRole
 from app.models.user import User
 from app.models.teacher_profile import TeacherProfile
@@ -22,6 +23,7 @@ from app.models.assignment import Assignment, AssignmentSubmission
 __all__ = [
     "School",
     "AcademicYear",
+    "AcademicTerm",
     "Role",
     "user_roles",
     "User",

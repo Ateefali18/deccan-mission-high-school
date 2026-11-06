@@ -23,14 +23,30 @@ export interface CurrentUserSession {
   identifier?: string | null;
 }
 
+export interface AcademicTerm {
+  id: number | string;
+  academic_year_id: number | string;
+  name: string;
+  term_type?: string; // "term" | "semester" | "annual" | "quarter"
+  start_date: string;
+  end_date: string;
+  is_current: boolean;
+  status: "active" | "inactive" | "completed";
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface AcademicYear {
   id: number | string;
-  school_id: number | string;
+  school_id?: number | string;
   name: string;
   start_date: string;
   end_date: string;
   is_current: boolean;
   status: string;
+  terms?: AcademicTerm[];
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Section {
@@ -44,12 +60,15 @@ export interface Section {
 
 export interface SchoolClass {
   id: number | string;
-  school_id: number | string;
+  school_id?: number | string;
   name: string;
   grade_level: number;
+  category?: "Pre-Primary" | "Primary" | "Higher Classes" | "Higher Secondary" | string;
   stream?: string | null;
   is_active: boolean;
   sections: Section[];
+  class_teacher_name?: string | null;
+  student_count?: number;
 }
 
 export interface StudentListItem {
@@ -137,6 +156,12 @@ export interface AdminDashboardStats {
   total_sections: number;
   current_academic_year?: string | null;
   current_academic_year_id?: number | string | null;
+  current_academic_term?: string | null;
+  current_academic_term_id?: number | string | null;
+  class_distribution?: { category: string; count: number; student_count: number }[];
+  recent_students?: StudentListItem[];
+  recent_teachers?: TeacherListItem[];
+  department_distribution?: { department: string; count: number }[];
   recent_activity: {
     id: number | string;
     action: string;

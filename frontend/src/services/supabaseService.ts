@@ -6,6 +6,7 @@ const isUUID = (str: string | number): boolean => {
 import { supabase, isSupabaseConfigured } from "./supabaseClient";
 import type {
   AcademicYear,
+  AcademicTerm,
   SchoolClass,
   StudentListItem,
   StudentProfile,
@@ -166,6 +167,113 @@ export const supabaseService = {
 
       if (error) throw new SupabaseServiceError(error.message, error.code, error.details);
       return data;
+    },
+  },
+
+  // --------------------------------------------------------------------------
+  // ACADEMIC TERMS
+  // --------------------------------------------------------------------------
+  academicTerms: {
+    async list(academicYearId?: string | number): Promise<AcademicTerm[]> {
+      if (!isSupabaseConfigured()) return [];
+      try {
+        let query = supabase
+          .from("academic_terms")
+          .select("*")
+          .order("start_date", { ascending: true });
+
+        if (academicYearId) {
+          query = query.eq("academic_year_id", academicYearId);
+        }
+
+        const { data, error } = await query;
+        if (error) {
+          console.warn("Supabase academic_terms.list query fallback:", error);
+          return [];
+        }
+        return data || [];
+      } catch {
+        return [];
+      }
+    },
+
+    async getCurrent(): Promise<AcademicTerm | null> {
+      if (!isSupabaseConfigured()) return null;
+      try {
+        const { data, error } = await supabase
+          .from("academic_terms")
+          .select("*")
+          .eq("is_current", true)
+          .maybeSingle();
+
+        if (error) return null;
+        return data;
+      } catch {
+        return null;
+      }
+    },
+
+    async create(payload: Partial<AcademicTerm>): Promise<AcademicTerm> {
+      if (!isSupabaseConfigured()) throw new SupabaseServiceError("Supabase not configured");
+      if (payload.is_current) {
+        await supabase
+          .from("academic_terms")
+          .update({ is_current: false })
+          .neq("name", payload.name || "");
+      }
+      const { data, error } = await supabase
+        .from("academic_terms")
+        .insert({
+          academic_year_id: payload.academic_year_id,
+          name: (payload.name || "").trim(),
+          term_type: payload.term_type || "term",
+          start_date: payload.start_date,
+          end_date: payload.end_date,
+          is_current: payload.is_current ?? false,
+          status: payload.status || "active",
+        })
+        .select()
+        .single();
+
+      if (error) throw new SupabaseServiceError(error.message, error.code, error.details);
+      return data;
+    },
+
+    async update(id: string | number, payload: Partial<AcademicTerm>): Promise<AcademicTerm> {
+      if (!isSupabaseConfigured()) throw new SupabaseServiceError("Supabase not configured");
+      if (payload.is_current) {
+        await supabase.from("academic_terms").update({ is_current: false }).neq("id", id);
+      }
+      const { data, error } = await supabase
+        .from("academic_terms")
+        .update(payload)
+        .eq("id", id)
+        .select()
+        .single();
+
+      if (error) throw new SupabaseServiceError(error.message, error.code, error.details);
+      return data;
+    },
+
+    async setCurrent(id: string | number): Promise<AcademicTerm> {
+      if (!isSupabaseConfigured()) throw new SupabaseServiceError("Supabase not configured");
+      await supabase.from("academic_terms").update({ is_current: false }).neq("id", id);
+      const { data, error } = await supabase
+        .from("academic_terms")
+        .update({ is_current: true, status: "active" })
+        .eq("id", id)
+        .select()
+        .single();
+
+      if (error) throw new SupabaseServiceError(error.message, error.code, error.details);
+      return data;
+    },
+
+    async delete(id: string | number): Promise<boolean> {
+      if (!isSupabaseConfigured()) throw new SupabaseServiceError("Supabase not configured");
+      const { error } = await supabase.from("academic_terms").delete().eq("id", id);
+      if (error) throw new SupabaseServiceError(error.message, error.code, error.details);
+      return true;
     },
   },
 
@@ -1258,7 +1366,7 @@ export const supabaseService = {
           .limit(limit),
         supabase
           .from("teachers")
-          .select("id, employee_id, specialization, profiles(first_name, last_name)")
+          .select("id, employee_id, specialization, full_name")
           .or(`employee_id.ilike.%${cleanQuery}%`)
           .limit(limit),
       ]);

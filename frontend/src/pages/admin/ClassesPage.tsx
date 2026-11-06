@@ -19,6 +19,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { api } from "../../services/api";
+import { useRealtimeSync } from "../../hooks/useRealtimeSync";
 import type { SchoolClass, Section } from "../../types";
 import { PageHeader } from "../../components/shared/PageHeader";
 import { Card } from "../../components/ui/Card";
@@ -31,8 +32,9 @@ import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
 import { useToast } from "../../components/ui/Toast";
 
 const classSchema = z.object({
-  name: z.string().min(2, "Class name required (e.g. Class 11)"),
-  grade_level: z.coerce.number().min(1).max(12),
+  name: z.string().min(2, "Class name required (e.g. Class 11, Nursery, LKG)"),
+  grade_level: z.coerce.number().min(0, "Grade level must be 0 (Pre-Primary) to 12").max(12),
+  category: z.string().optional(),
   stream: z.string().optional(),
   academic_year: z.string().default("2025–2026"),
   is_active: z.boolean().default(true),
@@ -54,6 +56,7 @@ export const ClassesPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("active");
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [selectedAcademicYear, setSelectedAcademicYear] = useState("2025–2026");
   const toast = useToast();
 
@@ -107,6 +110,13 @@ export const ClassesPage: React.FC = () => {
   useEffect(() => {
     fetchClasses();
   }, []);
+
+  useRealtimeSync({
+    tables: ["classes", "sections", "students", "teachers"],
+    onSync: () => {
+      fetchClasses();
+    },
+  });
 
   // Class Actions
   const onAddClass = async (data: ClassFormData) => {
@@ -277,6 +287,25 @@ export const ClassesPage: React.FC = () => {
     }
   };
 
+  // Category classification helper
+  const getClassCategoryKey = (cls: SchoolClass): string => {
+    if (cls.category) {
+      const c = cls.category.toLowerCase();
+      if (c.includes("pre")) return "pre_primary";
+      if (c.includes("higher secondary") || c.includes("secondary") && cls.grade_level >= 11) return "higher_secondary";
+      if (c.includes("higher")) return "higher";
+      if (c.includes("primary")) return "primary";
+    }
+    const name = cls.name.toLowerCase();
+    if (name.includes("nursery") || name.includes("lkg") || name.includes("ukg") || cls.grade_level === 0) {
+      return "pre_primary";
+    }
+    if (cls.grade_level >= 1 && cls.grade_level <= 5) return "primary";
+    if (cls.grade_level >= 6 && cls.grade_level <= 10) return "higher";
+    if (cls.grade_level >= 11) return "higher_secondary";
+    return "primary";
+  };
+
   // Filtered list
   const filteredClasses = useMemo(() => {
     return classes
@@ -286,11 +315,16 @@ export const ClassesPage: React.FC = () => {
         return true;
       })
       .filter((cls) => {
+        if (selectedCategory === "all") return true;
+        return getClassCategoryKey(cls) === selectedCategory;
+      })
+      .filter((cls) => {
         if (!searchTerm.trim()) return true;
         const term = searchTerm.toLowerCase();
         const matchesClass =
           cls.name.toLowerCase().includes(term) ||
           (cls.stream && cls.stream.toLowerCase().includes(term)) ||
+          (cls.category && cls.category.toLowerCase().includes(term)) ||
           String(cls.grade_level).includes(term);
         const matchesSection = (cls.sections || []).some(
           (s) =>
@@ -299,7 +333,7 @@ export const ClassesPage: React.FC = () => {
         );
         return matchesClass || matchesSection;
       });
-  }, [classes, searchTerm, statusFilter]);
+  }, [classes, searchTerm, statusFilter, selectedCategory]);
 
   const totalActiveClasses = classes.filter((c) => c.is_active !== false).length;
   const totalSections = classes.reduce(
@@ -352,6 +386,58 @@ export const ClassesPage: React.FC = () => {
             {totalActiveClasses} Active Classes • {totalSections} Active Sections
           </div>
         </div>
+      </div>
+
+      {/* Category Navigation Tabs */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+        {[
+          { key: "all", label: "All Classes", count: classes.length },
+          {
+            key: "pre_primary",
+            label: "Pre-Primary (Nursery, LKG, UKG)",
+            count: classes.filter((c) => getClassCategoryKey(c) === "pre_primary").length,
+          },
+          {
+            key: "primary",
+            label: "Primary (Classes 1 - 5)",
+            count: classes.filter((c) => getClassCategoryKey(c) === "primary").length,
+          },
+          {
+            key: "higher",
+            label: "Higher Classes (Classes 6 - 10)",
+            count: classes.filter((c) => getClassCategoryKey(c) === "higher").length,
+          },
+          {
+            key: "higher_secondary",
+            label: "Higher Secondary (Classes 11 - 12)",
+            count: classes.filter((c) => getClassCategoryKey(c) === "higher_secondary").length,
+          },
+        ].map((tab) => {
+          const isActive = selectedCategory === tab.key;
+          return (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => setSelectedCategory(tab.key)}
+              className={`px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-2 border ${
+                isActive
+                  ? "bg-brand-navy text-brand-gold border-brand-gold/40 shadow-sm"
+                  : "bg-white dark:bg-dark-card text-light-secondary dark:text-dark-secondary border-light-border dark:border-dark-border hover:border-brand-gold/30"
+              }`}
+            >
+              <span>{tab.label}</span>
+              <span
+                className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono ${
+                  isActive
+                    ? "bg-brand-gold/20 text-brand-gold font-bold"
+                    : "bg-gray-100 dark:bg-dark-elevated text-light-primary dark:text-dark-primary"
+                }`}
+              >
+                {tab.count}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Search and Filters */}
@@ -426,8 +512,17 @@ export const ClassesPage: React.FC = () => {
                           <Badge variant="green" size="sm">Active</Badge>
                         )}
                       </div>
-                      <p className="text-xs text-light-secondary dark:text-dark-secondary mt-0.5">
-                        Grade Level {cls.grade_level} • {cls.stream || "General"} • {selectedAcademicYear}
+                      <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                        <span className="text-[10px] px-2 py-0.5 rounded-md bg-brand-blue/10 dark:bg-dark-accent/10 text-brand-blue dark:text-dark-accent font-semibold">
+                          {cls.category || (cls.grade_level === 0 ? "Pre-Primary" : cls.grade_level <= 5 ? "Primary" : cls.grade_level <= 10 ? "Higher Classes" : "Higher Secondary")}
+                        </span>
+                        <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold font-mono">
+                          {cls.student_count || 0} Students
+                        </span>
+                      </div>
+                      <p className="text-xs text-light-secondary dark:text-dark-secondary mt-1 flex items-center gap-1">
+                        <Users className="w-3 h-3 text-light-secondary" />
+                        <span>Class Teacher: <strong className="text-light-primary dark:text-dark-primary">{cls.class_teacher_name || "Unassigned"}</strong></span>
                       </p>
                     </div>
 
@@ -600,10 +695,11 @@ export const ClassesPage: React.FC = () => {
 
           <div className="grid grid-cols-2 gap-4">
             <Input
-              label="Grade Level (1-12) *"
+              label="Grade Level (0-12) *"
               type="number"
-              min={1}
+              min={0}
               max={12}
+              placeholder="0 for Nursery/LKG/UKG, 1-12"
               error={classCreateForm.formState.errors.grade_level?.message}
               required
               {...classCreateForm.register("grade_level")}
