@@ -21,6 +21,7 @@ import type {
 } from "../types";
 import { isSupabaseConfigured, supabase, setSupabaseAdminHeader } from "./supabaseClient";
 import { supabaseService } from "./supabaseService";
+import { authRecoveryService, maskEmail } from "./authRecoveryService";
 
 const API_BASE_URL = "/api/v1";
 
@@ -152,11 +153,14 @@ export const saveCustomUser = (user: CustomUserAccount) => {
       (!user.admission_number || u.admission_number?.toLowerCase() !== user.admission_number.toLowerCase())
   );
   users.push(user);
-  localStorage.setItem("dmhs_custom_users", JSON.stringify(users));
+  if (typeof localStorage !== "undefined") {
+    localStorage.setItem("dmhs_custom_users", JSON.stringify(users));
+  }
 };
 
 export const getStoredCustomTeachers = (): TeacherListItem[] => {
   try {
+    if (typeof localStorage === "undefined") return [];
     const raw = localStorage.getItem("dmhs_custom_teachers");
     return raw ? JSON.parse(raw) : [];
   } catch {
@@ -164,14 +168,106 @@ export const getStoredCustomTeachers = (): TeacherListItem[] => {
   }
 };
 
+export const saveStoredCustomTeachers = (teachers: TeacherListItem[]) => {
+  try {
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem("dmhs_custom_teachers", JSON.stringify(teachers));
+    }
+  } catch {}
+};
+
 export const saveCustomTeacher = (teacher: TeacherListItem) => {
   const teachers = getStoredCustomTeachers().filter((t) => String(t.id) !== String(teacher.id) && t.employee_id !== teacher.employee_id);
   teachers.unshift(teacher);
-  localStorage.setItem("dmhs_custom_teachers", JSON.stringify(teachers));
+  saveStoredCustomTeachers(teachers);
 };
+
+
+export const getCategoryForClass = (classNameOrGrade: string | number): string => {
+  const name = String(classNameOrGrade).toLowerCase().trim();
+  if (name.includes("nursery") || name.includes("lkg") || name.includes("ukg") || name === "0" || name.includes("pre-primary")) {
+    return "Pre-Primary";
+  }
+  if (/\b(class\s*1[1-2]|1[1-2])\b/i.test(name) || name.includes("higher secondary")) {
+    return "Higher Secondary";
+  }
+  if (/\b(class\s*([6-9]|10)|([6-9]|10))\b/i.test(name) || name.includes("higher")) {
+    return "Higher Classes";
+  }
+  if (/\b(class\s*[1-5]|[1-5])\b/i.test(name) || name.includes("primary")) {
+    return "Primary";
+  }
+  return "Primary";
+};
+
+export const getStoredStudentDocuments = (studentId?: string | number): DocumentItem[] => {
+  try {
+    if (typeof localStorage === "undefined") return [];
+    const raw = localStorage.getItem("dmhs_student_documents");
+    const docs: DocumentItem[] = raw ? JSON.parse(raw) : [];
+    if (studentId) {
+      return docs.filter((d) => String(d.student_id) === String(studentId));
+    }
+    return docs;
+  } catch {
+    return [];
+  }
+};
+
+export const saveStoredStudentDocument = (doc: DocumentItem) => {
+  const docs = getStoredStudentDocuments();
+  const filtered = docs.filter((d) => d.id !== doc.id);
+  filtered.unshift(doc);
+  if (typeof localStorage !== "undefined") {
+    localStorage.setItem("dmhs_student_documents", JSON.stringify(filtered));
+  }
+};
+
+export const deleteStoredStudentDocument = (docId: string): boolean => {
+  const docs = getStoredStudentDocuments();
+  const filtered = docs.filter((d) => d.id !== docId);
+  if (typeof localStorage !== "undefined") {
+    localStorage.setItem("dmhs_student_documents", JSON.stringify(filtered));
+  }
+  return true;
+};
+
+export const getStoredFacultyDocuments = (teacherId?: string | number): FacultyDocumentItem[] => {
+  try {
+    if (typeof localStorage === "undefined") return [];
+    const raw = localStorage.getItem("dmhs_faculty_documents");
+    const docs: FacultyDocumentItem[] = raw ? JSON.parse(raw) : [];
+    if (teacherId) {
+      return docs.filter((d) => String(d.teacher_id) === String(teacherId));
+    }
+    return docs;
+  } catch {
+    return [];
+  }
+};
+
+export const saveStoredFacultyDocument = (doc: FacultyDocumentItem) => {
+  const docs = getStoredFacultyDocuments();
+  const filtered = docs.filter((d) => d.id !== doc.id);
+  filtered.unshift(doc);
+  if (typeof localStorage !== "undefined") {
+    localStorage.setItem("dmhs_faculty_documents", JSON.stringify(filtered));
+  }
+};
+
+export const deleteStoredFacultyDocument = (docId: string): boolean => {
+  const docs = getStoredFacultyDocuments();
+  const filtered = docs.filter((d) => d.id !== docId);
+  if (typeof localStorage !== "undefined") {
+    localStorage.setItem("dmhs_faculty_documents", JSON.stringify(filtered));
+  }
+  return true;
+};
+
 
 export const getStoredCustomStudents = (): StudentListItem[] => {
   try {
+    if (typeof localStorage === "undefined") return [];
     const raw = localStorage.getItem("dmhs_custom_students");
     return raw ? JSON.parse(raw) : [];
   } catch {
@@ -182,7 +278,9 @@ export const getStoredCustomStudents = (): StudentListItem[] => {
 export const saveCustomStudent = (student: StudentListItem) => {
   const students = getStoredCustomStudents().filter((s) => String(s.id) !== String(student.id) && s.admission_number !== student.admission_number);
   students.unshift(student);
-  localStorage.setItem("dmhs_custom_students", JSON.stringify(students));
+  if (typeof localStorage !== "undefined") {
+    localStorage.setItem("dmhs_custom_students", JSON.stringify(students));
+  }
 };
 
 export const DEFAULT_BASELINE_TIMETABLE: Record<number, any[]> = {
@@ -1173,7 +1271,7 @@ export const api = {
       if (isAdminMatch) {
         const expectedAdminPass =
           (typeof localStorage !== "undefined" && localStorage.getItem("dmhs_admin_password")) || "1234";
-        if (cleanPass && cleanPass !== expectedAdminPass && cleanPass !== "1234") {
+        if (cleanPass !== expectedAdminPass) {
           throw new ApiError("Incorrect password for administrator account.", 401);
         }
         const adminSession = {
@@ -1206,7 +1304,7 @@ export const api = {
 
       if (matchedUser) {
         const expectedUserPass = matchedUser.password || "1234";
-        if (cleanPass && cleanPass !== expectedUserPass && cleanPass !== "1234") {
+        if (cleanPass !== expectedUserPass) {
           throw new ApiError("Incorrect password for this user account.", 401);
         }
         const dynamicSession = {
@@ -1237,7 +1335,7 @@ export const api = {
       if (matchedTeacher) {
         const expectedTeacherPass =
           (typeof localStorage !== "undefined" && localStorage.getItem("dmhs_teacher_password_tch_ateef")) || "1234";
-        if (cleanPass && cleanPass !== expectedTeacherPass && cleanPass !== "1234") {
+        if (cleanPass !== expectedTeacherPass) {
           throw new ApiError("Incorrect password for faculty account.", 401);
         }
         const teacherSession = {
@@ -1268,7 +1366,7 @@ export const api = {
       if (matchedStudent) {
         const expectedStudentPass =
           (typeof localStorage !== "undefined" && localStorage.getItem("dmhs_student_password_std_ali")) || "1234";
-        if (cleanPass && cleanPass !== expectedStudentPass && cleanPass !== "1234") {
+        if (cleanPass !== expectedStudentPass) {
           throw new ApiError("Incorrect password for student account.", 401);
         }
         const studentSession = {
@@ -1390,6 +1488,11 @@ export const api = {
       return { success: true, message: "Password updated successfully." };
     },
 
+    requestPasswordResetOtp: authRecoveryService.requestOtp,
+    verifyPasswordResetOtp: authRecoveryService.verifyOtp,
+    resetPasswordWithOtp: authRecoveryService.resetPasswordWithToken,
+    resendPasswordResetOtp: authRecoveryService.resendOtp,
+
     logout: async () => {
       localStorage.removeItem("dmhs_demo_role");
       localStorage.removeItem("dmhs_session_user");
@@ -1486,21 +1589,96 @@ export const api = {
   },
 
   schools: {
-    getCurrent: async () => {
-      try {
-        return await request<any>("/schools/current");
-      } catch (err) {
-        if (isSupabaseConfigured()) {
-          return supabaseService.schools.getCurrent();
+    getCurrent: async (): Promise<SchoolConfig> => {
+      if (typeof localStorage !== "undefined") {
+        const cached = localStorage.getItem("dmhs_school_settings");
+        if (cached) {
+          try {
+            return JSON.parse(cached);
+          } catch {}
         }
-        throw err;
       }
+      try {
+        const remote = await request<any>("/schools/current");
+        if (remote && remote.name) {
+          if (typeof localStorage !== "undefined") {
+            localStorage.setItem("dmhs_school_settings", JSON.stringify(remote));
+          }
+          return remote;
+        }
+      } catch {}
+
+      if (isSupabaseConfigured()) {
+        try {
+          const sb = await supabaseService.schools.getCurrent();
+          if (sb) {
+            const cfg: SchoolConfig = {
+              id: sb.id,
+              name: sb.name || "Deccan Mission High School",
+              code: sb.code || "DMHS-HYD",
+              affiliation_number: sb.affiliation_number || "TS-HYD-SSC-41092",
+              board: sb.board || "Telangana State Board of Secondary Education (SSC)",
+              contact_email: sb.contact_email || "contact@dmhs.edu.in",
+              contact_phone: sb.contact_phone || "+91 40 2456 7890",
+              address: sb.address || "Old City, Hyderabad, Telangana 500002, India",
+              website: sb.website || "https://dmhs.edu.in",
+              logo_url: sb.logo_url || "/dmhs-logo-128.png",
+            };
+            if (typeof localStorage !== "undefined") {
+              localStorage.setItem("dmhs_school_settings", JSON.stringify(cfg));
+            }
+            return cfg;
+          }
+        } catch {}
+      }
+
+      const defaultSchool: SchoolConfig = {
+        id: "e0000000-0000-0000-0000-000000000001",
+        code: "DMHS-HYD",
+        name: "Deccan Mission High School",
+        affiliation_number: "TS-HYD-SSC-41092",
+        board: "Telangana State Board of Secondary Education (SSC)",
+        address: "Old City, Hyderabad, Telangana 500002, India",
+        contact_email: "contact@dmhs.edu.in",
+        contact_phone: "+91 40 2456 7890",
+        website: "https://dmhs.edu.in",
+        logo_url: "/dmhs-logo-128.png",
+      };
+      if (typeof localStorage !== "undefined") {
+        localStorage.setItem("dmhs_school_settings", JSON.stringify(defaultSchool));
+      }
+      return defaultSchool;
     },
-    updateCurrent: async (data: any) => {
-      return request<any>("/schools/current", {
-        method: "PUT",
-        body: JSON.stringify(data),
-      });
+
+    updateCurrent: async (data: Partial<SchoolConfig>): Promise<SchoolConfig> => {
+      assertAdminRole();
+      const current = await api.schools.getCurrent();
+      const updated: SchoolConfig = {
+        ...current,
+        ...data,
+      };
+
+      if (typeof localStorage !== "undefined") {
+        localStorage.setItem("dmhs_school_settings", JSON.stringify(updated));
+      }
+
+      if (isSupabaseConfigured()) {
+        try {
+          await supabaseService.schools.updateCurrent(updated);
+        } catch (e) {
+          console.warn("Supabase school update fallback:", e);
+        }
+      }
+
+      try {
+        await request<any>("/schools/current", {
+          method: "PUT",
+          body: JSON.stringify(updated),
+        });
+      } catch {}
+
+      broadcastDataMutation("schools", "UPDATE", updated);
+      return updated;
     },
   },
 
@@ -2064,12 +2242,21 @@ export const api = {
           const cStr = String(targetClass).toLowerCase();
           filtered = filtered.filter((item) => {
             const itemCls = (item.class_name || "").toLowerCase();
+            const itemId = String(item.class_id || "").toLowerCase();
             return (
               itemCls === cStr ||
               itemCls.includes(cStr) ||
+              itemId === cStr ||
               (cStr === "cls_10" && itemCls.includes("10")) ||
               (cStr === "cls_9" && itemCls.includes("9")) ||
-              (cStr === "cls_8" && itemCls.includes("8"))
+              (cStr === "cls_8" && itemCls.includes("8")) ||
+              (cStr === "cls_7" && itemCls.includes("7")) ||
+              (cStr === "cls_6" && itemCls.includes("6")) ||
+              (cStr === "cls_2" && itemCls.includes("2")) ||
+              (cStr === "cls_1" && itemCls.includes("1")) ||
+              (cStr === "cls_nursery" && itemCls.includes("nursery")) ||
+              (cStr === "cls_lkg" && itemCls.includes("lkg")) ||
+              (cStr === "cls_ukg" && itemCls.includes("ukg"))
             );
           });
         }
@@ -2078,8 +2265,10 @@ export const api = {
           const sStr = String(targetSection).toLowerCase();
           filtered = filtered.filter((item) => {
             const itemSec = (item.section_name || "").toLowerCase();
+            const itemSecId = String(item.section_id || "").toLowerCase();
             return (
               itemSec === sStr ||
+              itemSecId === sStr ||
               (sStr.includes("_a") && itemSec === "a") ||
               (sStr.includes("_b") && itemSec === "b") ||
               (sStr.includes("_c") && itemSec === "c")
@@ -2087,7 +2276,7 @@ export const api = {
           });
         }
 
-        if (params.status) {
+        if (params.status && params.status !== "all") {
           filtered = filtered.filter(
             (item) => (item.student_status || "active").toLowerCase() === params.status?.toLowerCase()
           );
@@ -2099,7 +2288,9 @@ export const api = {
             (item) =>
               item.full_name.toLowerCase().includes(s) ||
               item.admission_number.toLowerCase().includes(s) ||
-              item.email.toLowerCase().includes(s)
+              item.email.toLowerCase().includes(s) ||
+              (item.father_name && item.father_name.toLowerCase().includes(s)) ||
+              (item.father_phone && item.father_phone.toLowerCase().includes(s))
           );
         }
         return {
@@ -2115,6 +2306,8 @@ export const api = {
       const customStudents = getStoredCustomStudents();
       const foundCustom = customStudents.find((s) => String(s.id) === String(id));
       if (foundCustom) {
+        const studentDocs = getStoredStudentDocuments(id);
+        const resolvedCategory = foundCustom.academic_category || getCategoryForClass(foundCustom.class_name || "");
         return {
           id: foundCustom.id,
           admission_number: foundCustom.admission_number,
@@ -2122,23 +2315,68 @@ export const api = {
           email: foundCustom.email,
           class_name: foundCustom.class_name,
           section_name: foundCustom.section_name,
+          class_id: foundCustom.class_id,
+          section_id: foundCustom.section_id,
+          academic_category: resolvedCategory,
+          academic_year_id: foundCustom.academic_year_id,
+          academic_year_name: foundCustom.academic_year_name || "2026-2027",
+          academic_term_id: foundCustom.academic_term_id,
+          academic_term_name: foundCustom.academic_term_name || "Term 1",
           roll_number: foundCustom.roll_number,
           student_status: foundCustom.student_status,
-          gender: "Not specified",
+          gender: (foundCustom as any).gender || "Not specified",
+          date_of_birth: (foundCustom as any).date_of_birth || null,
+          blood_group: (foundCustom as any).blood_group || null,
+          caste: (foundCustom as any).caste || null,
+          religion: (foundCustom as any).religion || null,
+          mother_tongue: (foundCustom as any).mother_tongue || null,
+          first_language: (foundCustom as any).first_language || null,
+          second_language: (foundCustom as any).second_language || null,
+          third_language: (foundCustom as any).third_language || null,
+          aadhaar_number: (foundCustom as any).aadhaar_number || null,
+          apaar_id: (foundCustom as any).apaar_id || null,
+          admission_date: (foundCustom as any).admission_date || null,
+          student_phone: (foundCustom as any).student_phone || null,
+          father_name: foundCustom.father_name || (foundCustom as any).father_name || null,
+          father_phone: foundCustom.father_phone || (foundCustom as any).father_phone || null,
+          father_email: (foundCustom as any).father_email || null,
+          father_occupation: (foundCustom as any).father_occupation || null,
+          mother_name: foundCustom.mother_name || (foundCustom as any).mother_name || null,
+          mother_phone: foundCustom.mother_phone || (foundCustom as any).mother_phone || null,
+          mother_email: (foundCustom as any).mother_email || null,
+          mother_occupation: (foundCustom as any).mother_occupation || null,
+          guardian_name: foundCustom.father_name || (foundCustom as any).guardian_name || null,
+          guardian_phone: foundCustom.father_phone || (foundCustom as any).guardian_phone || null,
+          address: (foundCustom as any).address || null,
+          documents_count: studentDocs.length,
+          documents_status: studentDocs.length >= 3 ? "verified" : studentDocs.length > 0 ? "partial" : "pending",
+          is_active: foundCustom.student_status === "active",
+          current_enrollment: {
+            id: foundCustom.id,
+            academic_year_name: foundCustom.academic_year_name || "2026-2027",
+            class_name: foundCustom.class_name || "Enrolled Class",
+            section_name: foundCustom.section_name || "A",
+            roll_number: foundCustom.roll_number,
+            enrollment_status: foundCustom.student_status,
+            class_id: foundCustom.class_id,
+            section_id: foundCustom.section_id,
+            academic_year_id: foundCustom.academic_year_id,
+            academic_term_id: foundCustom.academic_term_id,
+          },
         } as any;
       }
       try {
         return await request<StudentProfile>(`/students/${id}`);
       } catch (err) {
-        if (isSupabaseConfigured()) {
+        if (isSupabaseConfigured() && isUUID(id)) {
           return supabaseService.students.getById(id);
         }
         return {
           id: id,
-          admission_number: "ADM-ALI",
-          full_name: "Ali",
-          email: "ali@dmhs.edu.in",
-          class_name: "Class 10",
+          admission_number: String(id),
+          full_name: "Enrolled Student",
+          email: "student@dmhs.edu.in",
+          class_name: "Enrolled Class",
           section_name: "A",
           roll_number: "01",
           student_status: "active",
@@ -2163,42 +2401,129 @@ export const api = {
       const username = data.username || data.email?.split("@")[0] || data.admission_number?.toLowerCase() || "student";
       const password = data.password || "1234";
 
+      // 1. Resolve exact Class Name, Section Name, and Academic Category
+      let className = data.class_name;
+      let sectionName = data.section_name;
+      let category = data.academic_category;
+      let classTeacher = data.class_teacher_name;
+
+      if (!className && data.class_id) {
+        const allClasses = await api.classes.list().catch(() => []);
+        const matchedCls = allClasses.find(
+          (c) => String(c.id) === String(data.class_id) || c.name.toLowerCase() === String(data.class_id).toLowerCase()
+        );
+        if (matchedCls) {
+          className = matchedCls.name;
+          category = category || matchedCls.category || getCategoryForClass(matchedCls.name);
+          classTeacher = classTeacher || matchedCls.class_teacher_name;
+          if (!sectionName && data.section_id) {
+            const matchedSec = matchedCls.sections?.find(
+              (s) => String(s.id) === String(data.section_id) || s.name.toUpperCase() === String(data.section_id).toUpperCase()
+            );
+            if (matchedSec) sectionName = matchedSec.name;
+          }
+        }
+      }
+
+      className = className || (data.class_id ? `Class ${data.class_id}` : "Enrolled Class");
+      sectionName = sectionName || (data.section_id ? String(data.section_id) : "A");
+      category = category || getCategoryForClass(className);
+
       const newStudentItem: StudentListItem = {
         id: "std_" + Date.now(),
         admission_number: data.admission_number,
         full_name: data.full_name,
-        email: data.email,
-        class_name: data.class_name || "Class 10",
-        section_name: data.section_name || "A",
-        roll_number: data.roll_number || "01",
-        student_status: "active",
+        email: data.email || `${data.admission_number.toLowerCase().replace(/[^a-z0-9]/g, "")}@student.dmhs.edu.in`,
+        class_name: className,
+        section_name: sectionName,
+        class_id: data.class_id,
+        section_id: data.section_id,
+        academic_year_id: data.academic_year_id,
+        academic_year_name: data.academic_year_name || "2026-2027",
+        academic_term_id: data.academic_term_id,
+        academic_term_name: data.academic_term_name || "Term 1",
+        academic_category: category,
+        roll_number: data.roll_number || null,
+        student_status: data.student_status || "active",
+        father_name: data.father_name || null,
+        father_phone: data.father_phone || null,
+        mother_name: data.mother_name || null,
+        mother_phone: data.mother_phone || null,
+        documents_count: 0,
+        documents_status: "pending",
+        ...data,
       };
 
-      // 1. Save in local persistent custom storage
+      // 2. Save in local persistent custom storage with all personal & parent fields
       saveCustomStudent(newStudentItem);
       broadcastDataMutation("students", "INSERT", newStudentItem);
 
-      // 2. Save credentials in custom user registry so student can log in immediately
+      // 3. Save credentials in custom user registry
       saveCustomUser({
         id: newStudentItem.id,
         username: username,
-        email: data.email,
+        email: newStudentItem.email,
         password: password,
         full_name: data.full_name,
         role: "STUDENT",
         admission_number: data.admission_number,
       });
 
-      // 3. Attempt REST backend or Supabase if available
+      // 4. Automatically initialize tuition fee invoice so student appears in Fees and Payments
+      try {
+        const defaultTuitionAmount =
+          category === "Pre-Primary"
+            ? 18000
+            : category === "Primary"
+            ? 22000
+            : category === "Higher Secondary"
+            ? 35000
+            : 28000;
+
+        const initialInvoice = {
+          id: "inv_" + Date.now(),
+          invoice_number: `INV-${data.admission_number.replace(/[^a-zA-Z0-9]/g, "")}-${Date.now().toString().slice(-4)}`,
+          student_id: newStudentItem.id,
+          student_name: newStudentItem.full_name,
+          admission_number: newStudentItem.admission_number,
+          class_name: className,
+          section_name: sectionName,
+          academic_category: category,
+          total_amount: defaultTuitionAmount,
+          paid_amount: 0,
+          balance: defaultTuitionAmount,
+          status: "pending",
+          due_date: new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString().slice(0, 10),
+          created_at: new Date().toISOString(),
+        };
+
+        const storedInvoices = getStoredInvoices();
+        storedInvoices.unshift(initialInvoice);
+        if (typeof localStorage !== "undefined") {
+          localStorage.setItem(STORAGE_KEY_INVOICES, JSON.stringify(storedInvoices));
+        }
+        broadcastDataMutation("invoices", "INSERT", initialInvoice);
+      } catch (e) {
+        console.warn("Could not auto-generate initial invoice:", e);
+      }
+
+      // 5. Attempt REST backend or Supabase if available
       try {
         await request<StudentProfile>("/students/", {
           method: "POST",
-          body: JSON.stringify({ ...data, username, password }),
+          body: JSON.stringify({ ...data, class_name: className, section_name: sectionName, academic_category: category, username, password }),
         });
       } catch {
         if (isSupabaseConfigured()) {
           try {
-            await supabaseService.students.create({ ...data, username, password });
+            await supabaseService.students.create({
+              ...data,
+              class_name: className,
+              section_name: sectionName,
+              academic_category: category,
+              username,
+              password,
+            });
           } catch {}
         }
       }
@@ -2207,6 +2532,25 @@ export const api = {
     },
 
     update: async (id: number | string, data: any) => {
+      const customStudents = getStoredCustomStudents();
+      const updatedStudents = customStudents.map((s) => {
+        if (String(s.id) === String(id)) {
+          const className = data.class_name || s.class_name;
+          const sectionName = data.section_name || s.section_name;
+          const category = data.academic_category || s.academic_category || getCategoryForClass(className || "");
+          return {
+            ...s,
+            ...data,
+            class_name: className,
+            section_name: sectionName,
+            academic_category: category,
+          };
+        }
+        return s;
+      });
+      localStorage.setItem("dmhs_custom_students", JSON.stringify(updatedStudents));
+      broadcastDataMutation("students", "UPDATE", { id, ...data });
+
       const payload: any = { ...data };
       if (payload.date_of_birth === "") delete payload.date_of_birth;
       if (payload.roll_number === "") delete payload.roll_number;
@@ -2217,7 +2561,7 @@ export const api = {
           body: JSON.stringify(payload),
         });
       } catch (err) {
-        if (isSupabaseConfigured()) {
+        if (isSupabaseConfigured() && isUUID(id)) {
           return supabaseService.students.update(id, payload);
         }
         return payload;
@@ -2225,12 +2569,19 @@ export const api = {
     },
 
     deactivate: async (id: number | string) => {
+      const customStudents = getStoredCustomStudents();
+      const updated = customStudents.map((s) =>
+        String(s.id) === String(id) ? { ...s, student_status: "inactive" } : s
+      );
+      localStorage.setItem("dmhs_custom_students", JSON.stringify(updated));
+      broadcastDataMutation("students", "UPDATE", { id, student_status: "inactive" });
+
       try {
         return await request<StudentProfile>(`/students/${id}`, {
           method: "DELETE",
         });
       } catch (err) {
-        if (isSupabaseConfigured()) {
+        if (isSupabaseConfigured() && isUUID(id)) {
           return supabaseService.students.deactivate(id);
         }
         return { message: "Deactivated" };
@@ -2238,13 +2589,20 @@ export const api = {
     },
 
     updateStatus: async (id: number | string, status: string, reason?: string) => {
+      const customStudents = getStoredCustomStudents();
+      const updated = customStudents.map((s) =>
+        String(s.id) === String(id) ? { ...s, student_status: status } : s
+      );
+      localStorage.setItem("dmhs_custom_students", JSON.stringify(updated));
+      broadcastDataMutation("students", "UPDATE", { id, student_status: status });
+
       try {
         return await request<StudentProfile>(`/students/${id}`, {
           method: "PUT",
           body: JSON.stringify({ student_status: status }),
         });
       } catch (err) {
-        if (isSupabaseConfigured()) {
+        if (isSupabaseConfigured() && isUUID(id)) {
           return supabaseService.students.updateStatus(id, status, reason);
         }
         return { id, student_status: status };
@@ -2252,7 +2610,25 @@ export const api = {
     },
 
     uploadPhoto: async (studentId: number | string, file: File): Promise<string> => {
-      return supabaseService.students.uploadPhoto(studentId, file);
+      if (isSupabaseConfigured() && isUUID(studentId)) {
+        try {
+          return await supabaseService.students.uploadPhoto(studentId, file);
+        } catch {}
+      }
+      return new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const url = reader.result as string;
+          const customStudents = getStoredCustomStudents();
+          const updated = customStudents.map((s) =>
+            String(s.id) === String(studentId) ? { ...s, photo_url: url } : s
+          );
+          localStorage.setItem("dmhs_custom_students", JSON.stringify(updated));
+          broadcastDataMutation("students", "UPDATE", { id: studentId, photo_url: url });
+          resolve(url);
+        };
+        reader.readAsDataURL(file);
+      });
     },
 
     uploadDocument: async (
@@ -2261,14 +2637,103 @@ export const api = {
       docType: string,
       title: string
     ): Promise<DocumentItem> => {
-      return supabaseService.students.uploadDocument(studentId, file, docType, title);
+      // Convert file to Base64 data URL for instant client-side preview & download
+      const base64DataUrl = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(file);
+      });
+
+      const localDoc: DocumentItem & { file_name?: string; file_type?: string } = {
+        id: "doc_" + Date.now(),
+        student_id: String(studentId),
+        document_type: docType || "Certificate",
+        title: title || file.name,
+        file_name: title || file.name,
+        file_url: base64DataUrl,
+        file_size: file.size,
+        mime_type: file.type || "application/pdf",
+        file_type: file.type || "application/pdf",
+        status: "verified",
+        created_at: new Date().toISOString(),
+      };
+
+      // 1. Save in persistent local documents storage
+      saveStoredStudentDocument(localDoc);
+
+      // 2. Update student document count & status
+      const customStudents = getStoredCustomStudents();
+      const studentDocs = getStoredStudentDocuments(studentId);
+      const updatedStudents = customStudents.map((s) => {
+        if (String(s.id) === String(studentId)) {
+          return {
+            ...s,
+            documents_count: studentDocs.length,
+            documents_status: studentDocs.length >= 3 ? "verified" : studentDocs.length > 0 ? "partial" : "pending",
+          };
+        }
+        return s;
+      });
+      localStorage.setItem("dmhs_custom_students", JSON.stringify(updatedStudents));
+      broadcastDataMutation("student_documents", "INSERT", localDoc);
+
+      // 3. If Supabase configured and valid UUID, also upload to Supabase
+      if (isSupabaseConfigured() && isUUID(studentId)) {
+        try {
+          const remoteDoc = await supabaseService.students.uploadDocument(studentId, file, docType, title);
+          return remoteDoc;
+        } catch (e) {
+          console.warn("Supabase document upload fallback to persistent local storage:", e);
+        }
+      }
+
+      return localDoc;
     },
 
     getDocuments: async (studentId: number | string): Promise<DocumentItem[]> => {
-      return supabaseService.students.getDocuments(studentId);
+      const localDocs = getStoredStudentDocuments(studentId);
+      if (isSupabaseConfigured() && isUUID(studentId)) {
+        try {
+          const remoteDocs = await supabaseService.students.getDocuments(studentId);
+          const merged = [...localDocs];
+          for (const r of remoteDocs) {
+            if (!merged.some((m) => m.id === r.id || m.title === r.title)) {
+              merged.push(r);
+            }
+          }
+          return merged;
+        } catch {}
+      }
+      return localDocs;
+    },
+
+    deleteDocument: async (docId: string, studentId?: number | string): Promise<boolean> => {
+      deleteStoredStudentDocument(docId);
+      if (studentId) {
+        const studentDocs = getStoredStudentDocuments(studentId);
+        const customStudents = getStoredCustomStudents();
+        const updatedStudents = customStudents.map((s) => {
+          if (String(s.id) === String(studentId)) {
+            return {
+              ...s,
+              documents_count: studentDocs.length,
+              documents_status: studentDocs.length >= 3 ? "verified" : studentDocs.length > 0 ? "partial" : "pending",
+            };
+          }
+          return s;
+        });
+        localStorage.setItem("dmhs_custom_students", JSON.stringify(updatedStudents));
+      }
+      broadcastDataMutation("student_documents", "DELETE", { id: docId });
+
+      if (isSupabaseConfigured() && isUUID(docId)) {
+        try {
+          await supabaseService.students.deleteDocument(docId);
+        } catch {}
+      }
+      return true;
     },
   },
-
   teachers: {
     list: async (params: { page?: number; limit?: number; search?: string; status?: string } = {}) => {
       const customTeachers = getStoredCustomTeachers();
@@ -2434,6 +2899,56 @@ export const api = {
       }
 
       return newTeacherItem;
+    },
+
+    uploadDocument: async (
+      teacherId: number | string,
+      file: File,
+      docType: string = "Certificate",
+      title?: string
+    ): Promise<FacultyDocumentItem> => {
+      const base64DataUrl = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(file);
+      });
+
+      const docItem: FacultyDocumentItem = {
+        id: "facdoc_" + Date.now() + "_" + Math.random().toString(36).substr(2, 4),
+        teacher_id: String(teacherId),
+        title: title || file.name,
+        document_type: docType || "Certificate",
+        file_url: base64DataUrl,
+        file_size: file.size,
+        mime_type: file.type || "application/pdf",
+        status: "verified",
+        created_at: new Date().toISOString(),
+      };
+
+      saveStoredFacultyDocument(docItem);
+
+      // Update teacher document count
+      const customTeachers = getStoredCustomTeachers();
+      const docs = getStoredFacultyDocuments(teacherId);
+      const updated = customTeachers.map((t) => {
+        if (String(t.id) === String(teacherId) || t.employee_id === String(teacherId)) {
+          return { ...t, documents_count: docs.length };
+        }
+        return t;
+      });
+      saveStoredCustomTeachers(updated);
+
+      broadcastDataMutation("teachers", "UPDATE", { id: teacherId, documents_count: docs.length });
+      return docItem;
+    },
+
+    getDocuments: async (teacherId: number | string): Promise<FacultyDocumentItem[]> => {
+      return getStoredFacultyDocuments(teacherId);
+    },
+
+    deleteDocument: async (docId: string): Promise<boolean> => {
+      deleteStoredFacultyDocument(docId);
+      return true;
     },
 
     assignClass: async (
@@ -3475,35 +3990,47 @@ export const api = {
   // --------------------------------------------------------------------------
   fees: {
     getFinancialSummary: async (): Promise<FeeFinancialSummary> => {
-      if (isSupabaseConfigured()) {
-        try {
-          const remote = await supabaseService.fees.getFinancialSummary();
-          if (remote.total_applicable_fees > 0) return remote;
-        } catch (e) {
-          console.warn("Supabase fee summary fallback:", e);
-        }
-      }
+      // First ensure all enrolled students are synced
+      await api.fees.syncEnrolledStudents();
 
       const invoices = getStoredInvoices();
       const payments = getStoredPayments();
 
-      // Calculation:
-      // Total Fees Collected = Sum of successfully recorded payments (completed/paid)
       const validPayments = payments.filter(
         (p) => !p.status || p.status === "completed" || p.status === "paid" || p.status === "success"
       );
       const total_collected_fees = validPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
 
-      // Total Applicable Fees = Sum of active invoices
-      const total_applicable_fees = invoices
-        .filter((i) => i.status !== "cancelled")
-        .reduce((sum, i) => sum + (Number(i.total_amount) || 0), 0);
-
-      // Remaining Fees = Total Applicable Fees - Total Fees Collected
+      const activeInvoices = invoices.filter((i) => i.status !== "cancelled");
+      const total_applicable_fees = activeInvoices.reduce((sum, i) => sum + (Number(i.total_amount) || 0), 0);
       const total_remaining_fees = Math.max(0, total_applicable_fees - total_collected_fees);
       const collection_rate = total_applicable_fees > 0
         ? Math.round((total_collected_fees / total_applicable_fees) * 10000) / 100
         : 0;
+
+      // Category collections & applicable breakdown
+      let pre_primary_collected = 0;
+      let primary_collected = 0;
+      let higher_classes_collected = 0;
+      let pre_primary_applicable = 0;
+      let primary_applicable = 0;
+      let higher_classes_applicable = 0;
+
+      activeInvoices.forEach((inv) => {
+        const cat = inv.academic_category || inv.fee_category || getCategoryForClass(inv.class_name || "");
+        const amt = Number(inv.total_amount) || 0;
+        const paid = Number(inv.paid_amount) || 0;
+        if (cat === "Pre-Primary") {
+          pre_primary_applicable += amt;
+          pre_primary_collected += paid;
+        } else if (cat === "Primary") {
+          primary_applicable += amt;
+          primary_collected += paid;
+        } else {
+          higher_classes_applicable += amt;
+          higher_classes_collected += paid;
+        }
+      });
 
       return {
         total_applicable_fees,
@@ -3511,75 +4038,332 @@ export const api = {
         total_remaining_fees,
         collection_rate,
         completed_payments_count: validPayments.length,
+        total_enrolled_students: activeInvoices.length,
+        pre_primary_collected,
+        primary_collected,
+        higher_classes_collected,
+        pre_primary_applicable,
+        primary_applicable,
+        higher_classes_applicable,
       };
     },
 
     getStats: async () => {
-      const summary = await api.fees.getFinancialSummary();
-      return {
-        total_billed: summary.total_applicable_fees,
-        total_collected: summary.total_collected_fees,
-        outstanding: summary.total_remaining_fees,
-        collection_rate: summary.collection_rate,
-      };
+      return api.fees.getFinancialSummary();
     },
 
-    getCategories: async () => {
-      return [
-        { id: 1, name: "Tuition Fee", description: "Term-wise Telangana SSC academic tuition" },
-        { id: 2, name: "Computer Lab Fee", description: "Digital classroom & practical IT fee" },
-        { id: 3, name: "Annual Sports & Library Fee", description: "Sports kit & reference library" },
-      ];
-    },
+    syncEnrolledStudents: async (): Promise<any[]> => {
+      const customStudents = getStoredCustomStudents();
+      const allStudents = [...customStudents, ...BASELINE_STUDENTS];
+      const invoices = getStoredInvoices();
+      let changed = false;
 
-    createCategory: async (data: { name: string; description?: string }) => {
-      return { id: Date.now(), ...data };
-    },
+      for (const student of allStudents) {
+        const existingInv = invoices.find(
+          (inv) =>
+            String(inv.student_id) === String(student.id) ||
+            inv.admission_number === student.admission_number
+        );
 
-    getInvoices: async (params: { student_id?: number | string; status?: string } = {}) => {
-      if (isSupabaseConfigured()) {
-        try {
-          const remote = await supabaseService.fees.getInvoices(params);
-          if (remote.length > 0) return remote;
-        } catch (e) {
-          console.warn("Supabase invoices fallback:", e);
+        const category = student.academic_category || getCategoryForClass(student.class_name || "");
+        const defaultAmount =
+          category === "Pre-Primary"
+            ? 18000
+            : category === "Primary"
+            ? 22000
+            : category === "Higher Secondary"
+            ? 35000
+            : 28000;
+
+        if (!existingInv) {
+          const newInv = {
+            id: "inv_" + (student.id || Date.now()) + "_" + Math.random().toString(36).substr(2, 4),
+            invoice_number: `INV-${student.admission_number.replace(/[^a-zA-Z0-9]/g, "")}`,
+            student_id: student.id,
+            student_name: student.full_name,
+            admission_number: student.admission_number,
+            class_name: student.class_name || "Enrolled Class",
+            class_id: student.class_id,
+            section_name: student.section_name || "A",
+            section_id: student.section_id,
+            academic_year: student.academic_year_name || "2026-2027",
+            academic_year_id: student.academic_year_id,
+            academic_term: student.academic_term_name || "Term 1",
+            academic_term_id: student.academic_term_id,
+            academic_category: category,
+            fee_category: category,
+            total_amount: defaultAmount,
+            paid_amount: 0,
+            balance: defaultAmount,
+            status: "pending",
+            due_date: new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString().slice(0, 10),
+            created_at: new Date().toISOString(),
+          };
+          invoices.unshift(newInv);
+          changed = true;
+        } else {
+          // Keep invoice synchronized with current class and category
+          if (
+            (student.class_name && existingInv.class_name !== student.class_name) ||
+            (existingInv.academic_category !== category)
+          ) {
+            existingInv.class_name = student.class_name || existingInv.class_name;
+            existingInv.section_name = student.section_name || existingInv.section_name;
+            existingInv.academic_category = category;
+            existingInv.fee_category = category;
+            changed = true;
+          }
         }
       }
 
-      let invoices = getStoredInvoices();
-      if (params.student_id) {
-        invoices = invoices.filter((i) => String(i.student_id) === String(params.student_id));
-      }
-      if (params.status && params.status !== "all") {
-        invoices = invoices.filter((i) => i.status === params.status);
+      if (changed && typeof localStorage !== "undefined") {
+        localStorage.setItem(STORAGE_KEY_INVOICES, JSON.stringify(invoices));
       }
       return invoices;
     },
 
-    createInvoice: async (data: {
-      student_id: number;
-      academic_year_id: number;
-      invoice_number: string;
-      total_amount: number;
-      due_date: string;
-    }) => {
-      const invoices = getStoredInvoices();
-      const newInv = {
-        id: Date.now(),
-        invoice_number: data.invoice_number,
-        student_id: data.student_id,
-        student_name: "Student",
-        admission_number: `DMHS-${Date.now().toString().slice(-4)}`,
-        total_amount: Number(data.total_amount),
-        paid_amount: 0,
-        balance: Number(data.total_amount),
-        status: "pending",
-        due_date: data.due_date,
-        created_at: new Date().toISOString().slice(0, 10),
+    getInvoices: async (
+      params: {
+        category?: string;
+        class_id?: string | number;
+        class_name?: string;
+        search?: string;
+        status?: string;
+        academic_year?: string;
+        academic_term?: string;
+        student_id?: string | number;
+      } = {}
+    ): Promise<any[]> => {
+      // Synchronize students first
+      await api.fees.syncEnrolledStudents();
+      let invoices = getStoredInvoices();
+
+      if (params.student_id) {
+        invoices = invoices.filter((i) => String(i.student_id) === String(params.student_id));
+      }
+
+      if (params.category && params.category !== "all") {
+        invoices = invoices.filter((i) => {
+          const cat = i.academic_category || i.fee_category || getCategoryForClass(i.class_name || "");
+          return cat.toLowerCase() === params.category!.toLowerCase();
+        });
+      }
+
+      if (params.class_name && params.class_name !== "all") {
+        invoices = invoices.filter((i) => i.class_name === params.class_name);
+      }
+
+      if (params.class_id && params.class_id !== "all") {
+        invoices = invoices.filter((i) => String(i.class_id) === String(params.class_id));
+      }
+
+      if (params.status && params.status !== "all") {
+        invoices = invoices.filter((i) => i.status === params.status);
+      }
+
+      if (params.search) {
+        const q = params.search.toLowerCase();
+        invoices = invoices.filter(
+          (i) =>
+            (i.student_name || "").toLowerCase().includes(q) ||
+            (i.admission_number || "").toLowerCase().includes(q) ||
+            (i.invoice_number || "").toLowerCase().includes(q)
+        );
+      }
+
+      return invoices;
+    },
+
+    getFeeStructures: async (): Promise<FeeStructure[]> => {
+      if (typeof localStorage !== "undefined") {
+        const raw = localStorage.getItem("dmhs_fee_structures");
+        if (raw) {
+          try {
+            return JSON.parse(raw);
+          } catch {}
+        }
+      }
+
+      // Default baseline fee structures
+      const defaults: FeeStructure[] = [
+        {
+          id: "fs_pre_primary",
+          academic_year_id: "ay_2026_27",
+          category: "Pre-Primary",
+          class_name: "All Pre-Primary (Nursery, LKG, UKG)",
+          tuition_fee: 12000,
+          admission_fee: 3000,
+          exam_fee: 1500,
+          library_fee: 500,
+          laboratory_fee: 0,
+          transport_fee: 0,
+          activity_fee: 1000,
+          other_charges: 0,
+          total_applicable_fee: 18000,
+          updated_at: new Date().toISOString(),
+        },
+        {
+          id: "fs_primary",
+          academic_year_id: "ay_2026_27",
+          category: "Primary",
+          class_name: "All Primary (Classes 1 - 5)",
+          tuition_fee: 15000,
+          admission_fee: 3000,
+          exam_fee: 2000,
+          library_fee: 1000,
+          laboratory_fee: 0,
+          transport_fee: 0,
+          activity_fee: 1000,
+          other_charges: 0,
+          total_applicable_fee: 22000,
+          updated_at: new Date().toISOString(),
+        },
+        {
+          id: "fs_higher_classes",
+          academic_year_id: "ay_2026_27",
+          category: "Higher Classes",
+          class_name: "All Higher Classes (Classes 6 - 10)",
+          tuition_fee: 18000,
+          admission_fee: 3000,
+          exam_fee: 2500,
+          library_fee: 1500,
+          laboratory_fee: 2000,
+          transport_fee: 0,
+          activity_fee: 1000,
+          other_charges: 0,
+          total_applicable_fee: 28000,
+          updated_at: new Date().toISOString(),
+        },
+        {
+          id: "fs_higher_secondary",
+          academic_year_id: "ay_2026_27",
+          category: "Higher Secondary",
+          class_name: "Higher Secondary (Classes 11 - 12)",
+          tuition_fee: 24000,
+          admission_fee: 3000,
+          exam_fee: 3000,
+          library_fee: 2000,
+          laboratory_fee: 3000,
+          transport_fee: 0,
+          activity_fee: 0,
+          other_charges: 0,
+          total_applicable_fee: 35000,
+          updated_at: new Date().toISOString(),
+        },
+      ];
+
+      if (typeof localStorage !== "undefined") {
+        localStorage.setItem("dmhs_fee_structures", JSON.stringify(defaults));
+      }
+      return defaults;
+    },
+
+    saveFeeStructure: async (
+      payload: Partial<FeeStructure>,
+      applyMode: "new_only" | "all_class" | "selected" = "all_class",
+      studentIds?: string[]
+    ): Promise<FeeStructure> => {
+      assertAdminRole();
+      const currentStructures = await api.fees.getFeeStructures();
+      const totalAmount =
+        Number(payload.tuition_fee || 0) +
+        Number(payload.admission_fee || 0) +
+        Number(payload.exam_fee || 0) +
+        Number(payload.library_fee || 0) +
+        Number(payload.laboratory_fee || 0) +
+        Number(payload.transport_fee || 0) +
+        Number(payload.activity_fee || 0) +
+        Number(payload.other_charges || 0) +
+        (payload.custom_components || []).reduce((s, c) => s + (Number(c.amount) || 0), 0);
+
+      const targetId = payload.id || "fs_" + Date.now();
+      const updatedStructure: FeeStructure = {
+        id: targetId,
+        academic_year_id: payload.academic_year_id || "ay_2026_27",
+        academic_term_id: payload.academic_term_id || null,
+        category: payload.category || "Primary",
+        class_name: payload.class_name || "Selected Class",
+        class_id: payload.class_id || null,
+        tuition_fee: Number(payload.tuition_fee || 0),
+        admission_fee: Number(payload.admission_fee || 0),
+        exam_fee: Number(payload.exam_fee || 0),
+        library_fee: Number(payload.library_fee || 0),
+        laboratory_fee: Number(payload.laboratory_fee || 0),
+        transport_fee: Number(payload.transport_fee || 0),
+        activity_fee: Number(payload.activity_fee || 0),
+        other_charges: Number(payload.other_charges || 0),
+        custom_components: payload.custom_components || [],
+        total_applicable_fee: totalAmount,
+        updated_at: new Date().toISOString(),
       };
-      invoices.unshift(newInv);
-      localStorage.setItem(STORAGE_KEY_INVOICES, JSON.stringify(invoices));
-      return newInv;
+
+      const filtered = currentStructures.filter((s) => s.id !== targetId && s.class_name !== updatedStructure.class_name);
+      filtered.push(updatedStructure);
+
+      if (typeof localStorage !== "undefined") {
+        localStorage.setItem("dmhs_fee_structures", JSON.stringify(filtered));
+      }
+
+      // Apply to student fee records based on applyMode
+      if (applyMode === "all_class" || applyMode === "selected") {
+        const invoices = getStoredInvoices();
+        let changed = false;
+
+        invoices.forEach((inv) => {
+          const matchClass =
+            payload.class_name === inv.class_name ||
+            (payload.class_id && String(payload.class_id) === String(inv.class_id)) ||
+            (payload.category && inv.academic_category === payload.category);
+
+          const matchSelection =
+            applyMode === "selected" ? (studentIds || []).includes(String(inv.student_id)) : matchClass;
+
+          if (matchSelection) {
+            // CRITICAL: Preserve previously paid amount! Never overwrite paid amounts!
+            inv.total_amount = totalAmount;
+            const alreadyPaid = Number(inv.paid_amount || 0);
+            const concession = Number(inv.concession_amount || 0);
+            inv.balance = Math.max(0, totalAmount - alreadyPaid - concession);
+            inv.status = inv.balance <= 0 ? "paid" : alreadyPaid > 0 ? "partial" : "pending";
+            changed = true;
+          }
+        });
+
+        if (changed && typeof localStorage !== "undefined") {
+          localStorage.setItem(STORAGE_KEY_INVOICES, JSON.stringify(invoices));
+        }
+      }
+
+      broadcastDataMutation("fees", "UPDATE", updatedStructure);
+      return updatedStructure;
+    },
+
+    applyDiscountOrConcession: async (
+      invoiceId: string | number,
+      concessionAmount: number,
+      reason: string
+    ) => {
+      assertAdminRole();
+      if (concessionAmount < 0) {
+        throw new ApiError("Concession amount cannot be negative.", 400);
+      }
+
+      const invoices = getStoredInvoices();
+      const inv = invoices.find((i) => String(i.id) === String(invoiceId));
+      if (!inv) throw new ApiError("Invoice record not found.", 404);
+
+      inv.concession_amount = concessionAmount;
+      inv.concession_reason = reason;
+      const alreadyPaid = Number(inv.paid_amount || 0);
+      inv.balance = Math.max(0, Number(inv.total_amount) - alreadyPaid - concessionAmount);
+      inv.status = inv.balance <= 0 ? "paid" : alreadyPaid > 0 ? "partial" : "pending";
+
+      if (typeof localStorage !== "undefined") {
+        localStorage.setItem(STORAGE_KEY_INVOICES, JSON.stringify(invoices));
+      }
+
+      broadcastDataMutation("fees", "UPDATE", inv);
+      return inv;
     },
 
     recordPayment: async (data: {
@@ -3589,21 +4373,31 @@ export const api = {
       amount: number;
       payment_mode: string;
       transaction_reference?: string;
+      remarks?: string;
     }) => {
       if (data.amount <= 0) {
         throw new ApiError("Payment amount must be greater than zero.", 400);
       }
 
+      const invoices = getStoredInvoices();
+      const inv = invoices.find((i) => String(i.id) === String(data.invoice_id));
+      const receiptNo = data.receipt_number || `REC-${Date.now().toString().slice(-6)}`;
+
       const paymentRecord = {
-        id: Date.now(),
-        invoice_id: data.invoice_id,
-        student_id: data.student_id,
-        receipt_number: data.receipt_number || `REC-${Date.now().toString().slice(-6)}`,
+        id: "pmt_" + Date.now(),
+        invoice_id: String(data.invoice_id),
+        student_id: String(data.student_id),
+        student_name: inv?.student_name || "Student",
+        admission_number: inv?.admission_number || "",
+        class_name: inv?.class_name || "",
+        receipt_number: receiptNo,
         amount: Number(data.amount),
         payment_mode: data.payment_mode || "Cash",
         transaction_reference: data.transaction_reference || null,
+        remarks: data.remarks || null,
         status: "completed",
         payment_date: new Date().toISOString().slice(0, 10),
+        created_at: new Date().toISOString(),
       };
 
       if (isSupabaseConfigured()) {
@@ -3611,10 +4405,11 @@ export const api = {
           await supabaseService.fees.recordPayment({
             invoice_id: data.invoice_id,
             student_id: data.student_id,
-            receipt_number: paymentRecord.receipt_number,
+            receipt_number: receiptNo,
             amount: paymentRecord.amount,
             payment_mode: paymentRecord.payment_mode,
             transaction_reference: data.transaction_reference,
+            remarks: data.remarks,
           });
         } catch (e) {
           console.warn("Supabase record payment fallback:", e);
@@ -3622,11 +4417,44 @@ export const api = {
       }
 
       saveCustomPayment(paymentRecord);
-      return { success: true, payment: paymentRecord };
+
+      // Save in payments history ledger
+      if (typeof localStorage !== "undefined") {
+        const rawHistory = localStorage.getItem("dmhs_payments_history");
+        const history = rawHistory ? JSON.parse(rawHistory) : [];
+        history.unshift(paymentRecord);
+        localStorage.setItem("dmhs_payments_history", JSON.stringify(history));
+      }
+
+      // Update invoice paid amount and balance
+      if (inv) {
+        const concession = Number(inv.concession_amount || 0);
+        inv.paid_amount = Number(inv.paid_amount || 0) + Number(data.amount);
+        inv.balance = Math.max(0, Number(inv.total_amount) - inv.paid_amount - concession);
+        inv.status = inv.balance <= 0 ? "paid" : "partial";
+        if (typeof localStorage !== "undefined") {
+          localStorage.setItem(STORAGE_KEY_INVOICES, JSON.stringify(invoices));
+        }
+      }
+
+      broadcastDataMutation("fees", "UPDATE", { invoice: inv, payment: paymentRecord });
+      return { success: true, payment: paymentRecord, invoice: inv };
+    },
+
+    getPaymentHistory: async (studentId?: string | number): Promise<FeePaymentTransaction[]> => {
+      let history: FeePaymentTransaction[] = [];
+      if (typeof localStorage !== "undefined") {
+        const raw = localStorage.getItem("dmhs_payments_history");
+        history = raw ? JSON.parse(raw) : [];
+      }
+      if (studentId) {
+        history = history.filter((p) => String(p.student_id) === String(studentId));
+      }
+      return history;
     },
   },
 
-  assignments: {
+    assignments: {
     list: async (params: { class_id?: number | string; section_id?: number | string; subject?: string } = {}) => {
       const q = new URLSearchParams();
       if (params.class_id) q.append("class_id", String(params.class_id));
@@ -3668,6 +4496,11 @@ export const api = {
   },
 
   admin: {
+    listUsersForCredentials: authRecoveryService.listUsersForAdminCredentials,
+    initiatePasswordReset: authRecoveryService.adminInitiateReset,
+    setUserPassword: authRecoveryService.adminSetUserPassword,
+    getPasswordResetAuditLogs: authRecoveryService.getAuditLogs,
+
     resetData: async (): Promise<{ success: boolean; message: string }> => {
       assertAdminRole();
       if (typeof localStorage !== "undefined") {
@@ -3678,6 +4511,9 @@ export const api = {
         localStorage.removeItem("dmhs_custom_expenses");
         localStorage.removeItem("dmhs_teacher_password_tch_ateef");
         localStorage.removeItem("dmhs_student_password_std_ali");
+        localStorage.removeItem("dmhs_active_otp_sessions");
+        localStorage.removeItem("dmhs_password_reset_logs");
+        localStorage.removeItem("dmhs_admin_password");
       }
       return {
         success: true,

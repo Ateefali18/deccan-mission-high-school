@@ -9,15 +9,19 @@ import { Badge } from "../../components/ui/Badge";
 import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
 import { useToast } from "../../components/ui/Toast";
 import { ChangePasswordCard } from "../../components/shared/ChangePasswordCard";
+import { UserCredentialsManagementCard } from "../../components/shared/UserCredentialsManagementCard";
 
 interface SchoolConfig {
-  id: number;
+  id?: number | string;
   name: string;
   code: string;
   affiliation_number?: string;
+  board?: string;
   contact_email?: string;
   contact_phone?: string;
   address?: string;
+  website?: string;
+  logo_url?: string;
   timezone?: string;
 }
 
@@ -29,9 +33,13 @@ export const SettingsPage: React.FC = () => {
   // Form
   const [schoolName, setSchoolName] = useState("");
   const [affiliationNo, setAffiliationNo] = useState("TS-HYD-SSC-41092");
+  const [boardName, setBoardName] = useState("Telangana State Board of Secondary Education (SSC)");
+  const [schoolCode, setSchoolCode] = useState("DMHS-HYD");
   const [contactEmail, setContactEmail] = useState("");
   const [contactPhone, setContactPhone] = useState("");
   const [address, setAddress] = useState("");
+  const [website, setWebsite] = useState("https://dmhs.edu.in");
+  const [logoUrl, setLogoUrl] = useState("/dmhs-logo-128.png");
 
   // 2FA / MFA Security State
   const [isMfaEnabled, setIsMfaEnabled] = useState(false);
@@ -88,9 +96,13 @@ export const SettingsPage: React.FC = () => {
         setConfig(data);
         setSchoolName(data.name || "Deccan Mission High School");
         setAffiliationNo(data.affiliation_number || "TS-HYD-SSC-41092");
+        setBoardName(data.board || "Telangana State Board of Secondary Education (SSC)");
+        setSchoolCode(data.code || "DMHS-HYD");
         setContactEmail(data.contact_email || "admin@deccanmission.edu.in");
         setContactPhone(data.contact_phone || "+91 40 2456 7890");
         setAddress(data.address || "Old City, Hyderabad, Telangana 500002, India");
+        setWebsite(data.website || "https://dmhs.edu.in");
+        setLogoUrl(data.logo_url || "/dmhs-logo-128.png");
       } catch (err: any) {
         toast.error(err.message || "Failed to load institution settings");
       } finally {
@@ -103,17 +115,33 @@ export const SettingsPage: React.FC = () => {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
+    if (!schoolName.trim()) {
+      toast.error("Institution legal name is required.");
+      setIsSaving(false);
+      return;
+    }
+    if (!contactEmail.trim() || !contactEmail.includes("@")) {
+      toast.error("Please enter a valid official contact email address.");
+      setIsSaving(false);
+      return;
+    }
+
     try {
-      await api.schools.updateCurrent({
-        name: schoolName,
-        affiliation_number: affiliationNo,
-        contact_email: contactEmail,
-        contact_phone: contactPhone,
-        address: address,
+      const updated = await api.schools.updateCurrent({
+        name: schoolName.trim(),
+        affiliation_number: affiliationNo.trim(),
+        board: boardName.trim(),
+        code: schoolCode.trim(),
+        contact_email: contactEmail.trim(),
+        contact_phone: contactPhone.trim(),
+        address: address.trim(),
+        website: website.trim(),
+        logo_url: logoUrl.trim(),
       });
-      toast.success("Institution settings saved successfully!");
+      setConfig(updated);
+      toast.success("Institution settings saved permanently! Changes updated across portals.");
     } catch (err: any) {
-      toast.error(err.message || "Failed to save settings");
+      toast.error(err.message || "Failed to save institution settings");
     } finally {
       setIsSaving(false);
     }
@@ -203,6 +231,30 @@ export const SettingsPage: React.FC = () => {
               />
             </div>
 
+            <div>
+              <label className="block text-xs font-semibold uppercase text-light-muted dark:text-dark-muted mb-1">
+                Official Website URL
+              </label>
+              <Input
+                type="url"
+                value={website}
+                onChange={(e) => setWebsite(e.target.value)}
+                placeholder="https://dmhs.edu.in"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold uppercase text-light-muted dark:text-dark-muted mb-1">
+                Academic Board Affiliation
+              </label>
+              <Input
+                value={boardName}
+                onChange={(e) => setBoardName(e.target.value)}
+                placeholder="Telangana State Board of Secondary Education (SSC)"
+                required
+              />
+            </div>
+
             <div className="col-span-full">
               <label className="block text-xs font-semibold uppercase text-light-muted dark:text-dark-muted mb-1">
                 Campus Postal Address
@@ -211,6 +263,17 @@ export const SettingsPage: React.FC = () => {
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
                 required
+              />
+            </div>
+
+            <div className="col-span-full">
+              <label className="block text-xs font-semibold uppercase text-light-muted dark:text-dark-muted mb-1">
+                Institution Logo URL
+              </label>
+              <Input
+                value={logoUrl}
+                onChange={(e) => setLogoUrl(e.target.value)}
+                placeholder="/dmhs-logo-128.png"
               />
             </div>
           </div>
@@ -291,6 +354,9 @@ export const SettingsPage: React.FC = () => {
             </div>
           </div>
         </Card>
+
+        {/* User Credentials & Password Management (Admin Password Control) */}
+        <UserCredentialsManagementCard />
 
         {/* Administrator Change Password */}
         <ChangePasswordCard userRoleLabel="Administrator" />

@@ -7,14 +7,14 @@ const studentSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters"),
   email: z.string().email("Valid email required"),
   password: z.string().min(6, "Password must be at least 6 characters"),
-  class_id: z.coerce.number().min(1, "Please select a class"),
-  section_id: z.coerce.number().min(1, "Please select a section"),
-  academic_year_id: z.coerce.number().min(1, "Please select academic year"),
+  class_id: z.union([z.string().min(1, "Please select a class"), z.number().min(1, "Please select a class")]),
+  section_id: z.union([z.string().min(1, "Please select a section"), z.number().min(1, "Please select a section")]),
+  academic_year_id: z.union([z.string().min(1, "Please select academic year"), z.number().min(1, "Please select academic year")]),
 });
 
 describe("Form Validation Schemas", () => {
-  it("validates compliant student admission data", () => {
-    const validData = {
+  it("validates compliant student admission data with numbers or strings for IDs", () => {
+    const validDataNumeric = {
       admission_number: "ADM-2025-0999",
       full_name: "Tariq Mahmood",
       username: "tariq.m",
@@ -24,20 +24,31 @@ describe("Form Validation Schemas", () => {
       section_id: 2,
       academic_year_id: 1,
     };
-    const result = studentSchema.safeParse(validData);
-    expect(result.success).toBe(true);
+    expect(studentSchema.safeParse(validDataNumeric).success).toBe(true);
+
+    const validDataString = {
+      admission_number: "ADM-2026-0042",
+      full_name: "Farhan Qureshi",
+      username: "farhan.q",
+      email: "farhan@dmhs.edu.in",
+      password: "StrongPassword123",
+      class_id: "cls_10",
+      section_id: "sec_10_a",
+      academic_year_id: "ay_2026_27",
+    };
+    expect(studentSchema.safeParse(validDataString).success).toBe(true);
   });
 
-  it("rejects invalid emails and short passwords", () => {
+  it("rejects invalid emails, short passwords, and empty IDs", () => {
     const invalidData = {
       admission_number: "AD",
       full_name: "T",
       username: "ta",
       email: "invalid-email-string",
       password: "123",
-      class_id: 0,
-      section_id: 0,
-      academic_year_id: 0,
+      class_id: "",
+      section_id: "",
+      academic_year_id: "",
     };
     const result = studentSchema.safeParse(invalidData);
     expect(result.success).toBe(false);
@@ -46,10 +57,12 @@ describe("Form Validation Schemas", () => {
       expect(issueFields).toContain("email");
       expect(issueFields).toContain("password");
       expect(issueFields).toContain("admission_number");
+      expect(issueFields).toContain("class_id");
+      expect(issueFields).toContain("section_id");
+      expect(issueFields).toContain("academic_year_id");
     }
   });
 });
-
 
 describe("Examination Marks Validation & SSC 9-Point Grading Scale", () => {
   const validateMarkEntry = (mark: number | null, isAbsent: boolean, maxMarks: number = 100) => {

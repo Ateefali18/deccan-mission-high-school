@@ -78,9 +78,22 @@ export interface StudentListItem {
   email: string;
   class_name?: string | null;
   section_name?: string | null;
+  class_id?: number | string | null;
+  section_id?: number | string | null;
+  academic_year_id?: number | string | null;
+  academic_year_name?: string | null;
+  academic_term_id?: number | string | null;
+  academic_term_name?: string | null;
+  academic_category?: string | null;
   roll_number?: string | null;
   student_status: string;
   photo_url?: string | null;
+  father_name?: string | null;
+  father_phone?: string | null;
+  mother_name?: string | null;
+  mother_phone?: string | null;
+  documents_count?: number;
+  documents_status?: "verified" | "pending" | "partial" | string;
 }
 
 export interface StudentProfile {
@@ -92,6 +105,32 @@ export interface StudentProfile {
   gender?: string | null;
   date_of_birth?: string | null;
   blood_group?: string | null;
+  caste?: string | null;
+  religion?: string | null;
+  mother_tongue?: string | null;
+  first_language?: string | null;
+  second_language?: string | null;
+  third_language?: string | null;
+  aadhaar_number?: string | null;
+  apaar_id?: string | null;
+  admission_date?: string | null;
+  student_phone?: string | null;
+  father_name?: string | null;
+  father_phone?: string | null;
+  father_email?: string | null;
+  father_occupation?: string | null;
+  mother_name?: string | null;
+  mother_phone?: string | null;
+  mother_email?: string | null;
+  mother_occupation?: string | null;
+  academic_category?: string | null;
+  academic_year_id?: number | string | null;
+  academic_term_id?: number | string | null;
+  class_id?: number | string | null;
+  section_id?: number | string | null;
+  class_name?: string | null;
+  section_name?: string | null;
+  class_teacher_name?: string | null;
   guardian_name?: string | null;
   guardian_phone?: string | null;
   emergency_contact?: string | null;
@@ -99,6 +138,8 @@ export interface StudentProfile {
   student_status: string;
   is_active: boolean;
   photo_url?: string | null;
+  documents_count?: number;
+  documents_status?: "verified" | "pending" | "partial" | string;
   current_enrollment?: {
     id: number | string;
     academic_year_name: string;
@@ -106,6 +147,10 @@ export interface StudentProfile {
     section_name: string;
     roll_number?: string | null;
     enrollment_status: string;
+    class_id?: number | string;
+    section_id?: number | string;
+    academic_year_id?: number | string;
+    academic_term_id?: number | string;
   } | null;
 }
 
@@ -121,6 +166,12 @@ export interface TeacherListItem {
   employment_status: string;
   assigned_classes_count: number;
   is_active?: boolean;
+  date_of_birth?: string | null;
+  gender?: string | null;
+  aadhaar_number?: string | null;
+  address?: string | null;
+  documents_count?: number;
+  joining_date?: string | null;
 }
 
 export interface TeacherAssignment {
@@ -147,6 +198,12 @@ export interface TeacherProfile {
   photo_url?: string | null;
   contact_phone?: string | null;
   assignments: TeacherAssignment[];
+  date_of_birth?: string | null;
+  gender?: string | null;
+  aadhaar_number?: string | null;
+  address?: string | null;
+  documents_count?: number;
+  documents?: FacultyDocumentItem[];
 }
 
 export interface AdminDashboardStats {
@@ -277,3 +334,42 @@ export interface FeeFinancialSummary {
   completed_payments_count: number;
 }
 
+
+
+export interface UserCredentialItem {
+  id: string;
+  name: string;
+  identifier: string;
+  email: string;
+  role: "ADMIN" | "TEACHER" | "STUDENT";
+  academic_class?: string;
+  status: "ACTIVE" | "INACTIVE";
+  last_reset_status: "COMPLETED" | "PENDING_VERIFICATION" | "NONE";
+  last_reset_at?: string;
+}
+
+export interface PasswordResetSession {
+  sessionId: string;
+  identifier: string;
+  email: string;
+  maskedEmail: string;
+  role: "ADMIN" | "TEACHER" | "STUDENT";
+  targetId: string;
+  otp: string;
+  expiresAt: number;
+  resendCooldownUntil: number;
+  attempts: number;
+  maxAttempts: number;
+  verified: boolean;
+  verifiedAt?: number;
+}
+
+export interface PasswordResetLogItem {
+  id: string;
+  user_name: string;
+  role: string;
+  email: string;
+  action: "OTP_DISPATCHED" | "OTP_VERIFIED" | "PASSWORD_RESET_SUCCESS" | "ADMIN_FORCE_RESET";
+  status: "Completed" | "Pending Verification" | "Failed";
+  timestamp: string;
+}

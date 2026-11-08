@@ -18,9 +18,17 @@ import {
   GraduationCap,
   Briefcase,
   AlertTriangle,
+  Upload,
+  FileText,
+  Download,
+  Calendar,
+  Shield,
+  FileCheck,
+  RefreshCw,
+  ExternalLink,
 } from "lucide-react";
 import { api } from "../../services/api";
-import type { TeacherListItem, TeacherProfile } from "../../types";
+import type { TeacherListItem, TeacherProfile, FacultyDocumentItem } from "../../types";
 import { PageHeader } from "../../components/shared/PageHeader";
 import { Table, type Column } from "../../components/ui/Table";
 import { Pagination } from "../../components/ui/Pagination";
@@ -32,15 +40,27 @@ import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
 import { useToast } from "../../components/ui/Toast";
 
 const teacherCreateSchema = z.object({
-  employee_id: z.string().min(3, "Employee ID is required"),
+  // Personal Details
   full_name: z.string().min(2, "Full name is required"),
-  username: z.string().min(3, "Username must be at least 3 characters").optional(),
+  date_of_birth: z.string().optional(),
+  gender: z.string().default("Male"),
+  contact_phone: z.string().min(5, "Contact phone number is required"),
   email: z.string().email("Valid email required"),
-  password: z.string().min(1, "Password is required").default("1234"),
+  address: z.string().optional(),
+  aadhaar_number: z.string().optional(),
+
+  // Professional Details
+  employee_id: z.string().min(3, "Faculty / Employee ID is required"),
+  department: z.string().default("Mathematics"),
   designation: z.string().min(2, "Designation is required"),
-  department: z.string().optional(),
   qualification: z.string().optional(),
-  contact_phone: z.string().optional(),
+  specialization: z.string().optional(),
+  joining_date: z.string().optional(),
+  assigned_class: z.string().optional(),
+  assigned_subject: z.string().optional(),
+  employment_status: z.string().default("active"),
+  username: z.string().optional(),
+  password: z.string().min(1, "Password is required").default("1234"),
 });
 
 const teacherEditSchema = z.object({
@@ -49,12 +69,23 @@ const teacherEditSchema = z.object({
   designation: z.string().min(2, "Designation is required"),
   department: z.string().optional(),
   qualification: z.string().optional(),
+  specialization: z.string().optional(),
   contact_phone: z.string().optional(),
+  address: z.string().optional(),
+  aadhaar_number: z.string().optional(),
+  joining_date: z.string().optional(),
   is_active: z.boolean().default(true),
 });
 
 type TeacherCreateFormData = z.infer<typeof teacherCreateSchema>;
 type TeacherEditFormData = z.infer<typeof teacherEditSchema>;
+
+const maskAadhaar = (val?: string | null): string => {
+  if (!val) return "—";
+  const clean = val.replace(/\D/g, "");
+  if (clean.length < 4) return "••••";
+  return `•••• •••• ${clean.slice(-4)}`;
+};
 
 export const TeachersPage: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -68,10 +99,13 @@ export const TeachersPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState(initialSearch);
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
+  const [departmentFilter, setDepartmentFilter] = useState<string>("all");
 
-  // Dialogs
+  // Modal Dialogs
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
+  const [registerTab, setRegisterTab] = useState<"personal" | "professional" | "documents">("personal");
   const [selectedTeacher, setSelectedTeacher] = useState<TeacherProfile | null>(null);
+  const [selectedTeacherDocs, setSelectedTeacherDocs] = useState<FacultyDocumentItem[]>([]);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
   // Edit Faculty State
@@ -82,7 +116,8 @@ export const TeachersPage: React.FC = () => {
   const [isDeactivateOpen, setIsDeactivateOpen] = useState(false);
   const [deactivatingTeacher, setDeactivatingTeacher] = useState<TeacherListItem | null>(null);
   const [isDeactivating, setIsDeactivating] = useState(false);
-  // Allot Class & Subject State
+
+  // Class & Subject Allotment State
   const [isAssignOpen, setIsAssignOpen] = useState(false);
   const [assigningTeacher, setAssigningTeacher] = useState<TeacherListItem | null>(null);
   const [assignClass, setAssignClass] = useState("Class 10");
@@ -91,19 +126,31 @@ export const TeachersPage: React.FC = () => {
   const [assignRoleType, setAssignRoleType] = useState("Class Teacher");
   const [isSubmittingAssign, setIsSubmittingAssign] = useState(false);
 
+  // Pending Certificate Uploads during Registration
+  const [pendingFiles, setPendingFiles] = useState<Array<{ file: File; type: string; title: string }>>([]);
+  const [uploadProgress, setUploadProgress] = useState(false);
+
+  // Document Preview Modal
+  const [previewDoc, setPreviewDoc] = useState<FacultyDocumentItem | null>(null);
 
   const {
     register: registerCreate,
     handleSubmit: handleSubmitCreate,
     reset: resetCreate,
     setValue: setCreateValue,
+    watch: watchCreate,
     formState: { errors: createErrors, isSubmitting: isSubmittingCreate },
   } = useForm<TeacherCreateFormData>({
     resolver: zodResolver(teacherCreateSchema),
     defaultValues: {
+      gender: "Male",
+      department: "Mathematics",
       designation: "Faculty / Senior Teacher",
-      department: "General",
       password: "1234",
+      joining_date: new Date().toISOString().slice(0, 10),
+      employment_status: "active",
+      assigned_class: "Class 10",
+      assigned_subject: "Mathematics",
     },
   });
 
@@ -129,14 +176,20 @@ export const TeachersPage: React.FC = () => {
         search: searchTerm,
         status: statusFilter === "all" ? undefined : statusFilter,
       });
-      setTeachers(data.items);
+
+      let items = data.items;
+      if (departmentFilter !== "all") {
+        items = items.filter((t) => t.department?.toLowerCase() === departmentFilter.toLowerCase());
+      }
+
+      setTeachers(items);
       setTotal(data.total);
     } catch (err: any) {
       toast.error(err.message || "Failed to load faculty list");
     } finally {
       setIsLoading(false);
     }
-  }, [page, pageSize, searchTerm, statusFilter]);
+  }, [page, pageSize, searchTerm, statusFilter, departmentFilter, toast]);
 
   useEffect(() => {
     fetchTeachers();
@@ -144,20 +197,51 @@ export const TeachersPage: React.FC = () => {
 
   const onRegisterTeacher = async (data: TeacherCreateFormData) => {
     try {
-      await api.teachers.create(data);
-      toast.success(`Faculty member ${data.full_name} registered successfully!`);
+      setUploadProgress(true);
+      const newTeacher = await api.teachers.create(data);
+
+      // Upload any attached certificates
+      if (pendingFiles.length > 0) {
+        for (const item of pendingFiles) {
+          try {
+            await api.teachers.uploadDocument(newTeacher.id, item.file, item.type, item.title);
+          } catch (e) {
+            console.warn("Certificate upload warning:", e);
+          }
+        }
+      }
+
+      // If assigned class specified, allot immediately
+      if (data.assigned_class && data.assigned_subject) {
+        try {
+          await api.teachers.assignClass(newTeacher.id, {
+            class_name: data.assigned_class,
+            section_name: "A",
+            subject_name: data.assigned_subject,
+            role_type: "Class Teacher",
+          });
+        } catch {}
+      }
+
+      toast.success(`Faculty member ${data.full_name} admitted successfully with ${pendingFiles.length} certificate(s)!`);
       setIsRegisterOpen(false);
       resetCreate();
+      setPendingFiles([]);
+      setRegisterTab("personal");
       fetchTeachers();
     } catch (err: any) {
       toast.error(err.message || "Failed to register teacher");
+    } finally {
+      setUploadProgress(false);
     }
   };
 
   const handleViewDetails = async (id: number | string) => {
     try {
       const profile = await api.teachers.getById(id);
+      const docs = await api.teachers.getDocuments(id);
       setSelectedTeacher(profile);
+      setSelectedTeacherDocs(docs);
       setIsDetailOpen(true);
     } catch (err: any) {
       toast.error(err.message || "Failed to load teacher details");
@@ -174,7 +258,11 @@ export const TeachersPage: React.FC = () => {
       setEditValue("designation", profile.designation || "Faculty");
       setEditValue("department", profile.department || "");
       setEditValue("qualification", profile.qualification || "");
+      setEditValue("specialization", (profile as any).specialization || "");
       setEditValue("contact_phone", profile.contact_phone || "");
+      setEditValue("address", (profile as any).address || "");
+      setEditValue("aadhaar_number", (profile as any).aadhaar_number || "");
+      setEditValue("joining_date", profile.joining_date || "");
       setEditValue("is_active", profile.is_active ?? true);
       setIsEditOpen(true);
     } catch (err: any) {
@@ -188,10 +276,6 @@ export const TeachersPage: React.FC = () => {
       await api.teachers.update(editingTeacherId, data);
       toast.success(`Faculty member ${data.full_name} updated successfully!`);
       setIsEditOpen(false);
-      if (selectedTeacher && selectedTeacher.id === editingTeacherId) {
-        const updated = await api.teachers.getById(editingTeacherId);
-        setSelectedTeacher(updated);
-      }
       fetchTeachers();
     } catch (err: any) {
       toast.error(err.message || "Failed to update teacher");
@@ -203,7 +287,23 @@ export const TeachersPage: React.FC = () => {
     setIsDeactivateOpen(true);
   };
 
-    const handleConfirmAssign = async () => {
+  const handleConfirmDeactivate = async () => {
+    if (!deactivatingTeacher) return;
+    setIsDeactivating(true);
+    try {
+      await api.teachers.deactivate(deactivatingTeacher.id);
+      toast.success(`Faculty member ${deactivatingTeacher.full_name} deactivated safely.`);
+      setIsDeactivateOpen(false);
+      setDeactivatingTeacher(null);
+      fetchTeachers();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to deactivate faculty member");
+    } finally {
+      setIsDeactivating(false);
+    }
+  };
+
+  const handleConfirmAssign = async () => {
     if (!assigningTeacher) return;
     setIsSubmittingAssign(true);
     try {
@@ -213,7 +313,7 @@ export const TeachersPage: React.FC = () => {
         subject_name: assignSubject,
         role_type: assignRoleType,
       });
-      toast.success(`${assignClass}-${assignSection} (${assignSubject}) successfully allotted to ${assigningTeacher.full_name}!`);
+      toast.success(`${assignClass}-${assignSection} (${assignSubject}) allotted to ${assigningTeacher.full_name}!`);
       setIsAssignOpen(false);
       fetchTeachers();
     } catch (err: any) {
@@ -223,163 +323,127 @@ export const TeachersPage: React.FC = () => {
     }
   };
 
-  const handleConfirmDeactivate = async () => {
-    if (!deactivatingTeacher) return;
-    setIsDeactivating(true);
+  const handleUploadDocumentToExisting = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!selectedTeacher || !e.target.files || e.target.files.length === 0) return;
+    const file = e.target.files[0];
     try {
-      await api.teachers.deactivate(deactivatingTeacher.id);
-      toast.success(`Faculty member ${deactivatingTeacher.full_name} deactivated successfully!`);
-      setIsDeactivateOpen(false);
-      setDeactivatingTeacher(null);
-      if (selectedTeacher && selectedTeacher.id === deactivatingTeacher.id) {
-        setIsDetailOpen(false);
-      }
+      const doc = await api.teachers.uploadDocument(selectedTeacher.id, file, "Educational Certificate", file.name);
+      toast.success(`Certificate "${file.name}" uploaded successfully!`);
+      const updatedDocs = await api.teachers.getDocuments(selectedTeacher.id);
+      setSelectedTeacherDocs(updatedDocs);
       fetchTeachers();
     } catch (err: any) {
-      toast.error(err.message || "Failed to deactivate faculty member");
-    } finally {
-      setIsDeactivating(false);
+      toast.error(err.message || "Failed to upload document");
     }
   };
 
-  const handleToggleStatus = async (id: number | string, currentStatus: string) => {
-    const newStatus = currentStatus !== "active";
+  const handleDeleteDocument = async (docId: string) => {
+    if (!selectedTeacher) return;
+    if (!window.confirm("Are you sure you want to delete this certificate?")) return;
     try {
-      await api.teachers.toggleStatus(id, newStatus);
-      toast.success(`Faculty status set to ${newStatus ? "Active" : "Inactive"}`);
-      if (selectedTeacher && selectedTeacher.id === id) {
-        setSelectedTeacher({
-          ...selectedTeacher,
-          is_active: newStatus,
-          employment_status: newStatus ? "active" : "inactive",
-        });
-      }
+      await api.teachers.deleteDocument(docId);
+      toast.success("Document deleted successfully.");
+      const updatedDocs = await api.teachers.getDocuments(selectedTeacher.id);
+      setSelectedTeacherDocs(updatedDocs);
       fetchTeachers();
     } catch (err: any) {
-      toast.error(err.message || "Failed to update status");
+      toast.error(err.message || "Failed to delete document");
     }
   };
-
-  const filteredTeachers = teachers.filter((t) => {
-    const matchesSearch =
-      t.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      t.employee_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (t.department && t.department.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (t.designation && t.designation.toLowerCase().includes(searchTerm.toLowerCase()));
-
-    const matchesStatus =
-      statusFilter === "all"
-        ? true
-        : statusFilter === "active"
-        ? t.employment_status === "active"
-        : t.employment_status !== "active";
-
-    return matchesSearch && matchesStatus;
-  });
 
   const columns: Column<TeacherListItem>[] = [
     {
-      key: "employee_id",
-      header: "Employee ID",
-      render: (row) => (
-        <span className="font-mono font-bold text-brand-gold text-xs">
+      header: "Faculty ID",
+      accessor: (row) => (
+        <span className="font-mono font-bold text-xs text-brand-navy dark:text-brand-gold">
           {row.employee_id}
         </span>
       ),
     },
     {
-      key: "full_name",
-      header: "Faculty Name",
-      render: (row) => (
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-brand-gold/10 text-brand-gold flex items-center justify-center font-bold text-xs shrink-0">
-            {row.full_name.charAt(0)}
-          </div>
-          <div>
-            <span className="font-semibold text-light-primary dark:text-dark-primary block">
-              {row.full_name}
-            </span>
-            <span className="text-xs text-light-secondary dark:text-dark-secondary block">
-              {row.email}
-            </span>
-          </div>
-        </div>
-      ),
-    },
-    {
-      key: "designation",
-      header: "Designation & Subject",
-      render: (row) => (
+      header: "Full Name",
+      accessor: (row) => (
         <div>
-          <span className="text-light-primary dark:text-dark-primary font-medium block">
-            {row.designation}
-          </span>
-          <span className="text-xs text-light-secondary dark:text-dark-secondary block">
-            {row.department || "General Department"}
-          </span>
+          <div className="font-bold text-light-primary dark:text-dark-primary">{row.full_name}</div>
+          <div className="text-[11px] text-light-secondary dark:text-dark-secondary">{row.email}</div>
         </div>
       ),
     },
     {
-      key: "assigned_classes_count",
-      header: "Classes",
-      render: (row) => (
-        <Badge variant="gold" size="sm">
-          {row.assigned_classes_count} Classes
+      header: "Department & Role",
+      accessor: (row) => (
+        <div>
+          <div className="font-medium text-xs text-light-primary dark:text-dark-primary">
+            {row.department || "General"}
+          </div>
+          <div className="text-[11px] text-light-secondary dark:text-dark-secondary">{row.designation}</div>
+        </div>
+      ),
+    },
+    {
+      header: "Aadhaar Card",
+      accessor: (row) => (
+        <span className="font-mono text-xs text-light-secondary dark:text-dark-secondary">
+          {maskAadhaar((row as any).aadhaar_number)}
+        </span>
+      ),
+    },
+    {
+      header: "Certificates",
+      accessor: (row) => (
+        <Badge variant={row.documents_count && row.documents_count > 0 ? "gold" : "neutral"} size="sm">
+          <FileText className="w-3 h-3 mr-1 inline" />
+          {row.documents_count || 0} Docs
         </Badge>
       ),
     },
     {
-      key: "employment_status",
       header: "Status",
-      render: (row) => (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            handleToggleStatus(row.id, row.employment_status);
-          }}
-          className="cursor-pointer transition-transform active:scale-95"
-          title="Click to toggle active status"
-        >
-          <Badge variant={row.employment_status === "active" ? "success" : "neutral"} size="sm">
-            {row.employment_status === "active" ? "● Active" : "○ Inactive"}
-          </Badge>
-        </button>
+      accessor: (row) => (
+        <Badge variant={row.employment_status === "active" ? "success" : "neutral"}>
+          {row.employment_status === "active" ? "Active" : "Inactive"}
+        </Badge>
       ),
     },
     {
-      key: "actions",
       header: "Actions",
-      className: "text-right",
-      render: (row) => (
-        <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+      accessor: (row) => (
+        <div className="flex items-center gap-1.5">
           <Button
             variant="ghost"
             size="sm"
             onClick={() => handleViewDetails(row.id)}
-            leftIcon={<Eye className="w-3.5 h-3.5" />}
+            title="View Profile & Credentials"
           >
-            View
+            <Eye className="w-4 h-4 text-brand-blue" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setAssigningTeacher(row);
+              setIsAssignOpen(true);
+            }}
+            title="Allot Class & Subject"
+          >
+            <BookOpen className="w-4 h-4 text-emerald-600" />
           </Button>
           <Button
             variant="ghost"
             size="sm"
             onClick={() => handleOpenEdit(row)}
-            leftIcon={<Edit2 className="w-3.5 h-3.5 text-brand-gold" />}
+            title="Edit Faculty Member"
           >
-            Edit
+            <Edit2 className="w-4 h-4 text-amber-600" />
           </Button>
-          {row.employment_status === "active" && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleOpenDeactivate(row)}
-              className="text-red-500 hover:text-red-600 hover:bg-red-500/10"
-              leftIcon={<Trash2 className="w-3.5 h-3.5" />}
-            >
-              Deactivate
-            </Button>
-          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleOpenDeactivate(row)}
+            title="Deactivate Faculty"
+          >
+            <Trash2 className="w-4 h-4 text-rose-600" />
+          </Button>
         </div>
       ),
     },
@@ -388,13 +452,18 @@ export const TeachersPage: React.FC = () => {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Faculty & Staff Directory"
-        subtitle="Manage faculty credentials, teacher assignments, and departmental allocation in real time"
+        title="Faculty & Teachers Management"
+        description="Comprehensive faculty directory, credentials verification, subject allotment, and confidential document dossiers."
         action={
           <Button
             variant="primary"
             leftIcon={<UserPlus className="w-4 h-4" />}
-            onClick={() => setIsRegisterOpen(true)}
+            onClick={() => {
+              resetCreate();
+              setPendingFiles([]);
+              setRegisterTab("personal");
+              setIsRegisterOpen(true);
+            }}
           >
             Add New Faculty Member
           </Button>
@@ -402,181 +471,422 @@ export const TeachersPage: React.FC = () => {
       />
 
       {/* Filter and Search Bar */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 bg-white dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl">
-        <div className="relative w-full sm:w-80">
-          <Search className="w-4 h-4 absolute left-3 top-3 text-light-secondary dark:text-dark-secondary" />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search employee ID, faculty name, department..."
-            className="w-full text-xs sm:text-sm pl-9 pr-3 py-2 rounded-lg bg-gray-50 dark:bg-dark-elevated text-light-primary dark:text-dark-primary border border-light-border dark:border-dark-border focus:border-brand-gold focus:outline-none"
-          />
+      <div className="p-4 rounded-2xl bg-white dark:bg-dark-card border border-light-border dark:border-dark-border shadow-sm grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+        <div className="sm:col-span-6">
+          <label className="block text-xs font-semibold text-light-secondary dark:text-dark-secondary mb-1">
+            Search Faculty Directory
+          </label>
+          <div className="relative">
+            <Search className="w-4 h-4 absolute left-3 top-2.5 text-light-secondary dark:text-dark-secondary" />
+            <input
+              type="text"
+              placeholder="Search faculty name, ID, email, or department..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full text-xs sm:text-sm pl-9 pr-3 py-2 rounded-lg bg-gray-50 dark:bg-dark-elevated text-light-primary dark:text-dark-primary border border-light-border dark:border-dark-border focus:border-brand-gold focus:outline-none"
+            />
+          </div>
         </div>
-        <div className="flex items-center gap-1.5 w-full sm:w-auto">
-          <Button
-            variant={statusFilter === "all" ? "primary" : "ghost"}
-            size="sm"
-            onClick={() => setStatusFilter("all")}
+
+        <div className="sm:col-span-3">
+          <label className="block text-xs font-semibold text-light-secondary dark:text-dark-secondary mb-1">
+            Department
+          </label>
+          <select
+            value={departmentFilter}
+            onChange={(e) => setDepartmentFilter(e.target.value)}
+            className="w-full text-xs sm:text-sm px-3 py-2 rounded-lg bg-gray-50 dark:bg-dark-elevated text-light-primary dark:text-dark-primary border border-light-border dark:border-dark-border focus:border-brand-gold focus:outline-none"
           >
-            All Faculty
-          </Button>
-          <Button
-            variant={statusFilter === "active" ? "primary" : "ghost"}
-            size="sm"
-            onClick={() => setStatusFilter("active")}
+            <option value="all">All Departments</option>
+            <option value="Mathematics">Mathematics</option>
+            <option value="Science">Science (Physics/Chemistry)</option>
+            <option value="English">English Core</option>
+            <option value="Social Studies">Social Studies</option>
+            <option value="Languages">Languages (Telugu/Hindi/Urdu)</option>
+            <option value="Computer Science">Computer Science</option>
+          </select>
+        </div>
+
+        <div className="sm:col-span-3">
+          <label className="block text-xs font-semibold text-light-secondary dark:text-dark-secondary mb-1">
+            Employment Status
+          </label>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as any)}
+            className="w-full text-xs sm:text-sm px-3 py-2 rounded-lg bg-gray-50 dark:bg-dark-elevated text-light-primary dark:text-dark-primary border border-light-border dark:border-dark-border focus:border-brand-gold focus:outline-none"
           >
-            Active Only
-          </Button>
-          <Button
-            variant={statusFilter === "inactive" ? "primary" : "ghost"}
-            size="sm"
-            onClick={() => setStatusFilter("inactive")}
-          >
-            Inactive
-          </Button>
+            <option value="all">All Statuses</option>
+            <option value="active">Active Faculty</option>
+            <option value="inactive">Inactive / On Leave</option>
+          </select>
         </div>
       </div>
 
       {/* Teachers Table */}
-      <Table
-        columns={columns}
-        data={filteredTeachers}
-        keyExtractor={(row) => String(row.id)}
-        isLoading={isLoading}
-        onRowClick={(row) => handleViewDetails(row.id)}
-      />
+      <div className="rounded-2xl bg-white dark:bg-dark-card border border-light-border dark:border-dark-border overflow-hidden shadow-sm">
+        <Table columns={columns} data={teachers} isLoading={isLoading} />
+        <Pagination
+          currentPage={page}
+          totalPages={Math.ceil(total / pageSize) || 1}
+          onPageChange={setPage}
+        />
+      </div>
 
-      <Pagination
-        currentPage={page}
-        totalItems={total}
-        pageSize={pageSize}
-        onPageChange={setPage}
-      />
-
-      {/* Register Teacher Modal */}
+      {/* ==================================================================== */}
+      {/* 1. ADMIT FACULTY MODAL (3-STEP: PERSONAL, PROFESSIONAL, DOCUMENTS) */}
+      {/* ==================================================================== */}
       <Dialog
         isOpen={isRegisterOpen}
         onClose={() => setIsRegisterOpen(false)}
-        title="Add Faculty Member"
-        description="Creates faculty credentials and registers teacher profile in database"
-        maxWidth="lg"
+        title="Faculty Admission & Onboarding"
+        description="Registers faculty credentials, personal details, professional qualifications, and documents"
+        maxWidth="2xl"
         footer={
-          <>
+          <div className="flex items-center justify-between w-full">
             <Button
+              type="button"
               variant="secondary"
-              onClick={() => setIsRegisterOpen(false)}
-              disabled={isSubmittingCreate}
+              onClick={() => {
+                if (registerTab === "documents") setRegisterTab("professional");
+                else if (registerTab === "professional") setRegisterTab("personal");
+                else setIsRegisterOpen(false);
+              }}
             >
-              Cancel
+              {registerTab === "personal" ? "Cancel" : "Previous Step"}
             </Button>
-            <Button
-              variant="primary"
-              onClick={handleSubmitCreate(onRegisterTeacher)}
-              isLoading={isSubmittingCreate}
-            >
-              Save Faculty Member
-            </Button>
-          </>
+
+            <div className="flex items-center gap-2">
+              {registerTab !== "documents" ? (
+                <Button
+                  type="button"
+                  variant="primary"
+                  onClick={() => {
+                    if (registerTab === "personal") setRegisterTab("professional");
+                    else setRegisterTab("documents");
+                  }}
+                >
+                  Continue to Next Step
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  variant="primary"
+                  onClick={handleSubmitCreate(onRegisterTeacher)}
+                  isLoading={isSubmittingCreate || uploadProgress}
+                >
+                  Confirm &amp; Admit Faculty Member
+                </Button>
+              )}
+            </div>
+          </div>
         }
       >
-        <form onSubmit={handleSubmitCreate(onRegisterTeacher)} className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input
-              label="Employee ID"
-              placeholder="e.g. EMP-1002"
-              error={createErrors.employee_id?.message}
-              required
-              {...registerCreate("employee_id")}
-            />
-            <Input
-              label="Faculty Full Name"
-              placeholder="e.g. Dr. Syed Ibrahim"
-              error={createErrors.full_name?.message}
-              required
-              {...registerCreate("full_name")}
-            />
+        <div className="space-y-5">
+          {/* Progress Step Badges */}
+          <div className="grid grid-cols-3 gap-2 border-b border-light-border dark:border-dark-border pb-3">
+            <button
+              type="button"
+              onClick={() => setRegisterTab("personal")}
+              className={`p-2 rounded-xl text-xs font-bold transition-all text-center ${
+                registerTab === "personal"
+                  ? "bg-brand-navy dark:bg-brand-gold text-white dark:text-dark-bg"
+                  : "bg-gray-100 dark:bg-dark-elevated text-light-secondary dark:text-dark-secondary"
+              }`}
+            >
+              1. Personal Details
+            </button>
+            <button
+              type="button"
+              onClick={() => setRegisterTab("professional")}
+              className={`p-2 rounded-xl text-xs font-bold transition-all text-center ${
+                registerTab === "professional"
+                  ? "bg-brand-navy dark:bg-brand-gold text-white dark:text-dark-bg"
+                  : "bg-gray-100 dark:bg-dark-elevated text-light-secondary dark:text-dark-secondary"
+              }`}
+            >
+              2. Professional Info
+            </button>
+            <button
+              type="button"
+              onClick={() => setRegisterTab("documents")}
+              className={`p-2 rounded-xl text-xs font-bold transition-all text-center ${
+                registerTab === "documents"
+                  ? "bg-brand-navy dark:bg-brand-gold text-white dark:text-dark-bg"
+                  : "bg-gray-100 dark:bg-dark-elevated text-light-secondary dark:text-dark-secondary"
+              }`}
+            >
+              3. Certificates &amp; Docs
+            </button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input
-              label="Username (Optional)"
-              placeholder="e.g. syed.ibrahim"
-              error={createErrors.username?.message}
-              {...registerCreate("username")}
-            />
-            <Input
-              label="Email"
-              type="email"
-              placeholder="e.g. syed.ibrahim@dmhs.edu.in"
-              error={createErrors.email?.message}
-              required
-              {...registerCreate("email")}
-            />
-          </div>
+          <form onSubmit={handleSubmitCreate(onRegisterTeacher)} className="space-y-4">
+            {/* STEP 1: PERSONAL DETAILS */}
+            {registerTab === "personal" && (
+              <div className="space-y-4 animate-in fade-in-50">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Input
+                    label="Faculty Full Name *"
+                    placeholder="e.g. Dr. Syed Khaja Mohiuddin"
+                    error={createErrors.full_name?.message}
+                    required
+                    {...registerCreate("full_name")}
+                  />
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-light-secondary dark:text-dark-secondary mb-1">
+                      Gender *
+                    </label>
+                    <select
+                      {...registerCreate("gender")}
+                      className="w-full text-xs sm:text-sm px-3 py-2 rounded-lg bg-light-input dark:bg-dark-input text-light-primary dark:text-dark-primary border border-light-border dark:border-dark-border focus:border-brand-gold focus:outline-none"
+                    >
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="text-xs font-semibold uppercase tracking-wider text-light-secondary dark:text-dark-secondary">
-                  Portal Password *
-                </label>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const randomPass = "TCH@" + Math.floor(1000 + Math.random() * 9000);
-                    setCreateValue("password", randomPass);
-                    toast.success(`Generated faculty password: ${randomPass}`);
-                  }}
-                  className="text-[11px] font-bold text-brand-blue dark:text-dark-accent hover:underline"
-                >
-                  Auto-Generate
-                </button>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Input
+                    label="Date of Birth"
+                    type="date"
+                    {...registerCreate("date_of_birth")}
+                  />
+                  <Input
+                    label="Aadhaar Card Number (12 Digits)"
+                    placeholder="e.g. 5432 9876 1234"
+                    error={createErrors.aadhaar_number?.message}
+                    {...registerCreate("aadhaar_number")}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Input
+                    label="Contact Phone Number *"
+                    placeholder="+91 98490 12345"
+                    error={createErrors.contact_phone?.message}
+                    required
+                    {...registerCreate("contact_phone")}
+                  />
+                  <Input
+                    label="Email Address *"
+                    type="email"
+                    placeholder="e.g. khaja.mohiuddin@dmhs.edu.in"
+                    error={createErrors.email?.message}
+                    required
+                    {...registerCreate("email")}
+                  />
+                </div>
+
+                <div className="col-span-full">
+                  <Input
+                    label="Residential Address"
+                    placeholder="Street, locality, Hyderabad, Telangana"
+                    {...registerCreate("address")}
+                  />
+                </div>
               </div>
-              <Input
-                placeholder="e.g. 1234 or TCH@2026"
-                error={createErrors.password?.message}
-                required
-                {...registerCreate("password")}
-              />
-            </div>
-            <Input
-              label="Designation"
-              placeholder="e.g. Senior Faculty"
-              error={createErrors.designation?.message}
-              required
-              {...registerCreate("designation")}
-            />
-            <Input
-              label="Department"
-              placeholder="e.g. Physics / Science"
-              error={createErrors.department?.message}
-              {...registerCreate("department")}
-            />
-          </div>
+            )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input
-              label="Qualifications"
-              placeholder="e.g. M.Sc. Physics, B.Ed, Ph.D"
-              {...registerCreate("qualification")}
-            />
-            <Input
-              label="Contact Phone"
-              placeholder="+91 98490 12345"
-              {...registerCreate("contact_phone")}
-            />
-          </div>
-        </form>
+            {/* STEP 2: PROFESSIONAL & CLASS ALLOTMENT */}
+            {registerTab === "professional" && (
+              <div className="space-y-4 animate-in fade-in-50">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Input
+                    label="Faculty / Employee ID *"
+                    placeholder="e.g. EMP-104"
+                    error={createErrors.employee_id?.message}
+                    required
+                    {...registerCreate("employee_id")}
+                  />
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-light-secondary dark:text-dark-secondary mb-1">
+                      Department *
+                    </label>
+                    <select
+                      {...registerCreate("department")}
+                      className="w-full text-xs sm:text-sm px-3 py-2 rounded-lg bg-light-input dark:bg-dark-input text-light-primary dark:text-dark-primary border border-light-border dark:border-dark-border focus:border-brand-gold focus:outline-none"
+                    >
+                      <option value="Mathematics">Mathematics</option>
+                      <option value="Science">Science (Physics/Chemistry/Bio)</option>
+                      <option value="English">English</option>
+                      <option value="Social Studies">Social Studies</option>
+                      <option value="Languages">Languages (Telugu/Hindi/Urdu)</option>
+                      <option value="Computer Science">Computer Science</option>
+                      <option value="Physical Education">Physical Education</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Input
+                    label="Designation / Title *"
+                    placeholder="e.g. Senior Faculty / PGT Mathematics"
+                    error={createErrors.designation?.message}
+                    required
+                    {...registerCreate("designation")}
+                  />
+                  <Input
+                    label="Educational Qualifications"
+                    placeholder="e.g. M.Sc. Mathematics, B.Ed"
+                    {...registerCreate("qualification")}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Input
+                    label="Subject Specialization"
+                    placeholder="e.g. Algebra & Calculus"
+                    {...registerCreate("specialization")}
+                  />
+                  <Input
+                    label="Date of Joining"
+                    type="date"
+                    {...registerCreate("joining_date")}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-light-secondary dark:text-dark-secondary mb-1">
+                      Initial Assigned Class
+                    </label>
+                    <select
+                      {...registerCreate("assigned_class")}
+                      className="w-full text-xs sm:text-sm px-3 py-2 rounded-lg bg-light-input dark:bg-dark-input text-light-primary dark:text-dark-primary border border-light-border dark:border-dark-border focus:border-brand-gold focus:outline-none"
+                    >
+                      <option value="Class 10">Class 10</option>
+                      <option value="Class 9">Class 9</option>
+                      <option value="Class 8">Class 8</option>
+                      <option value="Class 7">Class 7</option>
+                      <option value="Class 6">Class 6</option>
+                      <option value="Class 5">Class 5</option>
+                      <option value="Class 1">Class 1</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs font-semibold uppercase tracking-wider text-light-secondary dark:text-dark-secondary">
+                        Portal Login Password *
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const pass = "TCH@" + Math.floor(1000 + Math.random() * 9000);
+                          setCreateValue("password", pass);
+                          toast.success(`Generated portal password: ${pass}`);
+                        }}
+                        className="text-[11px] font-bold text-brand-blue dark:text-brand-gold hover:underline"
+                      >
+                        Auto-Generate
+                      </button>
+                    </div>
+                    <Input
+                      placeholder="Password for portal"
+                      error={createErrors.password?.message}
+                      required
+                      {...registerCreate("password")}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 3: CERTIFICATES & DOCUMENTS */}
+            {registerTab === "documents" && (
+              <div className="space-y-4 animate-in fade-in-50">
+                <div className="p-4 rounded-xl bg-blue-50/70 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/40 text-xs text-blue-900 dark:text-blue-300">
+                  <p className="font-semibold mb-1 flex items-center gap-1.5">
+                    <Shield className="w-4 h-4 text-brand-blue" />
+                    Verified Faculty Credentials Dossier
+                  </p>
+                  <p>
+                    Attach digital copies of Aadhaar card, degree certificates, B.Ed marksheet, and prior experience letters. Supported: PDF, JPG, PNG (up to 15MB each).
+                  </p>
+                </div>
+
+                <div className="border-2 border-dashed border-light-border dark:border-dark-border rounded-xl p-6 text-center hover:border-brand-navy transition-colors">
+                  <Upload className="w-8 h-8 mx-auto text-light-secondary dark:text-dark-secondary mb-2" />
+                  <label className="cursor-pointer font-bold text-xs text-brand-navy dark:text-brand-gold hover:underline">
+                    <span>Click to browse and upload multiple certificates</span>
+                    <input
+                      type="file"
+                      multiple
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      className="hidden"
+                      onChange={(e) => {
+                        if (e.target.files) {
+                          const files = Array.from(e.target.files);
+                          const added = files.map((f) => ({
+                            file: f,
+                            type: f.name.toLowerCase().includes("aadhaar")
+                              ? "Aadhaar Card Copy"
+                              : f.name.toLowerCase().includes("degree")
+                              ? "Degree Certificate"
+                              : f.name.toLowerCase().includes("exp")
+                              ? "Experience Certificate"
+                              : "Educational Certificate",
+                            title: f.name,
+                          }));
+                          setPendingFiles((prev) => [...prev, ...added]);
+                          toast.success(`Selected ${files.length} document(s) for upload`);
+                        }
+                      }}
+                    />
+                  </label>
+                  <p className="text-[11px] text-light-secondary dark:text-dark-secondary mt-1">
+                    Multiple files supported simultaneously
+                  </p>
+                </div>
+
+                {/* Selected Files List */}
+                {pendingFiles.length > 0 && (
+                  <div className="space-y-2">
+                    <h5 className="text-xs font-bold uppercase tracking-wider text-light-secondary dark:text-dark-secondary">
+                      Ready for Upload ({pendingFiles.length} file{pendingFiles.length > 1 ? "s" : ""})
+                    </h5>
+                    <div className="max-h-48 overflow-y-auto space-y-1.5">
+                      {pendingFiles.map((item, idx) => (
+                        <div
+                          key={idx}
+                          className="p-2.5 rounded-lg bg-gray-50 dark:bg-dark-elevated border border-light-border dark:border-dark-border flex items-center justify-between text-xs"
+                        >
+                          <div className="flex items-center gap-2 truncate">
+                            <FileCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                            <span className="font-semibold text-light-primary dark:text-dark-primary truncate">
+                              {item.title}
+                            </span>
+                            <Badge variant="blue" size="sm">{item.type}</Badge>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setPendingFiles((prev) => prev.filter((_, i) => i !== idx))}
+                            className="text-rose-600 hover:text-rose-700 ml-2"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </form>
+        </div>
       </Dialog>
 
-      {/* Teacher Details Dialog */}
+      {/* ==================================================================== */}
+      {/* 2. FACULTY PROFILE DETAILS & CERTIFICATES DOSSIER MODAL */}
+      {/* ==================================================================== */}
       <Dialog
         isOpen={isDetailOpen}
         onClose={() => setIsDetailOpen(false)}
-        title="Faculty Member Profile"
-        description="Detailed record from Deccan Mission High School database"
-        maxWidth="md"
+        title="Faculty Member Dossier"
+        description="Comprehensive profile, allotted timetable periods, and uploaded credentials"
+        maxWidth="2xl"
         footer={
           <div className="flex items-center justify-between w-full">
             <Button
@@ -599,33 +909,29 @@ export const TeachersPage: React.FC = () => {
         }
       >
         {selectedTeacher && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 rounded-xl bg-brand-gold/10 border border-brand-gold/20">
+          <div className="space-y-5">
+            {/* Header Card */}
+            <div className="flex items-center justify-between p-4 rounded-xl bg-brand-navy/10 dark:bg-brand-gold/15 border border-brand-navy/20 dark:border-brand-gold/30">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-brand-gold/20 text-brand-gold flex items-center justify-center font-bold text-lg">
+                <div className="w-12 h-12 rounded-full bg-brand-navy dark:bg-brand-gold text-white dark:text-dark-bg flex items-center justify-center font-bold text-lg">
                   <Users className="w-6 h-6" />
                 </div>
                 <div>
                   <h4 className="text-base font-bold text-light-primary dark:text-dark-primary">
                     {selectedTeacher.full_name}
                   </h4>
-                  <p className="text-xs font-mono font-bold text-brand-gold">
-                    Employee ID: {selectedTeacher.employee_id}
+                  <p className="text-xs font-mono font-bold text-brand-navy dark:text-brand-gold">
+                    ID: {selectedTeacher.employee_id} • {selectedTeacher.department || "General"}
                   </p>
                 </div>
               </div>
-              <button
-                onClick={() => handleToggleStatus(selectedTeacher.id, selectedTeacher.employment_status)}
-                className="cursor-pointer"
-                title="Click to toggle status"
-              >
-                <Badge variant={selectedTeacher.employment_status === "active" ? "success" : "neutral"}>
-                  {selectedTeacher.employment_status === "active" ? "Active" : "Inactive"}
-                </Badge>
-              </button>
+              <Badge variant={selectedTeacher.employment_status === "active" ? "success" : "neutral"}>
+                {selectedTeacher.employment_status === "active" ? "Active Faculty" : "Inactive"}
+              </Badge>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 text-xs">
+            {/* Confidential Details Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
               <div className="p-3 rounded-lg bg-gray-50 dark:bg-dark-elevated">
                 <span className="text-light-secondary dark:text-dark-secondary block">Designation</span>
                 <span className="font-semibold text-light-primary dark:text-dark-primary block">
@@ -633,15 +939,21 @@ export const TeachersPage: React.FC = () => {
                 </span>
               </div>
               <div className="p-3 rounded-lg bg-gray-50 dark:bg-dark-elevated">
-                <span className="text-light-secondary dark:text-dark-secondary block">Department</span>
-                <span className="font-semibold text-light-primary dark:text-dark-primary block">
-                  {selectedTeacher.department || "General Faculty"}
+                <span className="text-light-secondary dark:text-dark-secondary block">Official Email</span>
+                <span className="font-semibold text-light-primary dark:text-dark-primary block truncate">
+                  {selectedTeacher.email}
                 </span>
               </div>
               <div className="p-3 rounded-lg bg-gray-50 dark:bg-dark-elevated">
-                <span className="text-light-secondary dark:text-dark-secondary block">Email</span>
-                <span className="font-semibold text-light-primary dark:text-dark-primary block truncate">
-                  {selectedTeacher.email}
+                <span className="text-light-secondary dark:text-dark-secondary block">Contact Number</span>
+                <span className="font-semibold text-light-primary dark:text-dark-primary block">
+                  {selectedTeacher.contact_phone || "—"}
+                </span>
+              </div>
+              <div className="p-3 rounded-lg bg-gray-50 dark:bg-dark-elevated">
+                <span className="text-light-secondary dark:text-dark-secondary block">Aadhaar Card Number</span>
+                <span className="font-semibold font-mono text-light-primary dark:text-dark-primary block">
+                  {maskAadhaar((selectedTeacher as any).aadhaar_number)}
                 </span>
               </div>
               <div className="p-3 rounded-lg bg-gray-50 dark:bg-dark-elevated">
@@ -650,30 +962,101 @@ export const TeachersPage: React.FC = () => {
                   {selectedTeacher.qualification || "—"}
                 </span>
               </div>
-            </div>
-
-            {selectedTeacher.contact_phone && (
-              <div className="p-3 rounded-lg bg-gray-50 dark:bg-dark-elevated text-xs flex items-center gap-2">
-                <Phone className="w-3.5 h-3.5 text-brand-gold" />
-                <span className="text-light-secondary dark:text-dark-secondary">Contact:</span>
-                <span className="font-semibold text-light-primary dark:text-dark-primary font-mono">
-                  {selectedTeacher.contact_phone}
+              <div className="p-3 rounded-lg bg-gray-50 dark:bg-dark-elevated">
+                <span className="text-light-secondary dark:text-dark-secondary block">Date of Joining</span>
+                <span className="font-semibold text-light-primary dark:text-dark-primary block">
+                  {selectedTeacher.joining_date || "—"}
                 </span>
               </div>
-            )}
+            </div>
 
+            {/* Uploaded Certificates & Credentials Dossier */}
+            <div className="space-y-3 pt-2">
+              <div className="flex items-center justify-between">
+                <h5 className="text-xs font-bold uppercase tracking-wider text-light-secondary dark:text-dark-secondary flex items-center gap-1.5">
+                  <FileText className="w-4 h-4 text-brand-gold" />
+                  <span>Verified Certificates &amp; Documents ({selectedTeacherDocs.length})</span>
+                </h5>
+                <label className="cursor-pointer text-xs font-bold text-brand-blue dark:text-brand-gold hover:underline flex items-center gap-1">
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>Upload Certificate</span>
+                  <input
+                    type="file"
+                    className="hidden"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={handleUploadDocumentToExisting}
+                  />
+                </label>
+              </div>
+
+              {selectedTeacherDocs.length === 0 ? (
+                <div className="p-4 rounded-xl bg-gray-50 dark:bg-dark-elevated text-center text-xs text-light-secondary dark:text-dark-secondary border border-light-border dark:border-dark-border">
+                  No certificates currently attached. Click "Upload Certificate" above to attach degree, Aadhaar, or experience proofs.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {selectedTeacherDocs.map((doc) => (
+                    <div
+                      key={doc.id}
+                      className="p-3 rounded-xl bg-gray-50 dark:bg-dark-elevated border border-light-border dark:border-dark-border flex items-center justify-between text-xs"
+                    >
+                      <div className="flex items-center gap-2.5 truncate">
+                        <FileCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <div>
+                          <div className="font-bold text-light-primary dark:text-dark-primary truncate">
+                            {doc.title}
+                          </div>
+                          <div className="text-[10px] text-light-secondary dark:text-dark-secondary">
+                            {doc.document_type} • {doc.created_at?.slice(0, 10)}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setPreviewDoc(doc)}
+                          title="Preview Document"
+                        >
+                          <Eye className="w-3.5 h-3.5 text-brand-blue" />
+                        </Button>
+                        <a
+                          href={doc.file_url}
+                          download={doc.title}
+                          className="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-dark-border text-light-secondary dark:text-dark-secondary"
+                          title="Download Document"
+                        >
+                          <Download className="w-3.5 h-3.5 text-emerald-600" />
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteDocument(doc.id)}
+                          className="p-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/20 text-rose-600"
+                          title="Delete Document"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Class & Subject Assignments */}
             <div>
               <h5 className="text-xs font-bold uppercase tracking-wider text-light-secondary dark:text-dark-secondary mb-2 flex items-center gap-1.5">
-                <BookOpen className="w-3.5 h-3.5" />
-                <span>Class & Subject Assignments</span>
+                <BookOpen className="w-3.5 h-3.5 text-brand-blue" />
+                <span>Allotted Classes &amp; Subjects</span>
               </h5>
-              {selectedTeacher.assignments && selectedTeacher.assignments.length === 0 ? (
+              {(!selectedTeacher.assignments || selectedTeacher.assignments.length === 0) ? (
                 <p className="text-xs text-light-secondary dark:text-dark-secondary p-3 rounded-lg bg-gray-50 dark:bg-dark-elevated">
                   No classes currently assigned for this term.
                 </p>
               ) : (
                 <div className="space-y-1.5">
-                  {(selectedTeacher.assignments || []).map((a) => (
+                  {selectedTeacher.assignments.map((a) => (
                     <div
                       key={a.id}
                       className="p-2.5 rounded-lg bg-gray-50 dark:bg-dark-elevated border border-light-border dark:border-dark-border flex items-center justify-between text-xs"
@@ -682,7 +1065,7 @@ export const TeachersPage: React.FC = () => {
                         {a.class_name} - Sec {a.section_name} ({a.subject_name})
                       </span>
                       <Badge variant="gold" size="sm">
-                        {a.role_type.replace(/_/g, " ")}
+                        {a.role_type}
                       </Badge>
                     </div>
                   ))}
@@ -693,7 +1076,53 @@ export const TeachersPage: React.FC = () => {
         )}
       </Dialog>
 
-      {/* Edit Teacher Modal */}
+      {/* ==================================================================== */}
+      {/* 3. DOCUMENT PREVIEW MODAL */}
+      {/* ==================================================================== */}
+      <Dialog
+        isOpen={Boolean(previewDoc)}
+        onClose={() => setPreviewDoc(null)}
+        title={previewDoc?.title || "Document Preview"}
+        description={`Type: ${previewDoc?.document_type || "Certificate"}`}
+        maxWidth="3xl"
+        footer={
+          <div className="flex items-center justify-between w-full">
+            <a
+              href={previewDoc?.file_url}
+              download={previewDoc?.title}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-navy text-white text-xs font-bold"
+            >
+              <Download className="w-3.5 h-3.5" />
+              Download Document
+            </a>
+            <Button variant="secondary" onClick={() => setPreviewDoc(null)}>
+              Close Preview
+            </Button>
+          </div>
+        }
+      >
+        <div className="h-[60vh] flex items-center justify-center bg-gray-100 dark:bg-dark-elevated rounded-xl overflow-hidden p-2">
+          {previewDoc?.file_url?.startsWith("data:image/") ||
+          previewDoc?.file_url?.endsWith(".jpg") ||
+          previewDoc?.file_url?.endsWith(".png") ? (
+            <img
+              src={previewDoc.file_url}
+              alt={previewDoc.title}
+              className="max-h-full max-w-full object-contain rounded-lg shadow-sm"
+            />
+          ) : (
+            <iframe
+              src={previewDoc?.file_url}
+              title={previewDoc?.title}
+              className="w-full h-full border-0 rounded-lg"
+            />
+          )}
+        </div>
+      </Dialog>
+
+      {/* ==================================================================== */}
+      {/* 4. EDIT FACULTY MODAL */}
+      {/* ==================================================================== */}
       <Dialog
         isOpen={isEditOpen}
         onClose={() => setIsEditOpen(false)}
@@ -712,28 +1141,25 @@ export const TeachersPage: React.FC = () => {
         }
       >
         <form onSubmit={handleSubmitEdit(onSaveEdit)} className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Input
+            label="Faculty Full Name"
+            placeholder="e.g. Dr. Syed Ibrahim"
+            error={editErrors.full_name?.message}
+            required
+            {...registerEdit("full_name")}
+          />
+          <Input
+            label="Email Address"
+            type="email"
+            placeholder="e.g. syed.ibrahim@dmhs.edu.in"
+            error={editErrors.email?.message}
+            required
+            {...registerEdit("email")}
+          />
+          <div className="grid grid-cols-2 gap-3">
             <Input
-              label="Faculty Full Name"
-              placeholder="e.g. Dr. Syed Ibrahim"
-              error={editErrors.full_name?.message}
-              required
-              {...registerEdit("full_name")}
-            />
-            <Input
-              label="Email Address"
-              type="email"
-              placeholder="e.g. syed.ibrahim@dmhs.edu.in"
-              error={editErrors.email?.message}
-              required
-              {...registerEdit("email")}
-            />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input
-              label="Designation / Specialization"
-              placeholder="e.g. Senior Faculty - Mathematics"
+              label="Designation"
+              placeholder="e.g. Senior Faculty"
               error={editErrors.designation?.message}
               required
               {...registerEdit("designation")}
@@ -745,12 +1171,10 @@ export const TeachersPage: React.FC = () => {
               {...registerEdit("department")}
             />
           </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3">
             <Input
               label="Qualifications"
               placeholder="e.g. M.Sc, B.Ed"
-              error={editErrors.qualification?.message}
               {...registerEdit("qualification")}
             />
             <Input
@@ -760,137 +1184,107 @@ export const TeachersPage: React.FC = () => {
               {...registerEdit("contact_phone")}
             />
           </div>
-
-          <div className="flex items-center gap-2 pt-2">
-            <label className="flex items-center gap-2 text-xs cursor-pointer font-medium text-light-primary dark:text-dark-primary">
-              <input
-                type="checkbox"
-                className="rounded border-light-border dark:border-dark-border text-brand-gold focus:ring-brand-gold"
-                {...registerEdit("is_active")}
-              />
-              Active Faculty Status (Allows portal login and teaching allocations)
-            </label>
-          </div>
         </form>
       </Dialog>
 
-      {/* Deactivate Faculty Confirmation Dialog */}
-      <ConfirmDialog
-        isOpen={isDeactivateOpen}
-        onClose={() => {
-          setIsDeactivateOpen(false);
-          setDeactivatingTeacher(null);
-        }}
-        onConfirm={handleConfirmDeactivate}
-        title="Deactivate Faculty Member"
-        message={
-          deactivatingTeacher
-            ? `Are you sure you want to deactivate ${deactivatingTeacher.full_name} (${deactivatingTeacher.employee_id})? The teacher will no longer be able to log in or enter marks, but historical timetable and student records will be preserved.`
-            : "Are you sure you want to deactivate this faculty member?"
-        }
-        confirmText="Deactivate Faculty"
-        variant="danger"
-        isLoading={isDeactivating}
-      />
-          {/* Allot Class & Subject Dialog */}
+      {/* ==================================================================== */}
+      {/* 5. ALLOT CLASS & SUBJECT MODAL */}
+      {/* ==================================================================== */}
       <Dialog
         isOpen={isAssignOpen}
         onClose={() => setIsAssignOpen(false)}
-        title={`Allot Class & Subject: ${assigningTeacher?.full_name || "Faculty"}`}
-        description="Allocate authorized classes, sections, and teaching subjects to this teacher"
-        maxWidth="md"
+        title="Allot Class & Subject to Faculty"
+        description={`Assign teaching responsibilities to ${assigningTeacher?.full_name || "Faculty"}`}
+        maxWidth="sm"
         footer={
           <>
-            <Button variant="secondary" onClick={() => setIsAssignOpen(false)}>
+            <Button variant="secondary" onClick={() => setIsAssignOpen(false)} disabled={isSubmittingAssign}>
               Cancel
             </Button>
-            <Button
-              variant="primary"
-              onClick={handleConfirmAssign}
-              isLoading={isSubmittingAssign}
-            >
+            <Button variant="primary" onClick={handleConfirmAssign} isLoading={isSubmittingAssign}>
               Confirm Allotment
             </Button>
           </>
         }
       >
-        <div className="space-y-4 py-2">
-          <div className="p-3 bg-brand-pale/50 dark:bg-dark-elevated rounded-xl border border-brand-blue/20 flex items-center justify-between text-xs">
-            <span className="font-semibold text-light-secondary dark:text-dark-secondary">Faculty Member:</span>
-            <span className="font-bold text-brand-navy dark:text-white">{assigningTeacher?.full_name} ({assigningTeacher?.employee_id})</span>
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs font-semibold uppercase text-light-secondary dark:text-dark-secondary mb-1">
+              Select Class
+            </label>
+            <select
+              value={assignClass}
+              onChange={(e) => setAssignClass(e.target.value)}
+              className="w-full text-xs sm:text-sm px-3 py-2 rounded-lg bg-light-input dark:bg-dark-input text-light-primary dark:text-dark-primary border border-light-border dark:border-dark-border"
+            >
+              <option value="Class 10">Class 10</option>
+              <option value="Class 9">Class 9</option>
+              <option value="Class 8">Class 8</option>
+              <option value="Class 7">Class 7</option>
+              <option value="Class 6">Class 6</option>
+              <option value="Class 5">Class 5</option>
+              <option value="Class 1">Class 1</option>
+              <option value="UKG">UKG</option>
+              <option value="LKG">LKG</option>
+              <option value="Nursery">Nursery</option>
+            </select>
           </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold mb-1 text-light-secondary dark:text-dark-secondary">
-                Select Class
-              </label>
-              <select
-                value={assignClass}
-                onChange={(e) => setAssignClass(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-light-border dark:border-dark-border bg-white dark:bg-dark-card text-xs text-light-primary dark:text-dark-primary focus:border-brand-gold focus:outline-none"
-              >
-                {Array.from({ length: 10 }, (_, i) => `Class ${i + 1}`).map((c) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold mb-1 text-light-secondary dark:text-dark-secondary">
-                Select Section
+              <label className="block text-xs font-semibold uppercase text-light-secondary dark:text-dark-secondary mb-1">
+                Section
               </label>
               <select
                 value={assignSection}
                 onChange={(e) => setAssignSection(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-light-border dark:border-dark-border bg-white dark:bg-dark-card text-xs text-light-primary dark:text-dark-primary focus:border-brand-gold focus:outline-none"
+                className="w-full text-xs sm:text-sm px-3 py-2 rounded-lg bg-light-input dark:bg-dark-input text-light-primary dark:text-dark-primary border border-light-border dark:border-dark-border"
               >
                 <option value="A">Section A</option>
                 <option value="B">Section B</option>
                 <option value="C">Section C</option>
               </select>
             </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold mb-1 text-light-secondary dark:text-dark-secondary">
-                Subject
-              </label>
-              <select
-                value={assignSubject}
-                onChange={(e) => setAssignSubject(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-light-border dark:border-dark-border bg-white dark:bg-dark-card text-xs text-light-primary dark:text-dark-primary focus:border-brand-gold focus:outline-none"
-              >
-                <option value="Mathematics">Mathematics</option>
-                <option value="General Science">General Science</option>
-                <option value="Physics">Physics</option>
-                <option value="Chemistry">Chemistry</option>
-                <option value="English Core">English Core</option>
-                <option value="Social Studies">Social Studies</option>
-                <option value="Computer Science">Computer Science</option>
-                <option value="Second Language (Urdu/Hindi)">Second Language (Urdu/Hindi)</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold mb-1 text-light-secondary dark:text-dark-secondary">
-                Responsibility Role
+              <label className="block text-xs font-semibold uppercase text-light-secondary dark:text-dark-secondary mb-1">
+                Role Type
               </label>
               <select
                 value={assignRoleType}
                 onChange={(e) => setAssignRoleType(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-light-border dark:border-dark-border bg-white dark:bg-dark-card text-xs text-light-primary dark:text-dark-primary focus:border-brand-gold focus:outline-none"
+                className="w-full text-xs sm:text-sm px-3 py-2 rounded-lg bg-light-input dark:bg-dark-input text-light-primary dark:text-dark-primary border border-light-border dark:border-dark-border"
               >
                 <option value="Class Teacher">Class Teacher</option>
                 <option value="Subject Teacher">Subject Teacher</option>
-                <option value="Co-Teacher">Co-Teacher</option>
               </select>
             </div>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold uppercase text-light-secondary dark:text-dark-secondary mb-1">
+              Subject Name
+            </label>
+            <input
+              type="text"
+              value={assignSubject}
+              onChange={(e) => setAssignSubject(e.target.value)}
+              className="w-full text-xs sm:text-sm px-3 py-2 rounded-lg bg-light-input dark:bg-dark-input text-light-primary dark:text-dark-primary border border-light-border dark:border-dark-border"
+            />
           </div>
         </div>
       </Dialog>
 
+      {/* ==================================================================== */}
+      {/* 6. CONFIRM DEACTIVATE MODAL */}
+      {/* ==================================================================== */}
+      <ConfirmDialog
+        isOpen={isDeactivateOpen}
+        onClose={() => setIsDeactivateOpen(false)}
+        onConfirm={handleConfirmDeactivate}
+        title="Deactivate Faculty Member"
+        message={`Are you sure you want to deactivate ${deactivatingTeacher?.full_name} (${deactivatingTeacher?.employee_id})? The teacher will no longer be able to log in or enter marks, but historical records will be preserved.`}
+        confirmText="Deactivate Faculty"
+        variant="danger"
+        isLoading={isDeactivating}
+      />
     </div>
   );
 };
