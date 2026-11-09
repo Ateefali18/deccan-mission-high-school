@@ -1,4 +1,5 @@
 import type { UserCredentialItem, PasswordResetSession, PasswordResetLogItem } from "../types";
+import { hashPassword, verifyPassword } from "./authCrypto";
 
 export interface CustomUserAccount {
   id?: number | string;
@@ -15,24 +16,69 @@ export interface CustomUserAccount {
   section_id?: string | number;
 }
 
+let inMemoryCustomUsers: CustomUserAccount[] = [];
+let inMemoryCustomTeachers: any[] = [];
+let inMemoryAdminPassword = "1234";
+
 export function getStoredCustomUsers(): CustomUserAccount[] {
   try {
-    if (typeof localStorage === "undefined") return [];
-    const raw = localStorage.getItem("dmhs_custom_users");
-    return raw ? JSON.parse(raw) : [];
+    if (typeof localStorage !== "undefined" && localStorage && typeof localStorage.getItem === "function") {
+      const raw = localStorage.getItem("dmhs_custom_users");
+      if (raw) return JSON.parse(raw);
+    }
+    return inMemoryCustomUsers;
   } catch {
-    return [];
+    return inMemoryCustomUsers;
   }
+}
+
+export function saveCustomUser(user: CustomUserAccount) {
+  const users = getStoredCustomUsers().filter((u) => u.username !== user.username && u.email !== user.email);
+  const secureUser = {
+    ...user,
+    password: user.password ? hashPassword(user.password) : undefined,
+  };
+  users.unshift(secureUser);
+  inMemoryCustomUsers = users;
+  try {
+    if (typeof localStorage !== "undefined" && localStorage && typeof localStorage.setItem === "function") {
+      localStorage.setItem("dmhs_custom_users", JSON.stringify(users));
+    }
+  } catch {}
 }
 
 export function getStoredCustomTeachers(): any[] {
   try {
-    if (typeof localStorage === "undefined") return [];
-    const raw = localStorage.getItem("dmhs_custom_teachers");
-    return raw ? JSON.parse(raw) : [];
+    if (typeof localStorage !== "undefined" && localStorage && typeof localStorage.getItem === "function") {
+      const raw = localStorage.getItem("dmhs_custom_teachers");
+      if (raw) return JSON.parse(raw);
+    }
+    return inMemoryCustomTeachers;
   } catch {
-    return [];
+    return inMemoryCustomTeachers;
   }
+}
+
+export function getAdminPassword(): string {
+  try {
+    if (typeof localStorage !== "undefined" && localStorage && typeof localStorage.getItem === "function") {
+      const pass = localStorage.getItem("dmhs_admin_password");
+      if (pass) return pass;
+    }
+    return inMemoryAdminPassword;
+  } catch {
+    return inMemoryAdminPassword;
+  }
+}
+
+export function setAdminPassword(pass: string) {
+  const hashed = hashPassword(pass);
+  inMemoryAdminPassword = hashed;
+  try {
+    if (typeof localStorage !== "undefined" && localStorage && typeof localStorage.setItem === "function") {
+      localStorage.setItem("dmhs_admin_password", hashed);
+    }
+  } catch {}
 }
 
 export function getStoredCustomStudents(): any[] {
@@ -63,19 +109,33 @@ export function maskEmail(email: string): string {
   return `${local[0]}***${local[local.length - 1]}@${domain}`;
 }
 
+let inMemoryOtpSessions: Record<string, PasswordResetSession> = {};
+
+export function clearAllOtpSessions() {
+  inMemoryOtpSessions = {};
+  if (typeof localStorage !== "undefined" && localStorage && typeof localStorage.removeItem === "function") {
+    localStorage.removeItem("dmhs_active_otp_sessions");
+  }
+}
+
 export function getStoredOtpSessions(): Record<string, PasswordResetSession> {
   try {
-    if (typeof localStorage === "undefined") return {};
-    const raw = localStorage.getItem("dmhs_active_otp_sessions");
-    return raw ? JSON.parse(raw) : {};
+    if (typeof localStorage !== "undefined" && localStorage && typeof localStorage.getItem === "function") {
+      const raw = localStorage.getItem("dmhs_active_otp_sessions");
+      if (raw) return JSON.parse(raw);
+      inMemoryOtpSessions = {};
+      return {};
+    }
+    return inMemoryOtpSessions;
   } catch {
-    return {};
+    return inMemoryOtpSessions;
   }
 }
 
 export function saveStoredOtpSessions(sessions: Record<string, PasswordResetSession>) {
+  inMemoryOtpSessions = { ...sessions };
   try {
-    if (typeof localStorage !== "undefined") {
+    if (typeof localStorage !== "undefined" && localStorage && typeof localStorage.setItem === "function") {
       localStorage.setItem("dmhs_active_otp_sessions", JSON.stringify(sessions));
     }
   } catch {}
@@ -215,7 +275,39 @@ export function findAccountByIdentifier(identifier: string): MatchedAccountInfo 
   return { found: false };
 }
 
+async function dispatchRealGmailOtp(params: {
+  email: string;
+  otp: string;
+  name: string;
+  role: string;
+  identifier: string;
+}): Promise<{ delivered: boolean; notice?: string }> {
+  try {
+    const res = await fetch("/api/send-otp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(params),
+    });
+    const data = await res.json().catch(() => null);
+    if (res.ok && data?.success) {
+      return { delivered: true, notice: `Verification code dispatched to ${params.email}` };
+    }
+    if (data?.code === "SMTP_CREDENTIALS_MISSING") {
+      return {
+        delivered: false,
+        notice: "Gmail credentials (GMAIL_USER & GMAIL_APP_PASSWORD) pending configuration in Netlify environment variables.",
+      };
+    }
+    return { delivered: false, notice: data?.message || "Email delivery awaiting network response." };
+  } catch {
+    return { delivered: false, notice: "Netlify serverless function /api/send-otp is active in deployed environment." };
+  }
+}
+
 export const authRecoveryService = {
+  getAdminPassword,
+  setAdminPassword,
+  clearAllOtpSessions,
   /**
    * Step 1 & 2 & 3: Request 6-digit OTP to registered Gmail address.
    * Returns a generic message to prevent unauthorized account probing.
@@ -228,6 +320,8 @@ export const authRecoveryService = {
     cooldownSeconds?: number;
     expiresSeconds?: number;
     debugOtp?: string;
+    emailDelivered?: boolean;
+    emailNotice?: string;
   }> => {
     const cleanId = (identifier || "").trim();
     if (!cleanId) {
@@ -242,6 +336,16 @@ export const authRecoveryService = {
         success: true,
         message: "If this identifier is registered with DMHS, a 6-digit verification code has been dispatched to the registered email.",
       };
+    }
+
+    // Check if an unexpired cooldown is already active for this email to prevent spam/flooding
+    const existingSessions = getStoredOtpSessions();
+    const activeExisting = Object.values(existingSessions).find(
+      (s) => s.email.toLowerCase() === account.email.toLowerCase() && Date.now() < s.resendCooldownUntil
+    );
+    if (activeExisting) {
+      const waitSec = Math.ceil((activeExisting.resendCooldownUntil - Date.now()) / 1000);
+      throw new ApiError(`Please wait ${waitSec}s before requesting a new verification code.`, 429);
     }
 
     // Generate 6-digit OTP code
@@ -277,14 +381,29 @@ export const authRecoveryService = {
       timestamp: new Date().toISOString(),
     });
 
+    // Real Gmail delivery via Netlify Function
+    const dispatchResult = await dispatchRealGmailOtp({
+      email: account.email,
+      otp: generatedOtp,
+      name: account.name || cleanId,
+      role: account.role || "MEMBER",
+      identifier: cleanId,
+    });
+
+    const isTestOrDev =
+      (typeof process !== "undefined" && process.env?.NODE_ENV === "test") ||
+      (typeof import.meta !== "undefined" && !import.meta.env?.PROD);
+
     return {
       success: true,
       sessionId,
       maskedEmail: masked,
       cooldownSeconds: 60,
       expiresSeconds: 300,
-      debugOtp: generatedOtp,
-      message: `A 6-digit verification code has been sent to ${masked}.`,
+      debugOtp: isTestOrDev ? generatedOtp : undefined,
+      emailDelivered: dispatchResult.delivered,
+      emailNotice: dispatchResult.notice,
+      message: `A 6-digit verification code has been dispatched to ${masked}.`,
     };
   },
 
@@ -317,7 +436,8 @@ export const authRecoveryService = {
     }
 
     const cleanInput = (enteredOtp || "").trim();
-    const isMatch = cleanInput === session.otp || cleanInput === "123456";
+    // SEC-01 Hardened: Exact 6-digit match required. Backdoor 123456 strictly removed.
+    const isMatch = cleanInput === session.otp;
 
     if (!isMatch) {
       session.attempts += 1;
@@ -397,13 +517,28 @@ export const authRecoveryService = {
       timestamp: new Date().toISOString(),
     });
 
+    // Real Gmail delivery via Netlify Function
+    const resendDispatch = await dispatchRealGmailOtp({
+      email: session.email,
+      otp: newOtp,
+      name: session.identifier,
+      role: session.role,
+      identifier: session.identifier,
+    });
+
+    const isTestOrDev =
+      (typeof process !== "undefined" && process.env?.NODE_ENV === "test") ||
+      (typeof import.meta !== "undefined" && !import.meta.env?.PROD);
+
     return {
       success: true,
       sessionId,
       maskedEmail: session.maskedEmail,
       cooldownSeconds: 60,
       expiresSeconds: 300,
-      debugOtp: newOtp,
+      debugOtp: isTestOrDev ? newOtp : undefined,
+      emailDelivered: resendDispatch.delivered,
+      emailNotice: resendDispatch.notice,
     };
   },
 
@@ -433,18 +568,19 @@ export const authRecoveryService = {
       throw new ApiError("New password must be at least 4 characters long.", 400);
     }
 
+    // Hash the new password before storing
+    const hashedPass = hashPassword(cleanPass);
+
     // Apply update to appropriate account
     if (session.role === "ADMIN") {
-      if (typeof localStorage !== "undefined") {
-        localStorage.setItem("dmhs_admin_password", cleanPass);
-      }
+      setAdminPassword(hashedPass);
     } else if (session.role === "TEACHER") {
       if (typeof localStorage !== "undefined") {
-        localStorage.setItem(`dmhs_teacher_password_${session.targetId}`, cleanPass);
+        localStorage.setItem(`dmhs_teacher_password_${session.targetId}`, hashedPass);
       }
     } else if (session.role === "STUDENT") {
       if (typeof localStorage !== "undefined") {
-        localStorage.setItem(`dmhs_student_password_${session.targetId}`, cleanPass);
+        localStorage.setItem(`dmhs_student_password_${session.targetId}`, hashedPass);
       }
     }
 
@@ -459,7 +595,7 @@ export const authRecoveryService = {
         (u.employee_id && u.employee_id.toLowerCase() === session.identifier.toLowerCase())
       ) {
         userFoundInCustom = true;
-        return { ...u, password: cleanPass };
+        return { ...u, password: hashedPass };
       }
       return u;
     });

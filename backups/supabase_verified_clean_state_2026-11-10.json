@@ -1,0 +1,171 @@
+{
+  "timestamp": "2026-11-09T19:25:03.342312+00:00",
+  "project_ref": "snnzmgbkiiydboujublj",
+  "schools": [
+    {
+      "id": "3eef50ca-91eb-416b-89bc-e9ca8c629213",
+      "name": "Deccan Mission High School",
+      "code": "DMHS-HYD",
+      "affiliation_number": "TS-HYD-CBSE-41092",
+      "contact_email": "admin@deccanmission.edu.in",
+      "contact_phone": "+91 40 2456 7890",
+      "address": "Old City, Hyderabad, Telangana 500002, India",
+      "logo_url": null,
+      "timezone": "Asia/Kolkata",
+      "is_active": true,
+      "created_at": "2026-10-29T14:25:33.425854+00:00",
+      "updated_at": "2026-10-29T14:25:33.425854+00:00"
+    }
+  ],
+  "profiles": [
+    {
+      "id": "1ca17e39-0419-470f-a9ce-233da81de3d5",
+      "auth_user_id": "26bd25bc-c0d9-4d46-bbf3-7d091732b57d",
+      "school_id": "3eef50ca-91eb-416b-89bc-e9ca8c629213",
+      "email": "stakhadri.dmhs@gmail.com",
+      "first_name": "STA",
+      "last_name": "Khadri",
+      "phone": null,
+      "avatar_url": null,
+      "role": "admin",
+      "is_active": true,
+      "created_at": "2026-11-02T15:22:57.660332+00:00",
+      "updated_at": "2026-11-02T15:22:57.660332+00:00"
+    },
+    {
+      "id": "9c4f9078-4da7-48b0-9a2b-c4b9f16113fa",
+      "auth_user_id": "9afb96f5-0b03-4ddc-a44d-cfe4df778236",
+      "school_id": "3eef50ca-91eb-416b-89bc-e9ca8c629213",
+      "email": "admin.dmhs.hyd@gmail.com",
+      "first_name": "STA",
+      "last_name": "Khadri",
+      "phone": null,
+      "avatar_url": null,
+      "role": "admin",
+      "is_active": true,
+      "created_at": "2026-11-09T17:55:18.052483+00:00",
+      "updated_at": "2026-11-09T17:55:18.052483+00:00"
+    }
+  ],
+  "user_roles": [
+    {
+      "id": "1a234ebd-4a27-49c2-a0ba-c23cb82d0059",
+      "user_id": "1ca17e39-0419-470f-a9ce-233da81de3d5",
+      "role_name": "admin",
+      "granted_at": "2026-11-09T19:06:14.175206+00:00"
+    },
+    {
+      "id": "ecd460e4-5513-46c0-9bb5-841575c6d680",
+      "user_id": "9c4f9078-4da7-48b0-9a2b-c4b9f16113fa",
+      "role_name": "admin",
+      "granted_at": "2026-11-09T19:06:14.175206+00:00"
+    }
+  ],
+  "fee_categories": [
+    {
+      "id": "d18cb79c-0a56-4e2f-9bc5-54c21e6b9743",
+      "school_id": "3eef50ca-91eb-416b-89bc-e9ca8c629213",
+      "name": "Tuition Fee",
+      "description": "Quarterly tuition fee",
+      "created_at": "2026-10-29T14:25:33.425854+00:00"
+    },
+    {
+      "id": "06cf05d4-f242-4fbb-a18d-7663890c3610",
+      "school_id": "3eef50ca-91eb-416b-89bc-e9ca8c629213",
+      "name": "Annual Admission Fee",
+      "description": "One-time admission fee per year",
+      "created_at": "2026-10-29T14:25:33.425854+00:00"
+    },
+    {
+      "id": "54be4064-3636-49bc-9bb5-a59392011be1",
+      "school_id": "3eef50ca-91eb-416b-89bc-e9ca8c629213",
+      "name": "Computer & Science Lab Fee",
+      "description": "Bi-annual lab maintenance charge",
+      "created_at": "2026-10-29T14:25:33.425854+00:00"
+    },
+    {
+      "id": "4e809066-4b8d-4043-ae69-339c0987ae15",
+      "school_id": "3eef50ca-91eb-416b-89bc-e9ca8c629213",
+      "name": "Sports & Activities",
+      "description": "Annual sports charge",
+      "created_at": "2026-10-29T14:25:33.425854+00:00"
+    }
+  ],
+  "subjects": [
+    {
+      "id": "8c55d034-6c81-4995-a23d-b17a4fe688e2",
+      "school_id": "3eef50ca-91eb-416b-89bc-e9ca8c629213",
+      "name": "English Core",
+      "code": "ENG-101",
+      "department": "Languages",
+      "is_active": true,
+      "created_at": "2026-10-29T14:25:33.425854+00:00"
+    },
+    {
+      "id": "69548dac-eb28-49e8-aded-6eb355bbe018",
+      "school_id": "3eef50ca-91eb-416b-89bc-e9ca8c629213",
+      "name": "Mathematics",
+      "code": "MATH-201",
+      "department": "Mathematics",
+      "is_active": true,
+      "created_at": "2026-10-29T14:25:33.425854+00:00"
+    },
+    {
+      "id": "4396f07e-a9b2-40e2-bfc4-07f13c4d0f6e",
+      "school_id": "3eef50ca-91eb-416b-89bc-e9ca8c629213",
+      "name": "General Science",
+      "code": "SCI-301",
+      "department": "Science",
+      "is_active": true,
+      "created_at": "2026-10-29T14:25:33.425854+00:00"
+    },
+    {
+      "id": "e8fda8fb-f833-4ef0-b036-13b260451d24",
+      "school_id": "3eef50ca-91eb-416b-89bc-e9ca8c629213",
+      "name": "Social Science",
+      "code": "SOC-401",
+      "department": "Humanities",
+      "is_active": true,
+      "created_at": "2026-10-29T14:25:33.425854+00:00"
+    },
+    {
+      "id": "651ebd5d-2564-495c-bfe8-df33bda6a6f8",
+      "school_id": "3eef50ca-91eb-416b-89bc-e9ca8c629213",
+      "name": "Computer Applications",
+      "code": "CA-501",
+      "department": "Computer Science",
+      "is_active": true,
+      "created_at": "2026-10-29T14:25:33.425854+00:00"
+    },
+    {
+      "id": "f53c2477-7cc0-48fa-ad49-0c6c958cacef",
+      "school_id": "3eef50ca-91eb-416b-89bc-e9ca8c629213",
+      "name": "Hindi",
+      "code": "HIN-102",
+      "department": "Languages",
+      "is_active": true,
+      "created_at": "2026-10-29T14:25:33.425854+00:00"
+    },
+    {
+      "id": "1fb362ff-cba9-4793-a2ff-09a27aafcf36",
+      "school_id": "3eef50ca-91eb-416b-89bc-e9ca8c629213",
+      "name": "Telugu",
+      "code": "TEL-103",
+      "department": "Languages",
+      "is_active": true,
+      "created_at": "2026-10-29T14:25:33.425854+00:00"
+    }
+  ],
+  "auth_users": [
+    {
+      "id": "9afb96f5-0b03-4ddc-a44d-cfe4df778236",
+      "email": "admin.dmhs.hyd@gmail.com",
+      "created_at": "2026-11-09T17:55:18.052956+00:00"
+    },
+    {
+      "id": "26bd25bc-c0d9-4d46-bbf3-7d091732b57d",
+      "email": "stakhadri.dmhs@gmail.com",
+      "created_at": "2026-11-02T15:22:57.660694+00:00"
+    }
+  ]
+}

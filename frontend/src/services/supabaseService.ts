@@ -3,6 +3,14 @@ const isUUID = (str: string | number): boolean => {
   return typeof str === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
 };
 
+/**
+ * SEC-09 Remediated: Sanitizes user search input to prevent PostgREST filter injection.
+ */
+export function sanitizePostgrestSearch(input: string | undefined): string {
+  if (!input) return "";
+  return String(input).replace(/[,().\\"'{}%]/g, "").trim();
+};
+
 import { supabase, isSupabaseConfigured } from "./supabaseClient";
 import type {
   AcademicYear,
@@ -544,9 +552,12 @@ export const supabaseService = {
         });
 
       if (params.search) {
-        query = query.or(
-          `employee_id.ilike.%${params.search}%,full_name.ilike.%${params.search}%,email.ilike.%${params.search}%`
-        );
+        const clean = sanitizePostgrestSearch(params.search);
+        if (clean) {
+          query = query.or(
+            `employee_id.ilike.%${clean}%,full_name.ilike.%${clean}%,email.ilike.%${clean}%`
+          );
+        }
       }
 
       query = query.order("employee_id", { ascending: true }).range(from, to);
@@ -619,6 +630,7 @@ export const supabaseService = {
         .maybeSingle();
 
       if (error) throw new SupabaseServiceError(error.message, error.code, error.details);
+      if (!data) throw new SupabaseServiceError("Faculty member not found", "NOT_FOUND");
 
       const assignments = [
         ...(data.teacher_class_assignments || []).map((a: any) => ({
@@ -643,10 +655,10 @@ export const supabaseService = {
         id: data.id,
         user_id: data.profile_id,
         employee_id: data.employee_id,
-        full_name: `${data.profiles?.first_name || ""} ${data.profiles?.last_name || ""}`.trim(),
-        email: data.profiles?.email || "",
-        designation: data.specialization || "Faculty Member",
-        department: data.qualification,
+        full_name: data.full_name || `${data.profiles?.first_name || ""} ${data.profiles?.last_name || ""}`.trim() || "Faculty Member",
+        email: data.email || data.profiles?.email || "faculty@dmhs.edu.in",
+        designation: data.designation || data.specialization || "Faculty Member",
+        department: data.department || data.qualification || "General",
         qualification: data.qualification,
         joining_date: data.joining_date,
         employment_status: data.is_active ? "active" : "inactive",
@@ -875,9 +887,12 @@ export const supabaseService = {
         );
 
       if (params.search) {
-        query = query.or(
-          `admission_number.ilike.%${params.search}%,first_name.ilike.%${params.search}%,last_name.ilike.%${params.search}%`
-        );
+        const clean = sanitizePostgrestSearch(params.search);
+        if (clean) {
+          query = query.or(
+            `admission_number.ilike.%${clean}%,first_name.ilike.%${clean}%,last_name.ilike.%${clean}%`
+          );
+        }
       }
 
       if (params.status && params.status !== "all") {
@@ -1414,15 +1429,37 @@ export const supabaseService = {
     },
 
     async getStudent(): Promise<StudentDashboardStats> {
+      let sessionName = "Enrolled Student";
+      let sessionAdm = "DMHS-2026-0001";
+      let sessionClass = "Class 10";
+      let sessionSec = "A";
+      let sessionRoll = "01";
+      let sessionParent = "Parent / Guardian";
+
+      if (typeof localStorage !== "undefined") {
+        try {
+          const raw = localStorage.getItem("dmhs_session_user");
+          if (raw) {
+            const u = JSON.parse(raw);
+            if (u.full_name) sessionName = u.full_name;
+            if (u.admission_number) sessionAdm = u.admission_number;
+            if (u.class_name) sessionClass = u.class_name;
+            if (u.section_name) sessionSec = u.section_name;
+            if (u.roll_number) sessionRoll = u.roll_number;
+            if (u.father_name) sessionParent = `${u.father_name} (Father)`;
+          }
+        } catch {}
+      }
+
       return {
-        student_name: "Zeeshan Khan",
-        admission_number: "DMHS-2025-0001",
-        roll_number: "01",
-        class_name: "Class 10",
-        section_name: "A",
-        current_academic_year: "2025-2026",
+        student_name: sessionName,
+        admission_number: sessionAdm,
+        roll_number: sessionRoll,
+        class_name: sessionClass,
+        section_name: sessionSec,
+        current_academic_year: "2026-2027",
         status: "active",
-        guardian_name: "Tariq Khan (Father)",
+        guardian_name: sessionParent,
         today_schedule_placeholder: "08:30 AM - Morning Assembly | 09:00 AM - Mathematics | 10:00 AM - Science",
       };
     },
@@ -1435,7 +1472,7 @@ export const supabaseService = {
     async query(q: string, limit: number = 15): Promise<SearchResultItem[]> {
       if (!isSupabaseConfigured() || !q.trim()) return [];
 
-      const cleanQuery = q.trim();
+      const cleanQuery = sanitizePostgrestSearch(q);
 
       const [studentsRes, teachersRes] = await Promise.all([
         supabase

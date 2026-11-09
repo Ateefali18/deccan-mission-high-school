@@ -1,0 +1,253 @@
+{
+  "timestamp": "2026-11-09T17:48:28.028Z",
+  "source": "https://snnzmgbkiiydboujublj.supabase.co",
+  "project_ref": "snnzmgbkiiydboujublj",
+  "tables": {
+    "schools": {
+      "count": 0,
+      "records": []
+    },
+    "profiles": {
+      "count": 0,
+      "records": []
+    },
+    "user_roles": {
+      "count": 0,
+      "records": []
+    },
+    "academic_years": {
+      "count": 0,
+      "records": []
+    },
+    "classes": {
+      "count": 0,
+      "records": []
+    },
+    "sections": {
+      "count": 0,
+      "records": []
+    },
+    "subjects": {
+      "count": 0,
+      "records": []
+    },
+    "teachers": {
+      "count": 0,
+      "records": []
+    },
+    "teacher_profiles": {
+      "count": 2,
+      "records": [
+        {
+          "id": "8ccc7df9-9484-4f43-b738-827e74c811c8",
+          "profile_id": "784feb11-287f-4b2d-ab5c-27b22e46ed1f",
+          "user_id": null,
+          "school_id": "3eef50ca-91eb-416b-89bc-e9ca8c629213",
+          "employee_id": "EMP-HYD-0101",
+          "full_name": "Fatima Zahra",
+          "email": "fatima.zahra@deccanmission.edu.in",
+          "contact_phone": "+91 98490 12345",
+          "phone_number": "+91 98490 12345",
+          "designation": "Teacher",
+          "specialization": "Senior Mathematics",
+          "department": null,
+          "qualification": "M.Sc. Mathematics, B.Ed.",
+          "joining_date": "2020-06-01",
+          "profile_photo_url": null,
+          "employment_status": "active",
+          "is_active": true,
+          "created_at": "2026-10-29T14:25:33.425854+00:00",
+          "updated_at": "2026-10-29T14:25:33.425854+00:00"
+        },
+        {
+          "id": "809732c6-a04d-4ea8-aebc-6e67edd63477",
+          "profile_id": "b047c5c8-b000-461c-80cc-3c5bd8bcb2a4",
+          "user_id": null,
+          "school_id": "3eef50ca-91eb-416b-89bc-e9ca8c629213",
+          "employee_id": "EMP-HYD-0102",
+          "full_name": "Mohammed Ali",
+          "email": "mohammed.ali@deccanmission.edu.in",
+          "contact_phone": "+91 98490 54321",
+          "phone_number": "+91 98490 54321",
+          "designation": "Teacher",
+          "specialization": "Physical Sciences & Robotics",
+          "department": null,
+          "qualification": "M.Sc. Physics, M.Ed.",
+          "joining_date": "2019-06-01",
+          "profile_photo_url": null,
+          "employment_status": "active",
+          "is_active": true,
+          "created_at": "2026-10-29T14:25:33.425854+00:00",
+          "updated_at": "2026-10-29T14:25:33.425854+00:00"
+        }
+      ]
+    },
+    "teacher_assignments": {
+      "count": 0,
+      "records": []
+    },
+    "teacher_class_assignments": {
+      "count": 0,
+      "records": []
+    },
+    "teacher_subject_assignments": {
+      "count": 0,
+      "records": []
+    },
+    "faculty_documents": {
+      "count": 0,
+      "error": "Could not find the table 'public.faculty_documents' in the schema cache"
+    },
+    "students": {
+      "count": 0,
+      "records": []
+    },
+    "student_profiles": {
+      "count": 3,
+      "records": [
+        {
+          "id": "e46a973c-d896-4cf4-bf50-b1f4e0150874",
+          "profile_id": "9b8bf6c7-5ebe-4da4-83bf-99365db482b6",
+          "user_id": null,
+          "school_id": "3eef50ca-91eb-416b-89bc-e9ca8c629213",
+          "admission_number": "DMHS-2025-0001",
+          "first_name": "Zeeshan",
+          "last_name": "Khan",
+          "full_name": "Zeeshan Khan",
+          "email": null,
+          "gender": "Male",
+          "date_of_birth": "2010-04-12",
+          "blood_group": "O+",
+          "profile_photo_url": null,
+          "photo_url": null,
+          "guardian_name": "Tariq Khan",
+          "guardian_relationship": "Father",
+          "guardian_phone": "+91 98491 11223",
+          "emergency_contact": "+91 98491 11223",
+          "address": "House #4-1-88, Moghalpura, Hyderabad 500002",
+          "admission_date": "2021-06-01",
+          "document_submission_status": "pending",
+          "student_status": "active",
+          "is_active": true,
+          "created_at": "2026-10-29T14:25:33.425854+00:00",
+          "updated_at": "2026-10-29T14:25:33.425854+00:00"
+        },
+        {
+          "id": "6fb0474a-efb4-4d4c-92d6-b0ef5e843e33",
+          "profile_id": "1e8d6dab-80b9-4b00-9dd5-dfd9ab5ea8d0",
+          "user_id": null,
+          "school_id": "3eef50ca-91eb-416b-89bc-e9ca8c629213",
+          "admission_number": "DMHS-2025-0002",
+          "first_name": "Ayesha",
+          "last_name": "Siddiqua",
+          "full_name": "Ayesha Siddiqua",
+          "email": null,
+          "gender": "Female",
+          "date_of_birth": "2010-08-22",
+          "blood_group": "B+",
+          "profile_photo_url": null,
+          "photo_url": null,
+          "guardian_name": "Mirza Siddiqua",
+          "guardian_relationship": "Father",
+          "guardian_phone": "+91 98492 22334",
+          "emergency_contact": "+91 98492 22334",
+          "address": "Flat 302, Charminar Enclave, Hyderabad 500002",
+          "admission_date": "2021-06-01",
+          "document_submission_status": "pending",
+          "student_status": "active",
+          "is_active": true,
+          "created_at": "2026-10-29T14:25:33.425854+00:00",
+          "updated_at": "2026-10-29T14:25:33.425854+00:00"
+        },
+        {
+          "id": "d2f5b209-c3d4-4aed-96a7-7e99860e423b",
+          "profile_id": "05d022d2-7168-4294-af20-c86c431c9263",
+          "user_id": null,
+          "school_id": "3eef50ca-91eb-416b-89bc-e9ca8c629213",
+          "admission_number": "DMHS-2025-0003",
+          "first_name": "Syed",
+          "last_name": "Rehan",
+          "full_name": "Syed Rehan",
+          "email": null,
+          "gender": "Male",
+          "date_of_birth": "2011-01-15",
+          "blood_group": "A+",
+          "profile_photo_url": null,
+          "photo_url": null,
+          "guardian_name": "Syed Anwar",
+          "guardian_relationship": "Father",
+          "guardian_phone": "+91 98493 33445",
+          "emergency_contact": "+91 98493 33445",
+          "address": "Plot 45, Santosh Nagar, Hyderabad 500059",
+          "admission_date": "2022-06-01",
+          "document_submission_status": "pending",
+          "student_status": "active",
+          "is_active": true,
+          "created_at": "2026-10-29T14:25:33.425854+00:00",
+          "updated_at": "2026-10-29T14:25:33.425854+00:00"
+        }
+      ]
+    },
+    "student_enrollments": {
+      "count": 0,
+      "records": []
+    },
+    "student_guardians": {
+      "count": 0,
+      "records": []
+    },
+    "student_documents": {
+      "count": 0,
+      "records": []
+    },
+    "attendance_sessions": {
+      "count": 0,
+      "records": []
+    },
+    "attendance_records": {
+      "count": 0,
+      "records": []
+    },
+    "exams": {
+      "count": 0,
+      "records": []
+    },
+    "marks": {
+      "count": 0,
+      "records": []
+    },
+    "fee_categories": {
+      "count": 0,
+      "records": []
+    },
+    "fee_structures": {
+      "count": 0,
+      "records": []
+    },
+    "invoices": {
+      "count": 0,
+      "records": []
+    },
+    "payments": {
+      "count": 0,
+      "records": []
+    },
+    "expenses": {
+      "count": 0,
+      "error": "Could not find the table 'public.expenses' in the schema cache"
+    },
+    "notices": {
+      "count": 0,
+      "records": []
+    },
+    "timetable_entries": {
+      "count": 0,
+      "records": []
+    },
+    "audit_logs": {
+      "count": 0,
+      "records": []
+    }
+  },
+  "storage_buckets": []
+}

@@ -146,6 +146,13 @@ export const StudentsPage: React.FC = () => {
 
   // Modals
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
+
+  // Automatically open admission dialog if navigated with ?action=admit
+  useEffect(() => {
+    if (searchParams.get("action") === "admit") {
+      setIsRegisterOpen(true);
+    }
+  }, [searchParams]);
   const [admissionFormStep, setAdmissionFormStep] = useState<1 | 2 | 3>(1);
   const [selectedStudent, setSelectedStudent] = useState<StudentProfile | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -207,6 +214,14 @@ export const StudentsPage: React.FC = () => {
   const watchedCreateClassId = watch("class_id");
   const watchedCreateAyId = watch("academic_year_id");
   const watchedEditClassId = watchEdit("class_id");
+
+  const selectedEditClassObj = useMemo(() => {
+    return classes.find((c) => String(c.id) === String(watchedEditClassId));
+  }, [classes, watchedEditClassId]);
+
+  const availableEditSections = useMemo(() => {
+    return selectedEditClassObj?.sections || [];
+  }, [selectedEditClassObj]);
 
   // Load classes, academic years, and terms
   useEffect(() => {
@@ -1264,7 +1279,10 @@ export const StudentsPage: React.FC = () => {
         }
       >
         <form onSubmit={handleSubmitEdit(onSaveEdit)} className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="text-xs font-bold uppercase tracking-wider text-brand-navy dark:text-brand-gold border-b border-light-border dark:border-dark-border pb-1">
+            1. Personal & Demographic Information
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Input
               label="Student Full Name *"
               error={editErrors.full_name?.message}
@@ -1276,8 +1294,54 @@ export const StudentsPage: React.FC = () => {
               type="date"
               {...registerEdit("date_of_birth")}
             />
+            <Select
+              label="Gender"
+              options={[
+                { value: "Male", label: "Male" },
+                { value: "Female", label: "Female" },
+                { value: "Other", label: "Other" },
+              ]}
+              {...registerEdit("gender")}
+            />
           </div>
 
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Input label="Caste" {...registerEdit("caste")} />
+            <Input label="Religion" {...registerEdit("religion")} />
+            <Input label="Mother Tongue" {...registerEdit("mother_tongue")} />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Input label="First Language" {...registerEdit("first_language")} />
+            <Input label="Second Language" {...registerEdit("second_language")} />
+            <Input label="Third Language" {...registerEdit("third_language")} />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Input label="Aadhaar Number" {...registerEdit("aadhaar_number")} />
+            <Input label="Student APAAR ID" {...registerEdit("apaar_id")} />
+            <Input label="Student Email" type="email" error={editErrors.email?.message} {...registerEdit("email")} />
+          </div>
+
+          <div className="text-xs font-bold uppercase tracking-wider text-brand-navy dark:text-brand-gold border-b border-light-border dark:border-dark-border pb-1 pt-2">
+            2. Parent & Guardian Details
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input label="Father's Full Name" {...registerEdit("father_name")} />
+            <Input label="Father's Contact Phone" {...registerEdit("father_phone")} />
+            <Input label="Father's Email" type="email" {...registerEdit("father_email")} />
+            <Input label="Father's Occupation" {...registerEdit("father_occupation")} />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input label="Mother's Full Name" {...registerEdit("mother_name")} />
+            <Input label="Mother's Contact Phone" {...registerEdit("mother_phone")} />
+            <Input label="Mother's Email" type="email" {...registerEdit("mother_email")} />
+            <Input label="Mother's Occupation" {...registerEdit("mother_occupation")} />
+          </div>
+
+          <div className="text-xs font-bold uppercase tracking-wider text-brand-navy dark:text-brand-gold border-b border-light-border dark:border-dark-border pb-1 pt-2">
+            3. Academic Allocation & Status
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Select
               label="Class"
@@ -1294,55 +1358,28 @@ export const StudentsPage: React.FC = () => {
               label="Section"
               options={[
                 { value: "", label: "Select Section" },
-                { value: "sec_a", label: "Section A" },
-                { value: "sec_b", label: "Section B" },
-                { value: "sec_c", label: "Section C" },
+                ...availableEditSections.map((s) => ({
+                  value: String(s.id),
+                  label: `Section ${s.name}`,
+                })),
               ]}
               {...registerEdit("section_id")}
             />
-            <Input
-              label="Roll Number"
-              {...registerEdit("roll_number")}
-            />
+            <Input label="Roll Number" {...registerEdit("roll_number")} />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input
-              label="Father's Full Name"
-              {...registerEdit("father_name")}
-            />
-            <Input
-              label="Father's Contact Phone"
-              {...registerEdit("father_phone")}
-            />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input
-              label="Mother's Full Name"
-              {...registerEdit("mother_name")}
-            />
-            <Input
-              label="Mother's Contact Phone"
-              {...registerEdit("mother_phone")}
+            <Input label="Residential Address" {...registerEdit("address")} />
+            <Select
+              label="Student Status"
+              options={[
+                { value: "active", label: "Active" },
+                { value: "inactive", label: "Inactive" },
+                { value: "transferred", label: "Transferred" },
+              ]}
+              {...registerEdit("student_status")}
             />
           </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input
-              label="Aadhaar Card Number"
-              {...registerEdit("aadhaar_number")}
-            />
-            <Input
-              label="Student APAAR ID"
-              {...registerEdit("apaar_id")}
-            />
-          </div>
-
-          <Input
-            label="Residential Address"
-            {...registerEdit("address")}
-          />
         </form>
       </Dialog>
 

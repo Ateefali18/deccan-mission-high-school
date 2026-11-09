@@ -1,0 +1,137 @@
+{
+  "schools": {
+    "status": "OK",
+    "count": 0,
+    "data": []
+  },
+  "academic_years": {
+    "status": "OK",
+    "count": 0,
+    "data": []
+  },
+  "academic_terms": {
+    "status": "ERROR",
+    "error": "Could not find the table 'public.academic_terms' in the schema cache",
+    "count": 0
+  },
+  "classes": {
+    "status": "OK",
+    "count": 0,
+    "data": []
+  },
+  "sections": {
+    "status": "OK",
+    "count": 0,
+    "data": []
+  },
+  "subjects": {
+    "status": "OK",
+    "count": 0,
+    "data": []
+  },
+  "teachers": {
+    "status": "OK",
+    "count": 0,
+    "data": []
+  },
+  "teacher_class_assignments": {
+    "status": "OK",
+    "count": 0,
+    "data": []
+  },
+  "teacher_subject_assignments": {
+    "status": "OK",
+    "count": 0,
+    "data": []
+  },
+  "faculty_documents": {
+    "status": "ERROR",
+    "error": "Could not find the table 'public.faculty_documents' in the schema cache",
+    "count": 0
+  },
+  "students": {
+    "status": "OK",
+    "count": 0,
+    "data": []
+  },
+  "student_enrollments": {
+    "status": "OK",
+    "count": 0,
+    "data": []
+  },
+  "student_documents": {
+    "status": "OK",
+    "count": 0,
+    "data": []
+  },
+  "fee_structures": {
+    "status": "OK",
+    "count": 0,
+    "data": []
+  },
+  "fee_invoices": {
+    "status": "ERROR",
+    "error": "Could not find the table 'public.fee_invoices' in the schema cache",
+    "count": 0
+  },
+  "fee_payments": {
+    "status": "ERROR",
+    "error": "Could not find the table 'public.fee_payments' in the schema cache",
+    "count": 0
+  },
+  "payments": {
+    "status": "OK",
+    "count": 0,
+    "data": []
+  },
+  "expenses": {
+    "status": "ERROR",
+    "error": "Could not find the table 'public.expenses' in the schema cache",
+    "count": 0
+  },
+  "attendance_sessions": {
+    "status": "OK",
+    "count": 0,
+    "data": []
+  },
+  "attendance_records": {
+    "status": "OK",
+    "count": 0,
+    "data": []
+  },
+  "timetable_entries": {
+    "status": "OK",
+    "count": 0,
+    "data": []
+  },
+  "exams": {
+    "status": "OK",
+    "count": 0,
+    "data": []
+  },
+  "marks": {
+    "status": "OK",
+    "count": 0,
+    "data": []
+  },
+  "notices": {
+    "status": "OK",
+    "count": 0,
+    "data": []
+  },
+  "audit_logs": {
+    "status": "OK",
+    "count": 0,
+    "data": []
+  },
+  "profiles": {
+    "status": "OK",
+    "count": 0,
+    "data": []
+  },
+  "_storage_buckets": {
+    "status": "OK",
+    "buckets": [],
+    "error": null
+  }
+}

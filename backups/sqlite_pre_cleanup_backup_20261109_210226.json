@@ -1,0 +1,1299 @@
+{
+  "timestamp": "2026-11-09T21:02:26.846271",
+  "database": "dmhs.db",
+  "tables": {
+    "alembic_version": [
+      {
+        "version_num": "04b664b0a2c3"
+      }
+    ],
+    "roles": [
+      {
+        "id": 1,
+        "name": "ADMIN",
+        "description": "Administrative & Principal Authority",
+        "created_at": "2026-10-28 14:49:27.127600"
+      },
+      {
+        "id": 2,
+        "name": "TEACHER",
+        "description": "Faculty & Instructional Staff",
+        "created_at": "2026-10-28 14:49:27.127617"
+      },
+      {
+        "id": 3,
+        "name": "STUDENT",
+        "description": "Enrolled Student Authority",
+        "created_at": "2026-10-28 14:49:27.127623"
+      }
+    ],
+    "schools": [
+      {
+        "id": 1,
+        "name": "Deccan Mission High School",
+        "code": "DMHS-HYD",
+        "affiliation_number": "TS-HYD-CBSE-41092",
+        "contact_email": "admin@deccanmission.edu.in",
+        "contact_phone": "+91 40 2456 7890",
+        "address": "Old City, Hyderabad, Telangana 500002, India",
+        "logo_url": null,
+        "timezone": "Asia/Kolkata",
+        "is_active": 1,
+        "created_at": "2026-10-28 14:49:27.147567",
+        "updated_at": "2026-10-28 14:49:27.147574"
+      }
+    ],
+    "academic_years": [
+      {
+        "id": 1,
+        "school_id": 1,
+        "name": "2025-2026",
+        "start_date": "2025-06-01",
+        "end_date": "2026-04-30",
+        "is_current": 1,
+        "status": "active",
+        "created_at": "2026-10-28 14:49:27.165450",
+        "updated_at": "2026-10-28 14:49:27.165456"
+      }
+    ],
+    "classes": [
+      {
+        "id": 1,
+        "school_id": 1,
+        "name": "Class 1",
+        "grade_level": 1,
+        "stream": "General",
+        "is_active": 1,
+        "created_at": "2026-10-28 14:49:27.173973",
+        "updated_at": "2026-10-28 14:49:27.173980"
+      },
+      {
+        "id": 2,
+        "school_id": 1,
+        "name": "Class 2",
+        "grade_level": 2,
+        "stream": "General",
+        "is_active": 1,
+        "created_at": "2026-10-28 14:49:27.184941",
+        "updated_at": "2026-10-28 14:49:27.184948"
+      },
+      {
+        "id": 3,
+        "school_id": 1,
+        "name": "Class 3",
+        "grade_level": 3,
+        "stream": "General",
+        "is_active": 1,
+        "created_at": "2026-10-28 14:49:27.189021",
+        "updated_at": "2026-10-28 14:49:27.189026"
+      },
+      {
+        "id": 4,
+        "school_id": 1,
+        "name": "Class 4",
+        "grade_level": 4,
+        "stream": "General",
+        "is_active": 1,
+        "created_at": "2026-10-28 14:49:27.192700",
+        "updated_at": "2026-10-28 14:49:27.192704"
+      },
+      {
+        "id": 5,
+        "school_id": 1,
+        "name": "Class 5",
+        "grade_level": 5,
+        "stream": "General",
+        "is_active": 1,
+        "created_at": "2026-10-28 14:49:27.196330",
+        "updated_at": "2026-10-28 14:49:27.196335"
+      },
+      {
+        "id": 6,
+        "school_id": 1,
+        "name": "Class 6",
+        "grade_level": 6,
+        "stream": "General",
+        "is_active": 1,
+        "created_at": "2026-10-28 14:49:27.200487",
+        "updated_at": "2026-10-28 14:49:27.200493"
+      },
+      {
+        "id": 7,
+        "school_id": 1,
+        "name": "Class 7",
+        "grade_level": 7,
+        "stream": "General",
+        "is_active": 1,
+        "created_at": "2026-10-28 14:49:27.204136",
+        "updated_at": "2026-10-28 14:49:27.204140"
+      },
+      {
+        "id": 8,
+        "school_id": 1,
+        "name": "Class 8",
+        "grade_level": 8,
+        "stream": "General",
+        "is_active": 1,
+        "created_at": "2026-10-28 14:49:27.207620",
+        "updated_at": "2026-10-28 14:49:27.207625"
+      },
+      {
+        "id": 9,
+        "school_id": 1,
+        "name": "Class 9",
+        "grade_level": 9,
+        "stream": "General",
+        "is_active": 1,
+        "created_at": "2026-10-28 14:49:27.211197",
+        "updated_at": "2026-10-28 14:49:27.211202"
+      },
+      {
+        "id": 10,
+        "school_id": 1,
+        "name": "Class 10",
+        "grade_level": 10,
+        "stream": "General",
+        "is_active": 1,
+        "created_at": "2026-10-28 14:49:27.215527",
+        "updated_at": "2026-10-28 14:49:27.215538"
+      },
+      {
+        "id": 11,
+        "school_id": 1,
+        "name": "Class 11 - Science",
+        "grade_level": 11,
+        "stream": "Science",
+        "is_active": 1,
+        "created_at": "2026-10-29 20:03:55.978526",
+        "updated_at": "2026-10-29 20:03:55.978534"
+      }
+    ],
+    "users": [
+      {
+        "id": 1,
+        "school_id": 1,
+        "username": "STA khadri",
+        "email": "admin@dmhs.edu.in",
+        "hashed_password": "$2b$12$sMZazm667v.acY9ipHkjcOKznpGtGNWjw/aBZvsQQ/7OQR5wwbDVy",
+        "full_name": "STA Khadri",
+        "phone_number": null,
+        "is_active": 1,
+        "last_login_at": "2026-11-01 11:28:03.620190",
+        "created_at": "2026-10-28 14:49:50.025194",
+        "updated_at": "2026-11-01 17:37:23.355726"
+      },
+      {
+        "id": 2,
+        "school_id": 1,
+        "username": "Ateef",
+        "email": "fatima.zahra@dmhs.edu.in",
+        "hashed_password": "$2b$12$UM9VPLwmiZdLMgjx7MM/Ge0doZhjG8BfHj2dwm6GfWD2nUXF242cy",
+        "full_name": "Ateef",
+        "phone_number": "+91 98490 12345",
+        "is_active": 1,
+        "last_login_at": "2026-11-01 11:31:22.263488",
+        "created_at": "2026-10-28 14:49:50.596138",
+        "updated_at": "2026-11-01 17:37:24.048516"
+      },
+      {
+        "id": 3,
+        "school_id": 1,
+        "username": "Ali",
+        "email": "mohammed.ali@dmhs.edu.in",
+        "hashed_password": "$2b$12$NxiYSvzn6/ddRr6O9/eHOubsdrn8.1MAa/FztohM1//r70M2CTTbq",
+        "full_name": "Ali",
+        "phone_number": null,
+        "is_active": 1,
+        "last_login_at": "2026-11-01 11:33:09.780235",
+        "created_at": "2026-10-28 14:49:51.168215",
+        "updated_at": "2026-11-01 17:37:24.741895"
+      }
+    ],
+    "audit_logs": [],
+    "sections": [
+      {
+        "id": 1,
+        "class_id": 1,
+        "name": "A",
+        "room_number": null,
+        "capacity": 40,
+        "is_active": 1,
+        "created_at": "2026-10-28 14:49:27.176920",
+        "updated_at": "2026-10-28 14:49:27.176926"
+      },
+      {
+        "id": 2,
+        "class_id": 1,
+        "name": "B",
+        "room_number": null,
+        "capacity": 40,
+        "is_active": 1,
+        "created_at": "2026-10-28 14:49:27.178367",
+        "updated_at": "2026-10-28 14:49:27.178375"
+      },
+      {
+        "id": 3,
+        "class_id": 2,
+        "name": "A",
+        "room_number": null,
+        "capacity": 40,
+        "is_active": 1,
+        "created_at": "2026-10-28 14:49:27.185746",
+        "updated_at": "2026-10-28 14:49:27.185750"
+      },
+      {
+        "id": 4,
+        "class_id": 2,
+        "name": "B",
+        "room_number": null,
+        "capacity": 40,
+        "is_active": 1,
+        "created_at": "2026-10-28 14:49:27.186462",
+        "updated_at": "2026-10-28 14:49:27.186466"
+      },
+      {
+        "id": 5,
+        "class_id": 3,
+        "name": "A",
+        "room_number": null,
+        "capacity": 40,
+        "is_active": 1,
+        "created_at": "2026-10-28 14:49:27.189754",
+        "updated_at": "2026-10-28 14:49:27.189758"
+      },
+      {
+        "id": 6,
+        "class_id": 3,
+        "name": "B",
+        "room_number": null,
+        "capacity": 40,
+        "is_active": 1,
+        "created_at": "2026-10-28 14:49:27.190448",
+        "updated_at": "2026-10-28 14:49:27.190452"
+      },
+      {
+        "id": 7,
+        "class_id": 4,
+        "name": "A",
+        "room_number": null,
+        "capacity": 40,
+        "is_active": 1,
+        "created_at": "2026-10-28 14:49:27.193407",
+        "updated_at": "2026-10-28 14:49:27.193411"
+      },
+      {
+        "id": 8,
+        "class_id": 4,
+        "name": "B",
+        "room_number": null,
+        "capacity": 40,
+        "is_active": 1,
+        "created_at": "2026-10-28 14:49:27.194098",
+        "updated_at": "2026-10-28 14:49:27.194102"
+      },
+      {
+        "id": 9,
+        "class_id": 5,
+        "name": "A",
+        "room_number": null,
+        "capacity": 40,
+        "is_active": 1,
+        "created_at": "2026-10-28 14:49:27.197015",
+        "updated_at": "2026-10-28 14:49:27.197019"
+      },
+      {
+        "id": 10,
+        "class_id": 5,
+        "name": "B",
+        "room_number": null,
+        "capacity": 40,
+        "is_active": 1,
+        "created_at": "2026-10-28 14:49:27.197697",
+        "updated_at": "2026-10-28 14:49:27.197701"
+      },
+      {
+        "id": 11,
+        "class_id": 6,
+        "name": "A",
+        "room_number": null,
+        "capacity": 40,
+        "is_active": 1,
+        "created_at": "2026-10-28 14:49:27.201205",
+        "updated_at": "2026-10-28 14:49:27.201210"
+      },
+      {
+        "id": 12,
+        "class_id": 6,
+        "name": "B",
+        "room_number": null,
+        "capacity": 40,
+        "is_active": 1,
+        "created_at": "2026-10-28 14:49:27.201874",
+        "updated_at": "2026-10-28 14:49:27.201878"
+      },
+      {
+        "id": 13,
+        "class_id": 7,
+        "name": "A",
+        "room_number": null,
+        "capacity": 40,
+        "is_active": 1,
+        "created_at": "2026-10-28 14:49:27.204810",
+        "updated_at": "2026-10-28 14:49:27.204814"
+      },
+      {
+        "id": 14,
+        "class_id": 7,
+        "name": "B",
+        "room_number": null,
+        "capacity": 40,
+        "is_active": 1,
+        "created_at": "2026-10-28 14:49:27.205464",
+        "updated_at": "2026-10-28 14:49:27.205467"
+      },
+      {
+        "id": 15,
+        "class_id": 8,
+        "name": "A",
+        "room_number": null,
+        "capacity": 40,
+        "is_active": 1,
+        "created_at": "2026-10-28 14:49:27.208318",
+        "updated_at": "2026-10-28 14:49:27.208322"
+      },
+      {
+        "id": 16,
+        "class_id": 8,
+        "name": "B",
+        "room_number": null,
+        "capacity": 40,
+        "is_active": 1,
+        "created_at": "2026-10-28 14:49:27.208980",
+        "updated_at": "2026-10-28 14:49:27.208984"
+      },
+      {
+        "id": 17,
+        "class_id": 9,
+        "name": "A",
+        "room_number": null,
+        "capacity": 40,
+        "is_active": 1,
+        "created_at": "2026-10-28 14:49:27.211883",
+        "updated_at": "2026-10-28 14:49:27.211886"
+      },
+      {
+        "id": 18,
+        "class_id": 9,
+        "name": "B",
+        "room_number": null,
+        "capacity": 40,
+        "is_active": 1,
+        "created_at": "2026-10-28 14:49:27.212551",
+        "updated_at": "2026-10-28 14:49:27.212555"
+      },
+      {
+        "id": 19,
+        "class_id": 10,
+        "name": "A",
+        "room_number": null,
+        "capacity": 40,
+        "is_active": 1,
+        "created_at": "2026-10-28 14:49:27.216355",
+        "updated_at": "2026-10-28 14:49:27.216360"
+      },
+      {
+        "id": 20,
+        "class_id": 10,
+        "name": "B",
+        "room_number": null,
+        "capacity": 40,
+        "is_active": 1,
+        "created_at": "2026-10-28 14:49:27.217080",
+        "updated_at": "2026-10-28 14:49:27.217084"
+      },
+      {
+        "id": 21,
+        "class_id": 11,
+        "name": "A",
+        "room_number": null,
+        "capacity": 40,
+        "is_active": 1,
+        "created_at": "2026-10-29 20:03:55.998379",
+        "updated_at": "2026-10-29 20:03:55.998386"
+      },
+      {
+        "id": 22,
+        "class_id": 11,
+        "name": "Section A",
+        "room_number": "Room 204",
+        "capacity": 35,
+        "is_active": 1,
+        "created_at": "2026-10-29 20:03:56.065338",
+        "updated_at": "2026-10-29 20:03:56.065348"
+      }
+    ],
+    "student_profiles": [
+      {
+        "id": 1,
+        "user_id": 3,
+        "school_id": 1,
+        "admission_number": "ADM-ALI",
+        "gender": "Male",
+        "date_of_birth": "2010-04-15",
+        "blood_group": "O+",
+        "guardian_name": "Guardian of Mohammed Ali Khan",
+        "guardian_phone": "+91 98491 55678",
+        "emergency_contact": null,
+        "address": "Charminar Road, Hyderabad",
+        "student_status": "active",
+        "is_active": 1,
+        "created_at": "2026-10-28 14:49:51.172931",
+        "updated_at": "2026-10-28 14:49:51.172942"
+      }
+    ],
+    "teacher_profiles": [
+      {
+        "id": 1,
+        "user_id": 2,
+        "school_id": 1,
+        "employee_id": "EMP-ATEEF",
+        "designation": "Senior Mathematics Faculty",
+        "department": "Mathematics",
+        "qualification": "M.Sc. Mathematics, B.Ed",
+        "joining_date": "2018-06-12",
+        "employment_status": "active",
+        "is_active": 1,
+        "created_at": "2026-10-28 14:49:50.602085",
+        "updated_at": "2026-10-28 14:49:50.602090"
+      }
+    ],
+    "user_roles": [
+      {
+        "id": 1,
+        "user_id": 1,
+        "role_id": 1,
+        "created_at": "2026-10-28 14:49:50.598176"
+      },
+      {
+        "id": 2,
+        "user_id": 2,
+        "role_id": 2,
+        "created_at": "2026-10-28 14:49:50.600092"
+      },
+      {
+        "id": 3,
+        "user_id": 3,
+        "role_id": 3,
+        "created_at": "2026-10-28 14:49:51.169756"
+      }
+    ],
+    "student_enrollments": [],
+    "teacher_assignments": [],
+    "attendance_sessions": [],
+    "exam_types": [],
+    "fee_categories": [
+      {
+        "id": 1,
+        "school_id": 1,
+        "name": "Tuition Fee (Term 1)",
+        "description": "Term 1 tuition charges for academic curriculum",
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 2,
+        "school_id": 1,
+        "name": "Science & Computer Lab Fee",
+        "description": "Maintenance of physics, chemistry and computer labs",
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 3,
+        "school_id": 1,
+        "name": "Annual Activity & Library Fee",
+        "description": "Library access, sports day, and co-curricular programs",
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      }
+    ],
+    "invoices": [],
+    "notices": [],
+    "timetable_entries": [],
+    "subjects": [
+      {
+        "id": 1,
+        "school_id": 1,
+        "name": "Mathematics",
+        "code": "MATH-101",
+        "department": "Mathematics",
+        "is_active": 1,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 2,
+        "school_id": 1,
+        "name": "English Language & Literature",
+        "code": "ENG-101",
+        "department": "Languages",
+        "is_active": 1,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 3,
+        "school_id": 1,
+        "name": "General Science",
+        "code": "SCI-101",
+        "department": "Sciences",
+        "is_active": 1,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 4,
+        "school_id": 1,
+        "name": "Social Science",
+        "code": "SOC-101",
+        "department": "Social Studies",
+        "is_active": 1,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 5,
+        "school_id": 1,
+        "name": "Urdu Course A",
+        "code": "URD-101",
+        "department": "Languages",
+        "is_active": 1,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 6,
+        "school_id": 1,
+        "name": "Hindi Course B",
+        "code": "HIN-101",
+        "department": "Languages",
+        "is_active": 1,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 7,
+        "school_id": 1,
+        "name": "Information Technology",
+        "code": "IT-101",
+        "department": "Computer Science",
+        "is_active": 1,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 8,
+        "school_id": 1,
+        "name": "Physical & Health Education",
+        "code": "PHE-101",
+        "department": "Physical Education",
+        "is_active": 1,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      }
+    ],
+    "grading_scales": [],
+    "notifications": [],
+    "ai_conversations": [],
+    "attendance_records": [],
+    "exams": [
+      {
+        "id": 1,
+        "school_id": 1,
+        "academic_year_id": 1,
+        "exam_type_id": null,
+        "name": "Mid-Term Examination 2025-2026",
+        "start_date": "2025-10-15",
+        "end_date": "2025-10-25",
+        "is_published": 1,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 2,
+        "school_id": 1,
+        "academic_year_id": 1,
+        "exam_type_id": null,
+        "name": "Final Examination 2025-2026",
+        "start_date": "2026-03-10",
+        "end_date": "2026-03-25",
+        "is_published": 1,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 3,
+        "school_id": 1,
+        "academic_year_id": 1,
+        "exam_type_id": null,
+        "name": "Unit Test 1 (2025-2026)",
+        "start_date": "2025-07-20",
+        "end_date": "2025-07-25",
+        "is_published": 1,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      }
+    ],
+    "fee_structures": [],
+    "payments": [],
+    "class_subjects": [
+      {
+        "id": 1,
+        "class_id": 1,
+        "subject_id": 1,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 2,
+        "class_id": 1,
+        "subject_id": 2,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 3,
+        "class_id": 1,
+        "subject_id": 3,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 4,
+        "class_id": 1,
+        "subject_id": 4,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 5,
+        "class_id": 1,
+        "subject_id": 5,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 6,
+        "class_id": 1,
+        "subject_id": 6,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 7,
+        "class_id": 1,
+        "subject_id": 7,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 8,
+        "class_id": 1,
+        "subject_id": 8,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 9,
+        "class_id": 2,
+        "subject_id": 1,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 10,
+        "class_id": 2,
+        "subject_id": 2,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 11,
+        "class_id": 2,
+        "subject_id": 3,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 12,
+        "class_id": 2,
+        "subject_id": 4,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 13,
+        "class_id": 2,
+        "subject_id": 5,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 14,
+        "class_id": 2,
+        "subject_id": 6,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 15,
+        "class_id": 2,
+        "subject_id": 7,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 16,
+        "class_id": 2,
+        "subject_id": 8,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 17,
+        "class_id": 3,
+        "subject_id": 1,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 18,
+        "class_id": 3,
+        "subject_id": 2,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 19,
+        "class_id": 3,
+        "subject_id": 3,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 20,
+        "class_id": 3,
+        "subject_id": 4,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 21,
+        "class_id": 3,
+        "subject_id": 5,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 22,
+        "class_id": 3,
+        "subject_id": 6,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 23,
+        "class_id": 3,
+        "subject_id": 7,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 24,
+        "class_id": 3,
+        "subject_id": 8,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 25,
+        "class_id": 4,
+        "subject_id": 1,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 26,
+        "class_id": 4,
+        "subject_id": 2,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 27,
+        "class_id": 4,
+        "subject_id": 3,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 28,
+        "class_id": 4,
+        "subject_id": 4,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 29,
+        "class_id": 4,
+        "subject_id": 5,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 30,
+        "class_id": 4,
+        "subject_id": 6,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 31,
+        "class_id": 4,
+        "subject_id": 7,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 32,
+        "class_id": 4,
+        "subject_id": 8,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 33,
+        "class_id": 5,
+        "subject_id": 1,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 34,
+        "class_id": 5,
+        "subject_id": 2,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 35,
+        "class_id": 5,
+        "subject_id": 3,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 36,
+        "class_id": 5,
+        "subject_id": 4,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 37,
+        "class_id": 5,
+        "subject_id": 5,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 38,
+        "class_id": 5,
+        "subject_id": 6,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 39,
+        "class_id": 5,
+        "subject_id": 7,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 40,
+        "class_id": 5,
+        "subject_id": 8,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 41,
+        "class_id": 6,
+        "subject_id": 1,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 42,
+        "class_id": 6,
+        "subject_id": 2,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 43,
+        "class_id": 6,
+        "subject_id": 3,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 44,
+        "class_id": 6,
+        "subject_id": 4,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 45,
+        "class_id": 6,
+        "subject_id": 5,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 46,
+        "class_id": 6,
+        "subject_id": 6,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 47,
+        "class_id": 6,
+        "subject_id": 7,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 48,
+        "class_id": 6,
+        "subject_id": 8,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 49,
+        "class_id": 7,
+        "subject_id": 1,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 50,
+        "class_id": 7,
+        "subject_id": 2,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 51,
+        "class_id": 7,
+        "subject_id": 3,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 52,
+        "class_id": 7,
+        "subject_id": 4,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 53,
+        "class_id": 7,
+        "subject_id": 5,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 54,
+        "class_id": 7,
+        "subject_id": 6,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 55,
+        "class_id": 7,
+        "subject_id": 7,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 56,
+        "class_id": 7,
+        "subject_id": 8,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 57,
+        "class_id": 8,
+        "subject_id": 1,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 58,
+        "class_id": 8,
+        "subject_id": 2,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 59,
+        "class_id": 8,
+        "subject_id": 3,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 60,
+        "class_id": 8,
+        "subject_id": 4,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 61,
+        "class_id": 8,
+        "subject_id": 5,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 62,
+        "class_id": 8,
+        "subject_id": 6,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 63,
+        "class_id": 8,
+        "subject_id": 7,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 64,
+        "class_id": 8,
+        "subject_id": 8,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 65,
+        "class_id": 9,
+        "subject_id": 1,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 66,
+        "class_id": 9,
+        "subject_id": 2,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 67,
+        "class_id": 9,
+        "subject_id": 3,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 68,
+        "class_id": 9,
+        "subject_id": 4,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 69,
+        "class_id": 9,
+        "subject_id": 5,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 70,
+        "class_id": 9,
+        "subject_id": 6,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 71,
+        "class_id": 9,
+        "subject_id": 7,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 72,
+        "class_id": 9,
+        "subject_id": 8,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 73,
+        "class_id": 10,
+        "subject_id": 1,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 74,
+        "class_id": 10,
+        "subject_id": 2,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 75,
+        "class_id": 10,
+        "subject_id": 3,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 76,
+        "class_id": 10,
+        "subject_id": 4,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 77,
+        "class_id": 10,
+        "subject_id": 5,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 78,
+        "class_id": 10,
+        "subject_id": 6,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 79,
+        "class_id": 10,
+        "subject_id": 7,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      },
+      {
+        "id": 80,
+        "class_id": 10,
+        "subject_id": 8,
+        "is_elective": 0,
+        "created_at": "2026-10-29 19:28:22",
+        "updated_at": "2026-10-29 19:28:22"
+      }
+    ],
+    "ai_messages": [],
+    "exam_subjects": [],
+    "ai_feedback": [],
+    "marks": [],
+    "assignments": [],
+    "assignment_submissions": [],
+    "academic_terms": []
+  }
+}

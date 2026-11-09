@@ -1,0 +1,28 @@
+{
+  "timestamp": "2026-11-09T15:30:27.722Z",
+  "source": "https://snnzmgbkiiydboujublj.supabase.co",
+  "tables": {
+    "schools": [],
+    "academic_years": [],
+    "classes": [],
+    "sections": [],
+    "subjects": [],
+    "teachers": [],
+    "teacher_class_assignments": [],
+    "teacher_subject_assignments": [],
+    "students": [],
+    "student_enrollments": [],
+    "student_documents": [],
+    "fee_structures": [],
+    "payments": [],
+    "attendance_sessions": [],
+    "attendance_records": [],
+    "timetable_entries": [],
+    "exams": [],
+    "marks": [],
+    "notices": [],
+    "audit_logs": [],
+    "profiles": []
+  },
+  "storage_buckets": []
+}

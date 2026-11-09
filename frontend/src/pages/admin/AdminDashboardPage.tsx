@@ -248,33 +248,41 @@ export const AdminDashboardPage: React.FC = () => {
         </div>
       ) : stats ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <MetricCard
-            label="Enrolled Students"
-            value={stats.total_active_students}
-            icon={<GraduationCap className="w-6 h-6" />}
-            subtitle="Verified in Database (Target: >1,500)"
-            trend="Active"
-          />
-          <MetricCard
-            label="Teaching Faculty"
-            value={stats.total_active_teachers}
-            icon={<Users className="w-6 h-6" />}
-            subtitle="Initial Target: 100 Faculty"
-            trend="Active"
-          />
-          <MetricCard
-            label="Classes & Sections"
-            value={`${stats.total_classes} / ${stats.total_sections}`}
-            icon={<Layers className="w-6 h-6" />}
-            subtitle="Grades 1 through 10"
-          />
-          <MetricCard
-            label="Academic Session & Term"
-            value={stats.current_academic_year || "2026-2027"}
-            icon={<Calendar className="w-6 h-6" />}
-            subtitle={stats.current_academic_term ? `Active: ${stats.current_academic_term}` : "Active School Session"}
-            trend="Current"
-          />
+          <Link to="/admin/students" className="block transform transition-transform hover:-translate-y-0.5">
+            <MetricCard
+              label="Enrolled Students"
+              value={stats.total_active_students}
+              icon={<GraduationCap className="w-6 h-6" />}
+              subtitle="Verified in Database (Target: >1,500)"
+              trend="Active"
+            />
+          </Link>
+          <Link to="/admin/teachers" className="block transform transition-transform hover:-translate-y-0.5">
+            <MetricCard
+              label="Teaching Faculty"
+              value={stats.total_active_teachers}
+              icon={<Users className="w-6 h-6" />}
+              subtitle="Initial Target: 100 Faculty"
+              trend="Active"
+            />
+          </Link>
+          <Link to="/admin/classes" className="block transform transition-transform hover:-translate-y-0.5">
+            <MetricCard
+              label="Classes & Sections"
+              value={`${stats.total_classes} / ${stats.total_sections}`}
+              icon={<Layers className="w-6 h-6" />}
+              subtitle="Grades 1 through 10"
+            />
+          </Link>
+          <Link to="/admin/academic-years" className="block transform transition-transform hover:-translate-y-0.5">
+            <MetricCard
+              label="Academic Session & Term"
+              value={stats.current_academic_year || "2026-2027"}
+              icon={<Calendar className="w-6 h-6" />}
+              subtitle={stats.current_academic_term ? `Active: ${stats.current_academic_term}` : "Active School Session"}
+              trend="Current"
+            />
+          </Link>
         </div>
       ) : null}
 
