@@ -12,6 +12,8 @@ export interface User {
   is_active: boolean;
   roles: UserRole[];
   last_login_at?: string | null;
+  employee_id?: string;
+  teacher_id?: string;
 }
 
 export interface CurrentUserSession {

@@ -44,3 +44,5 @@ Thumbs.db
 .idea/
 
 *.backup
+scripts/backups/
+supabase/.temp/

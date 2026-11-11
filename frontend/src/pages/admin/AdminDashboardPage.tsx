@@ -21,6 +21,12 @@ import {
   CheckCircle2,
   AlertTriangle,
   RefreshCw,
+  Sun,
+  Sunset,
+  UserCheck,
+  Power,
+  ShieldCheck,
+  XCircle,
 } from "lucide-react";
 import { api } from "../../services/api";
 import { useRealtimeSync } from "../../hooks/useRealtimeSync";
@@ -58,6 +64,36 @@ export const AdminDashboardPage: React.FC = () => {
     total_remaining_fees: 0,
   });
   const [attendancePercentage, setAttendancePercentage] = useState<number | null>(null);
+
+  // Phase 6: Live Student & Faculty Attendance Monitoring State
+  const [attendanceDate, setAttendanceDate] = useState<string>(() => {
+    return new Date().toISOString().slice(0, 10);
+  });
+  const [studentSummary, setStudentSummary] = useState<any>(null);
+  const [facultySummary, setFacultySummary] = useState<any>(null);
+  const [isLoadingAttendance, setIsLoadingAttendance] = useState(false);
+  const [attendanceTab, setAttendanceTab] = useState<"students" | "faculty">("students");
+
+  const fetchAttendanceMonitoring = useCallback(async (dateStr: string) => {
+    setIsLoadingAttendance(true);
+    try {
+      const [stdData, facData] = await Promise.all([
+        api.studentAttendance.getSummary(dateStr),
+        api.teacherAttendance.getFacultySummary(dateStr),
+      ]);
+      setStudentSummary(stdData);
+      setFacultySummary(facData);
+      const totalMarked = (stdData.morning?.total_marked || 0) + (stdData.afternoon?.total_marked || 0);
+      const totalPresent = (stdData.morning?.present || 0) + (stdData.afternoon?.present || 0);
+      if (totalMarked > 0) {
+        setAttendancePercentage(Math.round((totalPresent / totalMarked) * 100));
+      }
+    } catch (e) {
+      console.warn("Error fetching attendance monitoring:", e);
+    } finally {
+      setIsLoadingAttendance(false);
+    }
+  }, []);
 
   const fetchDashboard = useCallback(async () => {
     setIsLoading(true);
@@ -110,14 +146,43 @@ export const AdminDashboardPage: React.FC = () => {
     api.academicYears.list().then(setAcademicYears).catch(() => {});
   }, [fetchDashboard]);
 
+  useEffect(() => {
+    fetchAttendanceMonitoring(attendanceDate);
+  }, [attendanceDate, fetchAttendanceMonitoring]);
+
   // Real-time Supabase sync: refresh stats when student, teacher, or attendance changes
   useRealtimeSync({
-    tables: ["students", "teachers", "attendance_records", "notices", "invoices", "academic_years", "academic_terms", "classes", "sections"],
+    tables: [
+      "students",
+      "teachers",
+      "student_attendance",
+      "teacher_attendance",
+      "class_teacher_assignments",
+      "notices",
+      "invoices",
+      "academic_years",
+      "classes",
+      "sections",
+    ],
     onSync: (table, eventType) => {
       fetchDashboard();
+      fetchAttendanceMonitoring(attendanceDate);
       toast.success(`Live sync: ${table} updated (${eventType})`);
     },
   });
+
+  const formatAttendanceTime = (isoString?: string | null) => {
+    if (!isoString) return "--:--";
+    try {
+      return new Date(isoString).toLocaleTimeString("en-IN", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+      });
+    } catch {
+      return isoString;
+    }
+  };
 
   const handleExportReport = () => {
     let csvHeader = "";
@@ -352,6 +417,404 @@ export const AdminDashboardPage: React.FC = () => {
           </p>
         </div>
       </div>
+
+      {/* ========================================================================= */}
+      {/* PHASE 6: ADMIN LIVE ATTENDANCE & FACULTY DUTY MONITORING DASHBOARD */}
+      {/* ========================================================================= */}
+      <Card className="p-6 border-2 border-brand-blue/30 dark:border-dark-border shadow-md">
+        {/* Monitoring Header & Date Selector */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-light-border dark:border-dark-border pb-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="p-2 rounded-xl bg-brand-navy text-brand-gold shadow-sm">
+                <Activity className="w-5 h-5" />
+              </span>
+              <div>
+                <div className="flex items-center gap-2.5">
+                  <h3 className="text-base font-black text-light-primary dark:text-dark-primary uppercase tracking-wide">
+                    Live Institutional Attendance Monitoring
+                  </h3>
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 animate-pulse">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                    LIVE SUPABASE
+                  </span>
+                </div>
+                <p className="text-xs text-light-secondary dark:text-dark-secondary mt-0.5">
+                  Real-time synchronization across devices • Morning & Afternoon session tracking
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2.5">
+            <div className="flex items-center gap-1.5 bg-gray-50 dark:bg-dark-elevated border border-light-border dark:border-dark-border rounded-xl px-3 py-1.5">
+              <Calendar className="w-4 h-4 text-brand-blue dark:text-dark-accent" />
+              <input
+                type="date"
+                value={attendanceDate}
+                onChange={(e) => setAttendanceDate(e.target.value)}
+                className="text-xs font-bold bg-transparent border-none text-light-primary dark:text-dark-primary focus:outline-none cursor-pointer"
+              />
+            </div>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setAttendanceDate(new Date().toISOString().slice(0, 10))}
+            >
+              Today
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              leftIcon={<RefreshCw className={`w-3.5 h-3.5 ${isLoadingAttendance ? "animate-spin" : ""}`} />}
+              onClick={() => fetchAttendanceMonitoring(attendanceDate)}
+            >
+              Sync
+            </Button>
+
+            <Link to="/admin/attendance">
+              <Button variant="primary" size="sm" leftIcon={<ShieldCheck className="w-4 h-4" />}>
+                Audit & Correction
+              </Button>
+            </Link>
+          </div>
+        </div>
+
+        {/* Tab Selector */}
+        <div className="flex items-center gap-2 mt-4 border-b border-light-border dark:border-dark-border pb-3">
+          <button
+            onClick={() => setAttendanceTab("students")}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+              attendanceTab === "students"
+                ? "bg-brand-blue text-white shadow-sm"
+                : "text-light-secondary hover:text-light-primary hover:bg-gray-100 dark:hover:bg-dark-elevated"
+            }`}
+          >
+            <GraduationCap className="w-4 h-4" />
+            <span>Student Attendance (Morning & Afternoon)</span>
+          </button>
+          <button
+            onClick={() => setAttendanceTab("faculty")}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+              attendanceTab === "faculty"
+                ? "bg-brand-blue text-white shadow-sm"
+                : "text-light-secondary hover:text-light-primary hover:bg-gray-100 dark:hover:bg-dark-elevated"
+            }`}
+          >
+            <Users className="w-4 h-4" />
+            <span>Faculty Attendance & Duty Status ({facultySummary?.present_faculty || 0}/{facultySummary?.total_faculty || 13})</span>
+          </button>
+        </div>
+
+        {/* TAB 1: STUDENT ATTENDANCE (MORNING & AFTERNOON) */}
+        {attendanceTab === "students" && (
+          <div className="mt-4 space-y-5">
+            {/* Session Summary Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Morning Session Card */}
+              <div className="p-4 rounded-xl border border-light-border dark:border-dark-border bg-gradient-to-br from-amber-500/5 to-transparent">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Sun className="w-4 h-4 text-amber-500" />
+                    <span className="text-xs font-black uppercase text-amber-600 dark:text-amber-400">
+                      Morning Session Attendance
+                    </span>
+                  </div>
+                  <Badge variant={studentSummary?.morning?.classes_submitted > 0 ? "green" : "neutral"} size="sm">
+                    {studentSummary?.morning?.classes_submitted || 0} / {studentSummary?.total_classes || 13} Classes Marked
+                  </Badge>
+                </div>
+
+                <div className="grid grid-cols-4 gap-2 text-center">
+                  <div className="p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800">
+                    <p className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300 uppercase">Present</p>
+                    <p className="text-lg font-black text-emerald-600 font-mono mt-0.5">
+                      {studentSummary?.morning?.present || 0}
+                    </p>
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800">
+                    <p className="text-[10px] font-bold text-rose-800 dark:text-rose-300 uppercase">Absent</p>
+                    <p className="text-lg font-black text-rose-600 font-mono mt-0.5">
+                      {studentSummary?.morning?.absent || 0}
+                    </p>
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+                    <p className="text-[10px] font-bold text-amber-800 dark:text-amber-300 uppercase">Late</p>
+                    <p className="text-lg font-black text-amber-600 font-mono mt-0.5">
+                      {studentSummary?.morning?.late || 0}
+                    </p>
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700">
+                    <p className="text-[10px] font-bold text-gray-700 dark:text-gray-300 uppercase">Pending</p>
+                    <p className="text-lg font-black text-gray-500 font-mono mt-0.5">
+                      {studentSummary?.morning?.not_submitted ?? (13 - (studentSummary?.morning?.classes_submitted || 0))}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Afternoon Session Card */}
+              <div className="p-4 rounded-xl border border-light-border dark:border-dark-border bg-gradient-to-br from-indigo-500/5 to-transparent">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Sunset className="w-4 h-4 text-indigo-500" />
+                    <span className="text-xs font-black uppercase text-indigo-600 dark:text-indigo-400">
+                      Afternoon Session Attendance
+                    </span>
+                  </div>
+                  <Badge variant={studentSummary?.afternoon?.classes_submitted > 0 ? "green" : "neutral"} size="sm">
+                    {studentSummary?.afternoon?.classes_submitted || 0} / {studentSummary?.total_classes || 13} Classes Marked
+                  </Badge>
+                </div>
+
+                <div className="grid grid-cols-4 gap-2 text-center">
+                  <div className="p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800">
+                    <p className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300 uppercase">Present</p>
+                    <p className="text-lg font-black text-emerald-600 font-mono mt-0.5">
+                      {studentSummary?.afternoon?.present || 0}
+                    </p>
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800">
+                    <p className="text-[10px] font-bold text-rose-800 dark:text-rose-300 uppercase">Absent</p>
+                    <p className="text-lg font-black text-rose-600 font-mono mt-0.5">
+                      {studentSummary?.afternoon?.absent || 0}
+                    </p>
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+                    <p className="text-[10px] font-bold text-amber-800 dark:text-amber-300 uppercase">Late</p>
+                    <p className="text-lg font-black text-amber-600 font-mono mt-0.5">
+                      {studentSummary?.afternoon?.late || 0}
+                    </p>
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700">
+                    <p className="text-[10px] font-bold text-gray-700 dark:text-gray-300 uppercase">Pending</p>
+                    <p className="text-lg font-black text-gray-500 font-mono mt-0.5">
+                      {studentSummary?.afternoon?.not_submitted ?? (13 - (studentSummary?.afternoon?.classes_submitted || 0))}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Class-by-Class Attendance Roster (13 Classes) */}
+            <div className="rounded-xl border border-light-border dark:border-dark-border overflow-hidden">
+              <div className="p-3 bg-gray-50 dark:bg-dark-elevated flex items-center justify-between border-b border-light-border dark:border-dark-border">
+                <span className="text-xs font-black uppercase text-light-primary dark:text-dark-primary tracking-wide">
+                  Class-Wise Attendance Breakdown (13 Classes)
+                </span>
+                <span className="text-[11px] text-light-secondary dark:text-dark-secondary">
+                  Pre-Primary (3) • Classes 1 to 10 (10)
+                </span>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-gray-100/70 dark:bg-dark-card border-b border-light-border dark:border-dark-border text-light-secondary dark:text-dark-secondary">
+                    <tr>
+                      <th className="py-2.5 px-3 font-bold">Class</th>
+                      <th className="py-2.5 px-3 font-bold">Assigned Class Teacher</th>
+                      <th className="py-2.5 px-3 font-bold">Morning Attendance</th>
+                      <th className="py-2.5 px-3 font-bold">Afternoon Attendance</th>
+                      <th className="py-2.5 px-3 font-bold text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-light-border dark:divide-dark-border">
+                    {studentSummary?.class_breakdown && studentSummary.class_breakdown.length > 0 ? (
+                      studentSummary.class_breakdown.map((c: any) => (
+                        <tr key={c.class_id} className="hover:bg-gray-50/50 dark:hover:bg-dark-elevated/30">
+                          <td className="py-2.5 px-3 font-bold text-light-primary dark:text-dark-primary">
+                            <span>{c.class_name}</span>
+                            <span className="text-[10px] text-light-secondary block font-normal">{c.category}</span>
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <span className="font-semibold text-light-primary dark:text-dark-primary">
+                              {c.class_teacher}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3">
+                            {c.morning.submitted ? (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                <span>{c.morning.present}P • {c.morning.absent}A • {c.morning.late}L</span>
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">
+                                <Clock className="w-3 h-3 text-gray-400" />
+                                <span>Attendance Not Marked</span>
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-2.5 px-3">
+                            {c.afternoon.submitted ? (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300">
+                                <CheckCircle2 className="w-3 h-3 text-indigo-600" />
+                                <span>{c.afternoon.present}P • {c.afternoon.absent}A • {c.afternoon.late}L</span>
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">
+                                <Clock className="w-3 h-3 text-gray-400" />
+                                <span>Attendance Not Marked</span>
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-2.5 px-3 text-right">
+                            <Link
+                              to={`/admin/attendance?class_id=${c.class_id}&date=${attendanceDate}`}
+                              className="text-brand-blue dark:text-dark-accent font-bold hover:underline inline-flex items-center gap-1"
+                            >
+                              <span>Inspect</span>
+                              <ArrowRight className="w-3 h-3" />
+                            </Link>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={5} className="py-6 text-center text-light-secondary">
+                          No class roster data available for {attendanceDate}.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 2: FACULTY ATTENDANCE & LIVE DUTY STATUS */}
+        {attendanceTab === "faculty" && (
+          <div className="mt-4 space-y-4">
+            {/* Faculty Metric Counters */}
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+              <div className="p-3 rounded-xl bg-gray-50 dark:bg-dark-elevated border border-light-border dark:border-dark-border text-center">
+                <p className="text-[10px] font-bold text-light-secondary dark:text-dark-secondary uppercase">
+                  Admitted Faculty
+                </p>
+                <p className="text-xl font-black text-light-primary dark:text-dark-primary font-mono mt-0.5">
+                  {facultySummary?.total_faculty || 0}
+                </p>
+              </div>
+
+              <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 text-center">
+                <p className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300 uppercase">
+                  Present Today
+                </p>
+                <p className="text-xl font-black text-emerald-600 font-mono mt-0.5">
+                  {facultySummary?.present_faculty || 0}
+                </p>
+              </div>
+
+              <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 text-center">
+                <p className="text-[10px] font-bold text-brand-blue dark:text-dark-accent uppercase">
+                  Active On Duty
+                </p>
+                <p className="text-xl font-black text-brand-blue dark:text-dark-accent font-mono mt-0.5">
+                  {facultySummary?.active_faculty || 0}
+                </p>
+              </div>
+
+              <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-center">
+                <p className="text-[10px] font-bold text-amber-800 dark:text-amber-300 uppercase">
+                  Duty Concluded
+                </p>
+                <p className="text-xl font-black text-amber-600 font-mono mt-0.5">
+                  {facultySummary?.inactive_faculty || 0}
+                </p>
+              </div>
+
+              <div className="p-3 rounded-xl bg-gray-100 dark:bg-gray-800/40 border border-gray-300 dark:border-gray-700 text-center col-span-2 sm:col-span-1">
+                <p className="text-[10px] font-bold text-gray-700 dark:text-gray-300 uppercase">
+                  Not Arrived
+                </p>
+                <p className="text-xl font-black text-gray-500 font-mono mt-0.5">
+                  {facultySummary?.not_arrived_faculty || 0}
+                </p>
+              </div>
+            </div>
+
+            {/* Live Faculty Duty Roster Table */}
+            <div className="rounded-xl border border-light-border dark:border-dark-border overflow-hidden">
+              <div className="p-3 bg-gray-50 dark:bg-dark-elevated flex items-center justify-between border-b border-light-border dark:border-dark-border">
+                <span className="text-xs font-black uppercase text-light-primary dark:text-dark-primary tracking-wide">
+                  Faculty Duty Status Roster
+                </span>
+                <span className="text-[11px] text-light-secondary dark:text-dark-secondary">
+                  Live timestamps recorded via Supabase
+                </span>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-gray-100/70 dark:bg-dark-card border-b border-light-border dark:border-dark-border text-light-secondary dark:text-dark-secondary">
+                    <tr>
+                      <th className="py-2.5 px-3 font-bold">Faculty Member</th>
+                      <th className="py-2.5 px-3 font-bold">Employee ID</th>
+                      <th className="py-2.5 px-3 font-bold">Assigned Class / Role</th>
+                      <th className="py-2.5 px-3 font-bold">Arrival Time</th>
+                      <th className="py-2.5 px-3 font-bold">Departure Time</th>
+                      <th className="py-2.5 px-3 font-bold text-right">Duty Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-light-border dark:divide-dark-border">
+                    {facultySummary?.faculty_list && facultySummary.faculty_list.length > 0 ? (
+                      facultySummary.faculty_list.map((f: any) => (
+                        <tr key={f.id} className="hover:bg-gray-50/50 dark:hover:bg-dark-elevated/30">
+                          <td className="py-2.5 px-3 font-bold text-light-primary dark:text-dark-primary">
+                            {f.full_name}
+                          </td>
+                          <td className="py-2.5 px-3 font-mono text-brand-blue dark:text-dark-accent">
+                            {f.employee_id}
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <span className="font-semibold text-light-primary dark:text-dark-primary">
+                              {f.assigned_class || f.designation || "Faculty"}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3 font-mono text-emerald-600 dark:text-emerald-400">
+                            {f.arrival_time ? formatAttendanceTime(f.arrival_time) : "Not Arrived"}
+                          </td>
+                          <td className="py-2.5 px-3 font-mono text-amber-600 dark:text-amber-400">
+                            {f.departure_time
+                              ? formatAttendanceTime(f.departure_time)
+                              : f.duty_status === "active"
+                              ? "On Duty"
+                              : "--:--"}
+                          </td>
+                          <td className="py-2.5 px-3 text-right">
+                            {f.duty_status === "active" ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 animate-pulse">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                ACTIVE
+                              </span>
+                            ) : f.duty_status === "inactive" ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-700">
+                                CONCLUDED
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 border border-gray-300 dark:border-gray-700">
+                                NOT ARRIVED
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={6} className="py-6 text-center text-light-secondary">
+                          No faculty roster records found.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+      </Card>
 
       {/* Category-Wise Academic Hierarchy & Student Distribution */}
       {stats && stats.class_distribution && stats.class_distribution.length > 0 && (

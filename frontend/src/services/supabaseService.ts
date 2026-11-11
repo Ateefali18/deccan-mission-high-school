@@ -537,7 +537,7 @@ export const supabaseService = {
   // TEACHERS
   // --------------------------------------------------------------------------
   teachers: {
-    async list(params: { page?: number; limit?: number; search?: string } = {}) {
+    async list(params: { page?: number; limit?: number; search?: string; status?: string } = {}) {
       if (!isSupabaseConfigured()) return { items: [], total: 0, page: 1, limit: 15 };
 
       const page = params.page || 1;
@@ -547,9 +547,21 @@ export const supabaseService = {
 
       let query = supabase
         .from("teachers")
-        .select("*, teacher_class_assignments(id)", {
+        .select(`
+          *,
+          class_teacher_assignments(
+            id,
+            is_active,
+            classes(name)
+          )
+        `, {
           count: "exact",
         });
+
+      if (params.status && params.status !== "all") {
+        if (params.status === "active") query = query.eq("is_active", true);
+        else if (params.status === "inactive") query = query.eq("is_active", false);
+      }
 
       if (params.search) {
         const clean = sanitizePostgrestSearch(params.search);
@@ -568,20 +580,24 @@ export const supabaseService = {
         return { items: [], total: 0, page, limit };
       }
 
-      const items: TeacherListItem[] = (data || []).map((t: any) => ({
-        id: t.id,
-        employee_id: t.employee_id,
-        full_name: t.full_name || `${t.profiles?.first_name || ""} ${t.profiles?.last_name || ""}`.trim() || "Teacher",
-        email: t.email || t.profiles?.email || "",
-        designation: t.designation || t.specialization || "Faculty Member",
-        department: t.department || t.qualification || "General",
-        contact_phone: t.contact_phone || t.phone_number,
-        employment_status: t.employment_status || (t.is_active ? "active" : "inactive"),
-        is_active: t.is_active !== false,
-        assigned_classes_count: Array.isArray(t.teacher_class_assignments)
-          ? t.teacher_class_assignments.length
-          : 0,
-      }));
+      const items: TeacherListItem[] = (data || []).map((t: any) => {
+        const activeAssignment = Array.isArray(t.class_teacher_assignments)
+          ? t.class_teacher_assignments.find((a: any) => a.is_active)
+          : null;
+        return {
+          id: t.id,
+          employee_id: t.employee_id,
+          full_name: t.full_name || "Faculty Member",
+          email: t.email || "",
+          designation: t.designation || t.specialization || "Faculty Member",
+          department: t.department || t.qualification || "General",
+          contact_phone: t.contact_phone || t.phone_number,
+          employment_status: t.employment_status || (t.is_active ? "active" : "inactive"),
+          is_active: t.is_active !== false,
+          assigned_classes_count: activeAssignment ? 1 : 0,
+          assigned_class_name: activeAssignment?.classes?.name || null,
+        };
+      });
 
       return {
         items,
@@ -674,6 +690,7 @@ export const supabaseService = {
       full_name?: string;
       email: string;
       employee_id: string;
+      password?: string;
       qualification?: string;
       specialization?: string;
       designation?: string;
@@ -684,33 +701,57 @@ export const supabaseService = {
     }) {
       if (!isSupabaseConfigured()) throw new SupabaseServiceError("Supabase not configured");
 
-      const school = await supabaseService.schools.getCurrent();
-      const schoolId = school?.id;
+      const rawName = (payload.full_name || `${payload.first_name || ""} ${payload.last_name || ""}`).trim();
+      const phone = payload.contact_phone || payload.phone_number || null;
+      const desig = payload.designation || payload.specialization || "Faculty / Senior Teacher";
+      const dept = payload.department || "General";
+      const cleanEmpId = payload.employee_id.trim();
+      const cleanEmail = payload.email.trim().toLowerCase();
 
-      // Duplicate check for Employee ID
+      // Duplicate check for Employee ID in Supabase
       const { data: existingEmp } = await supabase
         .from("teachers")
-        .select("id")
-        .eq("employee_id", payload.employee_id)
+        .select("id, employee_id")
+        .eq("employee_id", cleanEmpId)
         .maybeSingle();
 
       if (existingEmp) {
-        throw new SupabaseServiceError(`Faculty member with Employee ID "${payload.employee_id}" already exists.`);
+        throw new SupabaseServiceError(`Faculty member with Employee ID "${cleanEmpId}" already exists.`);
       }
 
-      const rawName = (payload.full_name || `${payload.first_name || ""} ${payload.last_name || ""}`).trim();
+      // Try secure stored procedure admin_admit_faculty
+      const { data: rpcData, error: rpcErr } = await supabase.rpc("admin_admit_faculty", {
+        p_full_name: rawName,
+        p_email: cleanEmail,
+        p_employee_id: cleanEmpId,
+        p_password: payload.password || "1234",
+        p_designation: desig,
+        p_department: dept,
+        p_contact_phone: phone,
+        p_qualification: payload.qualification || null,
+        p_joining_date: payload.joining_date || new Date().toISOString().split("T")[0],
+      });
+
+      if (!rpcErr && rpcData) {
+        return rpcData;
+      }
+
+      if (rpcErr && rpcErr.message && !rpcErr.message.includes("function") && !rpcErr.message.includes("does not exist")) {
+        throw new SupabaseServiceError(rpcErr.message);
+      }
+
+      // Direct fallback if RPC is not loaded
+      const school = await supabaseService.schools.getCurrent();
+      const schoolId = school?.id;
       const parts = rawName.split(" ");
       const firstName = payload.first_name || parts[0] || "Faculty";
       const lastName = payload.last_name || parts.slice(1).join(" ") || "";
-      const phone = payload.contact_phone || payload.phone_number || null;
-      const desig = payload.designation || payload.specialization || "Teacher";
 
-      // 1. Create or get profile
       let profileId: string | undefined;
       const { data: existingProfile } = await supabase
         .from("profiles")
         .select("id")
-        .eq("email", payload.email)
+        .eq("email", cleanEmail)
         .maybeSingle();
 
       if (existingProfile) {
@@ -720,7 +761,7 @@ export const supabaseService = {
           .from("profiles")
           .insert({
             school_id: schoolId,
-            email: payload.email,
+            email: cleanEmail,
             first_name: firstName,
             last_name: lastName,
             phone: phone,
@@ -734,19 +775,19 @@ export const supabaseService = {
         profileId = profile.id;
       }
 
-      // 2. Create teacher record
       const { data: teacher, error: tError } = await supabase
         .from("teachers")
         .insert({
           profile_id: profileId,
+          user_id: profileId,
           school_id: schoolId,
-          employee_id: payload.employee_id,
+          employee_id: cleanEmpId,
           full_name: rawName,
-          email: payload.email,
+          email: cleanEmail,
           qualification: payload.qualification || null,
           specialization: desig,
           designation: desig,
-          department: payload.department || null,
+          department: dept,
           contact_phone: phone,
           phone_number: phone,
           joining_date: payload.joining_date || new Date().toISOString().split("T")[0],
@@ -1738,6 +1779,480 @@ export const supabaseService = {
         excused_count: excused,
         attendance_percentage: pct,
         is_low_attendance: pct < 75.0,
+      };
+    },
+  },
+
+  // --------------------------------------------------------------------------
+  // CLASS TEACHER ASSIGNMENTS (Phase 2)
+  // --------------------------------------------------------------------------
+  classTeachers: {
+    async list() {
+      if (!isSupabaseConfigured()) return [];
+
+      const { data, error } = await supabase
+        .from("classes")
+        .select(`
+          id,
+          name,
+          grade_level,
+          stream,
+          is_active,
+          class_teacher_assignments(
+            id,
+            teacher_id,
+            is_active,
+            assigned_at,
+            teachers(
+              id,
+              employee_id,
+              full_name,
+              email,
+              designation,
+              department,
+              contact_phone
+            )
+          )
+        `)
+        .eq("is_active", true)
+        .order("grade_level", { ascending: true });
+
+      if (error) {
+        console.warn("Supabase classTeachers.list fallback:", error);
+        return [];
+      }
+
+      return (data || []).map((c: any) => {
+        const assignments = Array.isArray(c.class_teacher_assignments) ? c.class_teacher_assignments : [];
+        const activeAssignment = assignments.find((a: any) => a.is_active);
+        const teacher = activeAssignment?.teachers;
+        return {
+          class_id: c.id,
+          class_name: c.name,
+          grade_level: c.grade_level,
+          stream: c.stream,
+          assignment_id: activeAssignment?.id || null,
+          teacher_id: teacher?.id || null,
+          teacher_name: teacher?.full_name || null,
+          employee_id: teacher?.employee_id || null,
+          designation: teacher?.designation || null,
+          department: teacher?.department || null,
+          assigned_at: activeAssignment?.assigned_at || null,
+          is_assigned: Boolean(activeAssignment),
+        };
+      });
+    },
+
+    async assign(classId: string, teacherId: string, academicYearId?: string) {
+      if (!isSupabaseConfigured()) throw new SupabaseServiceError("Supabase not configured");
+
+      const { data, error } = await supabase.rpc("assign_class_teacher", {
+        p_class_id: classId,
+        p_teacher_id: teacherId,
+        p_academic_year_id: academicYearId || null,
+      });
+
+      if (error) throw new SupabaseServiceError(error.message, error.code, error.details);
+      return data;
+    },
+
+    async getHistory(classId?: string) {
+      if (!isSupabaseConfigured()) return [];
+
+      let query = supabase
+        .from("class_teacher_assignments")
+        .select(`
+          id,
+          class_id,
+          classes(name, grade_level),
+          teacher_id,
+          teachers(full_name, employee_id, designation),
+          is_active,
+          assigned_at,
+          revoked_at
+        `)
+        .order("assigned_at", { ascending: false });
+
+      if (classId) {
+        query = query.eq("class_id", classId);
+      }
+
+      const { data, error } = await query;
+      if (error) {
+        console.warn("Supabase classTeachers.getHistory fallback:", error);
+        return [];
+      }
+
+      return (data || []).map((row: any) => ({
+        id: row.id,
+        class_id: row.class_id,
+        class_name: row.classes?.name || "Unknown Class",
+        teacher_id: row.teacher_id,
+        teacher_name: row.teachers?.full_name || "Unknown Teacher",
+        employee_id: row.teachers?.employee_id || "—",
+        is_active: row.is_active,
+        assigned_at: row.assigned_at,
+        revoked_at: row.revoked_at,
+      }));
+    },
+  },
+
+  // --------------------------------------------------------------------------
+  // STUDENT ATTENDANCE (Phase 3 & 4: Morning & Afternoon Sessions)
+  // --------------------------------------------------------------------------
+  studentAttendance: {
+    async getDailyRoster(classId: string, date: string, session: "morning" | "afternoon") {
+      if (!isSupabaseConfigured()) return { students: [], attendance: [] };
+
+      // 1. Fetch students for class
+      // First try student_enrollments
+      const { data: enrolledStudents } = await supabase
+        .from("student_enrollments")
+        .select(`
+          roll_number,
+          students(id, admission_number, full_name, profile_photo_url, photo_url, student_status)
+        `)
+        .eq("class_id", classId)
+        .eq("is_current", true);
+
+      let studentsList: any[] = [];
+      if (enrolledStudents && enrolledStudents.length > 0) {
+        studentsList = enrolledStudents
+          .filter((e: any) => e.students)
+          .map((e: any) => ({
+            id: e.students.id,
+            admission_number: e.students.admission_number,
+            full_name: e.students.full_name,
+            roll_number: e.roll_number,
+            photo_url: e.students.photo_url || e.students.profile_photo_url,
+            student_status: e.students.student_status,
+          }));
+      } else {
+        // Fallback: select all active students
+        const { data: allActive } = await supabase
+          .from("students")
+          .select("id, admission_number, full_name, profile_photo_url, photo_url, student_status")
+          .eq("is_active", true)
+          .limit(50);
+        studentsList = allActive || [];
+      }
+
+      // 2. Fetch existing attendance records for (classId, date, session)
+      const { data: attendanceRecords, error: aErr } = await supabase
+        .from("student_attendance")
+        .select("id, student_id, class_id, session, status, remarks, attendance_date, created_at, updated_at")
+        .eq("class_id", classId)
+        .eq("attendance_date", date)
+        .eq("session", session);
+
+      if (aErr) {
+        console.warn("Supabase studentAttendance query fallback:", aErr);
+      }
+
+      const attMap: Record<string, any> = {};
+      (attendanceRecords || []).forEach((r: any) => {
+        attMap[r.student_id] = r;
+      });
+
+      // Combine student roster with attendance
+      const combined = studentsList.map((s: any) => {
+        const att = attMap[s.id];
+        return {
+          student_id: s.id,
+          admission_number: s.admission_number,
+          full_name: s.full_name,
+          roll_number: s.roll_number || "—",
+          photo_url: s.photo_url,
+          status: att ? att.status : null, // null means "Attendance Not Marked"
+          remarks: att ? att.remarks || "" : "",
+          is_marked: Boolean(att),
+        };
+      });
+
+      return {
+        students: combined,
+        is_submitted: (attendanceRecords || []).length > 0,
+        total_students: studentsList.length,
+        present_count: (attendanceRecords || []).filter((r: any) => r.status === "present").length,
+        absent_count: (attendanceRecords || []).filter((r: any) => r.status === "absent").length,
+        late_count: (attendanceRecords || []).filter((r: any) => r.status === "late").length,
+      };
+    },
+
+    async saveDaily(
+      classId: string,
+      date: string,
+      session: "morning" | "afternoon",
+      records: Array<{ student_id: string; status: "present" | "absent" | "late"; remarks?: string }>,
+      remarks?: string
+    ) {
+      if (!isSupabaseConfigured()) throw new SupabaseServiceError("Supabase not configured");
+
+      const { data, error } = await supabase.rpc("save_daily_student_attendance", {
+        p_class_id: classId,
+        p_date: date,
+        p_session: session,
+        p_records: records,
+        p_remarks: remarks || null,
+      });
+
+      if (error) throw new SupabaseServiceError(error.message, error.code, error.details);
+      return data;
+    },
+
+    async getSummary(date: string) {
+      if (!isSupabaseConfigured()) {
+        return {
+          morning: { present: 0, absent: 0, late: 0, total_marked: 0, classes_submitted: 0, not_submitted: 13 },
+          afternoon: { present: 0, absent: 0, late: 0, total_marked: 0, classes_submitted: 0, not_submitted: 13 },
+          total_classes: 13,
+          class_breakdown: [],
+        };
+      }
+
+      const [attRes, classesRes, assignRes] = await Promise.all([
+        supabase
+          .from("student_attendance")
+          .select("id, class_id, session, status")
+          .eq("attendance_date", date),
+        supabase
+          .from("classes")
+          .select("id, name, grade_level")
+          .order("grade_level", { ascending: true }),
+        supabase
+          .from("class_teacher_assignments")
+          .select("class_id, teacher_id, is_active, teachers(id, full_name, employee_id)")
+          .eq("is_active", true),
+      ]);
+
+      const rows = attRes.data || [];
+      const classList = classesRes.data || [];
+      const assignments = assignRes.data || [];
+
+      const teacherByClass: Record<string, string> = {};
+      assignments.forEach((a: any) => {
+        if (a.class_id && a.teachers?.full_name) {
+          teacherByClass[a.class_id] = `${a.teachers.full_name} (${a.teachers.employee_id})`;
+        }
+      });
+
+      const morningRows = rows.filter((r: any) => r.session === "morning");
+      const afternoonRows = rows.filter((r: any) => r.session === "afternoon");
+
+      const morningClasses = new Set(morningRows.map((r: any) => r.class_id)).size;
+      const afternoonClasses = new Set(afternoonRows.map((r: any) => r.class_id)).size;
+      const totalClassesCount = classList.length || 13;
+
+      const class_breakdown = classList.map((c: any) => {
+        const cMorn = morningRows.filter((r: any) => r.class_id === c.id);
+        const cAft = afternoonRows.filter((r: any) => r.class_id === c.id);
+
+        return {
+          class_id: c.id,
+          class_name: c.name,
+          category: (c.grade_level <= 0 ? "Pre-Primary" : c.grade_level <= 5 ? "Primary" : "Higher Classes"),
+          class_teacher: teacherByClass[c.id] || "Unassigned",
+          morning: {
+            submitted: cMorn.length > 0,
+            present: cMorn.filter((r: any) => r.status === "present").length,
+            absent: cMorn.filter((r: any) => r.status === "absent").length,
+            late: cMorn.filter((r: any) => r.status === "late").length,
+            total: cMorn.length,
+          },
+          afternoon: {
+            submitted: cAft.length > 0,
+            present: cAft.filter((r: any) => r.status === "present").length,
+            absent: cAft.filter((r: any) => r.status === "absent").length,
+            late: cAft.filter((r: any) => r.status === "late").length,
+            total: cAft.length,
+          },
+        };
+      });
+
+      return {
+        morning: {
+          present: morningRows.filter((r: any) => r.status === "present").length,
+          absent: morningRows.filter((r: any) => r.status === "absent").length,
+          late: morningRows.filter((r: any) => r.status === "late").length,
+          total_marked: morningRows.length,
+          classes_submitted: morningClasses,
+          not_submitted: Math.max(0, totalClassesCount - morningClasses),
+        },
+        afternoon: {
+          present: afternoonRows.filter((r: any) => r.status === "present").length,
+          absent: afternoonRows.filter((r: any) => r.status === "absent").length,
+          late: afternoonRows.filter((r: any) => r.status === "late").length,
+          total_marked: afternoonRows.length,
+          classes_submitted: afternoonClasses,
+          not_submitted: Math.max(0, totalClassesCount - afternoonClasses),
+        },
+        total_classes: totalClassesCount,
+        class_breakdown,
+      };
+    },
+
+    async getAuditLog(classId?: string, date?: string) {
+      if (!isSupabaseConfigured()) return [];
+
+      let query = supabase
+        .from("student_attendance_audit")
+        .select(`
+          id,
+          attendance_date,
+          session,
+          previous_status,
+          new_status,
+          reason,
+          created_at,
+          students(id, full_name, admission_number),
+          classes(id, name),
+          profiles(first_name, last_name, role)
+        `)
+        .order("created_at", { ascending: false })
+        .limit(100);
+
+      if (classId) query = query.eq("class_id", classId);
+      if (date) query = query.eq("attendance_date", date);
+
+      const { data, error } = await query;
+      if (error) {
+        console.warn("Supabase studentAttendance.getAuditLog fallback:", error);
+        return [];
+      }
+
+      return (data || []).map((row: any) => ({
+        id: row.id,
+        date: row.attendance_date,
+        session: row.session === "morning" ? "Morning" : "Afternoon",
+        student_name: row.students?.full_name || "Student",
+        admission_number: row.students?.admission_number || "—",
+        class_name: row.classes?.name || "Class",
+        previous_status: row.previous_status || "Not Marked",
+        new_status: row.new_status,
+        changed_by: row.profiles ? `${row.profiles.first_name || ""} ${row.profiles.last_name || ""}`.trim() : "Admin/Teacher",
+        reason: row.reason || "Manual Correction",
+        timestamp: row.created_at,
+      }));
+    },
+  },
+
+  // --------------------------------------------------------------------------
+  // TEACHER LIVE ATTENDANCE (Phase 5 & 6)
+  // --------------------------------------------------------------------------
+  teacherAttendance: {
+    async getDutyStatus(teacherId: string, date?: string) {
+      if (!isSupabaseConfigured()) return null;
+      const targetDate = date || new Date().toISOString().slice(0, 10);
+
+      const { data, error } = await supabase
+        .from("teacher_attendance")
+        .select("*")
+        .eq("teacher_id", teacherId)
+        .eq("attendance_date", targetDate)
+        .maybeSingle();
+
+      if (error) {
+        console.warn("Supabase teacherAttendance.getDutyStatus fallback:", error);
+        return null;
+      }
+
+      return data;
+    },
+
+    async markDuty(teacherId: string, status: "active" | "inactive") {
+      if (!isSupabaseConfigured()) throw new SupabaseServiceError("Supabase not configured");
+
+      const { data, error } = await supabase.rpc("mark_teacher_duty", {
+        p_teacher_id: teacherId,
+        p_status: status,
+      });
+
+      if (error) throw new SupabaseServiceError(error.message, error.code, error.details);
+      return data;
+    },
+
+    async getFacultySummary(date?: string) {
+      if (!isSupabaseConfigured()) {
+        return {
+          total_faculty: 0,
+          present_faculty: 0,
+          active_faculty: 0,
+          inactive_faculty: 0,
+          not_arrived_faculty: 0,
+          faculty_list: [],
+        };
+      }
+
+      const targetDate = date || new Date().toISOString().slice(0, 10);
+
+      const [teachersRes, attendanceRes] = await Promise.all([
+        supabase
+          .from("teachers")
+          .select("id, employee_id, full_name, email, designation, department, is_active")
+          .eq("is_active", true)
+          .order("employee_id", { ascending: true }),
+        supabase
+          .from("teacher_attendance")
+          .select("*")
+          .eq("attendance_date", targetDate),
+      ]);
+
+      const teachers = teachersRes.data || [];
+      const attendance = attendanceRes.data || [];
+
+      const attMap: Record<string, any> = {};
+      attendance.forEach((a: any) => {
+        attMap[a.teacher_id] = a;
+      });
+
+      // Fetch active class assignments for faculty
+      const { data: assignments } = await supabase
+        .from("class_teacher_assignments")
+        .select("teacher_id, classes(name)")
+        .eq("is_active", true);
+
+      const assignedClassMap: Record<string, string> = {};
+      (assignments || []).forEach((a: any) => {
+        if (a.teacher_id && a.classes?.name) {
+          assignedClassMap[a.teacher_id] = a.classes.name;
+        }
+      });
+
+      const facultyList = teachers.map((t: any) => {
+        const att = attMap[t.id];
+        let status: "active" | "inactive" | "not_arrived" = "not_arrived";
+        if (att) {
+          const ds = (att.duty_status || att.status || "").toLowerCase();
+          if (ds === "active") status = "active";
+          else if (ds === "inactive") status = "inactive";
+          else status = "inactive";
+        }
+        return {
+          id: t.id,
+          employee_id: t.employee_id,
+          full_name: t.full_name,
+          designation: t.designation,
+          department: t.department,
+          duty_status: status,
+          is_present: Boolean(att && (att.status === "present" || att.duty_status)),
+          arrival_time: att?.arrival_time || null,
+          departure_time: att?.departure_time || null,
+          assigned_class: assignedClassMap[t.id] || "Subject Faculty",
+        };
+      });
+
+      const presentCount = attendance.length;
+      const activeCount = facultyList.filter((f) => f.duty_status === "active").length;
+      const inactiveCount = facultyList.filter((f) => f.duty_status === "inactive").length;
+      const notArrivedCount = facultyList.filter((f) => f.duty_status === "not_arrived").length;
+
+      return {
+        total_faculty: teachers.length,
+        present_faculty: presentCount,
+        active_faculty: activeCount,
+        inactive_faculty: inactiveCount,
+        not_arrived_faculty: notArrivedCount,
+        faculty_list: facultyList,
       };
     },
   },

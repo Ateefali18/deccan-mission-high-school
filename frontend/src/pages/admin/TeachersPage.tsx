@@ -26,8 +26,14 @@ import {
   FileCheck,
   RefreshCw,
   ExternalLink,
+  UserCheck,
+  History,
+  Sparkles,
+  School,
+  GraduationCap as GradCap,
 } from "lucide-react";
 import { api } from "../../services/api";
+import { useRealtimeSync } from "../../hooks/useRealtimeSync";
 import type { TeacherListItem, TeacherProfile, FacultyDocumentItem } from "../../types";
 import { PageHeader } from "../../components/shared/PageHeader";
 import { Table, type Column } from "../../components/ui/Table";
@@ -82,7 +88,7 @@ type TeacherEditFormData = z.infer<typeof teacherEditSchema>;
 
 const maskAadhaar = (val?: string | null): string => {
   if (!val) return "—";
-  const clean = val.replace(/\D/g, "");
+  const clean = String(val).replace(/\D/g, "");
   if (clean.length < 4) return "••••";
   return `•••• •••• ${clean.slice(-4)}`;
 };
@@ -92,6 +98,10 @@ export const TeachersPage: React.FC = () => {
   const initialSearch = searchParams.get("search") || "";
   const toast = useToast();
 
+  // Main Mode Tab: "directory" | "assignments"
+  const [mainTab, setMainTab] = useState<"directory" | "assignments">("directory");
+  const [facultyCategory, setFacultyCategory] = useState<"Teaching Faculty" | "Non-Teaching Staff">("Teaching Faculty");
+
   const [teachers, setTeachers] = useState<TeacherListItem[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -100,6 +110,17 @@ export const TeachersPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState(initialSearch);
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
   const [departmentFilter, setDepartmentFilter] = useState<string>("all");
+
+  // Phase 2: Class Teacher Assignments State
+  const [classAssignments, setClassAssignments] = useState<any[]>([]);
+  const [isLoadingAssignments, setIsLoadingAssignments] = useState(false);
+  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+  const [selectedClassForAssign, setSelectedClassForAssign] = useState<any | null>(null);
+  const [chosenTeacherId, setChosenTeacherId] = useState<string>("");
+  const [isSavingAssignment, setIsSavingAssignment] = useState(false);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [assignmentHistory, setAssignmentHistory] = useState<any[]>([]);
+  const [historyTargetClassName, setHistoryTargetClassName] = useState<string>("");
 
   // Modal Dialogs
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
@@ -191,9 +212,49 @@ export const TeachersPage: React.FC = () => {
     }
   }, [page, pageSize, searchTerm, statusFilter, departmentFilter, toast]);
 
+  const fetchClassAssignments = useCallback(async () => {
+    setIsLoadingAssignments(true);
+    try {
+      const data = await (api as any).classTeachers.list();
+      setClassAssignments(data);
+    } catch (err: any) {
+      console.warn("Failed to load class assignments:", err);
+    } finally {
+      setIsLoadingAssignments(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchTeachers();
-  }, [fetchTeachers]);
+    fetchClassAssignments();
+  }, [fetchTeachers, fetchClassAssignments]);
+
+  // Real-time synchronization across devices and browser sessions
+  useRealtimeSync({
+    tables: ["teachers", "class_teacher_assignments"],
+    onSync: () => {
+      fetchTeachers();
+      fetchClassAssignments();
+    },
+  });
+
+  const onInvalidCreate = (errors: any) => {
+    const personalKeys = ["full_name", "contact_phone", "email", "aadhaar_number", "date_of_birth"];
+    const profKeys = ["employee_id", "department", "designation", "password", "qualification", "specialization", "joining_date"];
+
+    if (personalKeys.some((k) => errors[k])) {
+      setRegisterTab("personal");
+      const firstErrKey = personalKeys.find((k) => errors[k]);
+      toast.error(errors[firstErrKey]?.message || "Please complete all mandatory personal details.");
+    } else if (profKeys.some((k) => errors[k])) {
+      setRegisterTab("professional");
+      const firstErrKey = profKeys.find((k) => errors[k]);
+      toast.error(errors[firstErrKey]?.message || "Please complete all mandatory professional details.");
+    } else {
+      const firstKey = Object.keys(errors)[0];
+      toast.error(errors[firstKey]?.message || "Please check required fields.");
+    }
+  };
 
   const onRegisterTeacher = async (data: TeacherCreateFormData) => {
     try {
@@ -201,7 +262,7 @@ export const TeachersPage: React.FC = () => {
       const newTeacher = await api.teachers.create(data);
 
       // Upload any attached certificates
-      if (pendingFiles.length > 0) {
+      if (pendingFiles.length > 0 && newTeacher?.id) {
         for (const item of pendingFiles) {
           try {
             await api.teachers.uploadDocument(newTeacher.id, item.file, item.type, item.title);
@@ -211,28 +272,61 @@ export const TeachersPage: React.FC = () => {
         }
       }
 
-      // If assigned class specified, allot immediately
-      if (data.assigned_class && data.assigned_subject) {
-        try {
-          await api.teachers.assignClass(newTeacher.id, {
-            class_name: data.assigned_class,
-            section_name: "A",
-            subject_name: data.assigned_subject,
-            role_type: "Class Teacher",
-          });
-        } catch {}
-      }
-
-      toast.success(`Faculty member ${data.full_name} admitted successfully with ${pendingFiles.length} certificate(s)!`);
+      toast.success(
+        `Faculty member ${data.full_name} (${data.employee_id}) admitted successfully to DMHS!`,
+        { title: "Admission Confirmed" }
+      );
       setIsRegisterOpen(false);
       resetCreate();
       setPendingFiles([]);
       setRegisterTab("personal");
-      fetchTeachers();
+      await Promise.all([fetchTeachers(), fetchClassAssignments()]);
     } catch (err: any) {
-      toast.error(err.message || "Failed to register teacher");
+      toast.error(err.message || "Failed to register faculty member. Please check details and retry.", {
+        title: "Admission Failed",
+      });
     } finally {
       setUploadProgress(false);
+    }
+  };
+
+  const handleOpenAssignModal = (cls: any) => {
+    setSelectedClassForAssign(cls);
+    setChosenTeacherId(cls.teacher_id || "");
+    setIsAssignModalOpen(true);
+  };
+
+  const handleConfirmAssignment = async () => {
+    if (!selectedClassForAssign || !chosenTeacherId) {
+      toast.error("Please select a faculty member to assign as Class Teacher.");
+      return;
+    }
+    setIsSavingAssignment(true);
+    try {
+      await (api as any).classTeachers.assign(selectedClassForAssign.class_id, chosenTeacherId);
+      toast.success(
+        `Class Teacher assigned successfully to ${selectedClassForAssign.class_name}! Permissions updated immediately.`,
+        { title: "Class Teacher Assigned" }
+      );
+      setIsAssignModalOpen(false);
+      setSelectedClassForAssign(null);
+      setChosenTeacherId("");
+      await Promise.all([fetchClassAssignments(), fetchTeachers()]);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to assign Class Teacher");
+    } finally {
+      setIsSavingAssignment(false);
+    }
+  };
+
+  const handleOpenHistory = async (cls?: any) => {
+    try {
+      setHistoryTargetClassName(cls ? cls.class_name : "All Classes");
+      const history = await (api as any).classTeachers.getHistory(cls?.class_id);
+      setAssignmentHistory(history);
+      setIsHistoryModalOpen(true);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to load assignment history");
     }
   };
 
@@ -453,85 +547,284 @@ export const TeachersPage: React.FC = () => {
     <div className="space-y-6">
       <PageHeader
         title="Faculty & Teachers Management"
-        description="Comprehensive faculty directory, credentials verification, subject allotment, and confidential document dossiers."
+        description="Comprehensive faculty directory, credentials verification, class teacher assignment, and confidential document dossiers."
         action={
-          <Button
-            variant="primary"
-            leftIcon={<UserPlus className="w-4 h-4" />}
-            onClick={() => {
-              resetCreate();
-              setPendingFiles([]);
-              setRegisterTab("personal");
-              setIsRegisterOpen(true);
-            }}
-          >
-            Add New Faculty Member
-          </Button>
+          <div className="flex items-center gap-2">
+            {mainTab === "assignments" && (
+              <Button
+                variant="secondary"
+                leftIcon={<History className="w-4 h-4" />}
+                onClick={() => handleOpenHistory()}
+              >
+                Assignment History
+              </Button>
+            )}
+            <Button
+              variant="primary"
+              leftIcon={<UserPlus className="w-4 h-4" />}
+              onClick={() => {
+                resetCreate();
+                setPendingFiles([]);
+                setRegisterTab("personal");
+                setIsRegisterOpen(true);
+              }}
+            >
+              Add New Faculty Member
+            </Button>
+          </div>
         }
       />
 
-      {/* Filter and Search Bar */}
-      <div className="p-4 rounded-2xl bg-white dark:bg-dark-card border border-light-border dark:border-dark-border shadow-sm grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
-        <div className="sm:col-span-6">
-          <label className="block text-xs font-semibold text-light-secondary dark:text-dark-secondary mb-1">
-            Search Faculty Directory
-          </label>
-          <div className="relative">
-            <Search className="w-4 h-4 absolute left-3 top-2.5 text-light-secondary dark:text-dark-secondary" />
-            <input
-              type="text"
-              placeholder="Search faculty name, ID, email, or department..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full text-xs sm:text-sm pl-9 pr-3 py-2 rounded-lg bg-gray-50 dark:bg-dark-elevated text-light-primary dark:text-dark-primary border border-light-border dark:border-dark-border focus:border-brand-gold focus:outline-none"
+      {/* Main Mode Navigation Tabs */}
+      <div className="flex items-center gap-3 border-b border-light-border dark:border-dark-border pb-3">
+        <button
+          type="button"
+          onClick={() => setMainTab("directory")}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer ${
+            mainTab === "directory"
+              ? "bg-brand-navy dark:bg-brand-gold text-white dark:text-dark-bg shadow-sm"
+              : "bg-white dark:bg-dark-card border border-light-border dark:border-dark-border text-light-secondary dark:text-dark-secondary hover:bg-gray-100"
+          }`}
+        >
+          <Users className="w-4 h-4" />
+          Faculty &amp; Staff Directory ({total || teachers.length})
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setMainTab("assignments");
+            fetchClassAssignments();
+          }}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer ${
+            mainTab === "assignments"
+              ? "bg-brand-navy dark:bg-brand-gold text-white dark:text-dark-bg shadow-sm"
+              : "bg-white dark:bg-dark-card border border-light-border dark:border-dark-border text-light-secondary dark:text-dark-secondary hover:bg-gray-100"
+          }`}
+        >
+          <UserCheck className="w-4 h-4" />
+          Class Teacher Assignments (13 Classes)
+        </button>
+      </div>
+
+      {mainTab === "directory" ? (
+        <>
+          {/* Filter and Search Bar */}
+          <div className="p-4 rounded-2xl bg-white dark:bg-dark-card border border-light-border dark:border-dark-border shadow-sm grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+            <div className="sm:col-span-6">
+              <label className="block text-xs font-semibold text-light-secondary dark:text-dark-secondary mb-1">
+                Search Faculty Directory
+              </label>
+              <div className="relative">
+                <Search className="w-4 h-4 absolute left-3 top-2.5 text-light-secondary dark:text-dark-secondary" />
+                <input
+                  type="text"
+                  placeholder="Search faculty name, ID, email, or department..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full text-xs sm:text-sm pl-9 pr-3 py-2 rounded-lg bg-gray-50 dark:bg-dark-elevated text-light-primary dark:text-dark-primary border border-light-border dark:border-dark-border focus:border-brand-gold focus:outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="sm:col-span-3">
+              <label className="block text-xs font-semibold text-light-secondary dark:text-dark-secondary mb-1">
+                Department
+              </label>
+              <select
+                value={departmentFilter}
+                onChange={(e) => setDepartmentFilter(e.target.value)}
+                className="w-full text-xs sm:text-sm px-3 py-2 rounded-lg bg-gray-50 dark:bg-dark-elevated text-light-primary dark:text-dark-primary border border-light-border dark:border-dark-border focus:border-brand-gold focus:outline-none"
+              >
+                <option value="all">All Departments</option>
+                <option value="Mathematics">Mathematics</option>
+                <option value="Science">Science (Physics/Chemistry)</option>
+                <option value="English">English Core</option>
+                <option value="Social Studies">Social Studies</option>
+                <option value="Languages">Languages (Telugu/Hindi/Urdu)</option>
+                <option value="Computer Science">Computer Science</option>
+              </select>
+            </div>
+
+            <div className="sm:col-span-3">
+              <label className="block text-xs font-semibold text-light-secondary dark:text-dark-secondary mb-1">
+                Employment Status
+              </label>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as any)}
+                className="w-full text-xs sm:text-sm px-3 py-2 rounded-lg bg-gray-50 dark:bg-dark-elevated text-light-primary dark:text-dark-primary border border-light-border dark:border-dark-border focus:border-brand-gold focus:outline-none"
+              >
+                <option value="all">All Statuses</option>
+                <option value="active">Active Faculty</option>
+                <option value="inactive">Inactive / On Leave</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Teachers Table */}
+          <div className="rounded-2xl bg-white dark:bg-dark-card border border-light-border dark:border-dark-border overflow-hidden shadow-sm">
+            <Table columns={columns} data={teachers} isLoading={isLoading} />
+            <Pagination
+              currentPage={page}
+              totalPages={Math.ceil(total / pageSize) || 1}
+              onPageChange={setPage}
             />
           </div>
-        </div>
+        </>
+      ) : (
+        /* DEDICATED CLASS TEACHER ASSIGNMENT SYSTEM (PHASE 2) */
+        <div className="space-y-6">
+          <div className="p-4 rounded-2xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/50 flex items-start gap-3">
+            <Shield className="w-5 h-5 text-brand-navy dark:text-brand-gold shrink-0 mt-0.5" />
+            <div className="text-xs text-light-primary dark:text-dark-primary leading-relaxed">
+              <span className="font-bold text-sm block mb-1">Deccan Mission High School — Class Teacher Governance</span>
+              Total 13 Teachers: <strong>3 Teachers</strong> dedicated to Pre-Primary (Nursery, LKG, UKG) and <strong>10 Teachers</strong> dedicated to Classes 1 to 10.
+              Each class has exactly <strong>one active Class Teacher</strong> at any time. When a class teacher is updated, attendance permissions automatically transfer to the newly assigned teacher immediately, and full history is audited.
+            </div>
+          </div>
 
-        <div className="sm:col-span-3">
-          <label className="block text-xs font-semibold text-light-secondary dark:text-dark-secondary mb-1">
-            Department
-          </label>
-          <select
-            value={departmentFilter}
-            onChange={(e) => setDepartmentFilter(e.target.value)}
-            className="w-full text-xs sm:text-sm px-3 py-2 rounded-lg bg-gray-50 dark:bg-dark-elevated text-light-primary dark:text-dark-primary border border-light-border dark:border-dark-border focus:border-brand-gold focus:outline-none"
-          >
-            <option value="all">All Departments</option>
-            <option value="Mathematics">Mathematics</option>
-            <option value="Science">Science (Physics/Chemistry)</option>
-            <option value="English">English Core</option>
-            <option value="Social Studies">Social Studies</option>
-            <option value="Languages">Languages (Telugu/Hindi/Urdu)</option>
-            <option value="Computer Science">Computer Science</option>
-          </select>
-        </div>
+          {/* Pre-Primary Section */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-sm text-brand-navy dark:text-brand-gold uppercase tracking-wider flex items-center gap-2">
+                <School className="w-4 h-4" />
+                Pre-Primary Wings (3 Classes / 3 Teachers)
+              </h3>
+              <Badge variant="gold">Nursery, LKG &amp; UKG</Badge>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {classAssignments
+                .filter((c) => ["Nursery", "LKG", "UKG"].includes(c.class_name) || c.grade_level <= 0)
+                .map((cls) => (
+                  <div
+                    key={cls.class_id}
+                    className="p-5 rounded-2xl bg-white dark:bg-dark-card border border-light-border dark:border-dark-border shadow-sm flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="font-bold text-base text-brand-navy dark:text-white">{cls.class_name}</span>
+                        <Badge variant={cls.is_assigned ? "success" : "neutral"} size="sm">
+                          {cls.is_assigned ? "Assigned" : "Unassigned"}
+                        </Badge>
+                      </div>
 
-        <div className="sm:col-span-3">
-          <label className="block text-xs font-semibold text-light-secondary dark:text-dark-secondary mb-1">
-            Employment Status
-          </label>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as any)}
-            className="w-full text-xs sm:text-sm px-3 py-2 rounded-lg bg-gray-50 dark:bg-dark-elevated text-light-primary dark:text-dark-primary border border-light-border dark:border-dark-border focus:border-brand-gold focus:outline-none"
-          >
-            <option value="all">All Statuses</option>
-            <option value="active">Active Faculty</option>
-            <option value="inactive">Inactive / On Leave</option>
-          </select>
-        </div>
-      </div>
+                      {cls.is_assigned ? (
+                        <div className="space-y-1.5 p-3 rounded-xl bg-gray-50 dark:bg-dark-elevated mb-4">
+                          <div className="font-bold text-sm text-light-primary dark:text-dark-primary flex items-center gap-1.5">
+                            <UserCheck className="w-4 h-4 text-emerald-600" />
+                            {cls.teacher_name}
+                          </div>
+                          <div className="text-xs text-light-secondary dark:text-dark-secondary font-mono">
+                            ID: {cls.employee_id || "—"}
+                          </div>
+                          <div className="text-[11px] text-light-secondary dark:text-dark-secondary">
+                            {cls.designation || "Class Teacher"} ({cls.department || "Pre-Primary"})
+                          </div>
+                          {cls.assigned_at && (
+                            <div className="text-[10px] text-emerald-700 dark:text-emerald-400 mt-1">
+                              Assigned: {new Date(cls.assigned_at).toLocaleDateString()}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 text-amber-700 dark:text-amber-300 text-xs mb-4">
+                          No active Class Teacher assigned. Daily attendance submission is restricted.
+                        </div>
+                      )}
+                    </div>
 
-      {/* Teachers Table */}
-      <div className="rounded-2xl bg-white dark:bg-dark-card border border-light-border dark:border-dark-border overflow-hidden shadow-sm">
-        <Table columns={columns} data={teachers} isLoading={isLoading} />
-        <Pagination
-          currentPage={page}
-          totalPages={Math.ceil(total / pageSize) || 1}
-          onPageChange={setPage}
-        />
-      </div>
+                    <div className="flex items-center gap-2 pt-2 border-t border-light-border dark:border-dark-border">
+                      <Button
+                        variant={cls.is_assigned ? "secondary" : "primary"}
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => handleOpenAssignModal(cls)}
+                      >
+                        {cls.is_assigned ? "Change Teacher" : "Assign Teacher"}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleOpenHistory(cls)}
+                        title="View Assignment History"
+                      >
+                        <History className="w-4 h-4 text-light-secondary dark:text-dark-secondary" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </div>
+
+          {/* Primary & Higher Classes Section */}
+          <div className="space-y-3 pt-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-sm text-brand-navy dark:text-brand-gold uppercase tracking-wider flex items-center gap-2">
+                <GradCap className="w-4 h-4" />
+                Primary &amp; High School (Classes 1 to 10 / 10 Teachers)
+              </h3>
+              <Badge variant="blue">Classes 1 — 10</Badge>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+              {classAssignments
+                .filter((c) => !["Nursery", "LKG", "UKG"].includes(c.class_name) && c.grade_level > 0)
+                .map((cls) => (
+                  <div
+                    key={cls.class_id}
+                    className="p-4 rounded-2xl bg-white dark:bg-dark-card border border-light-border dark:border-dark-border shadow-sm flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-bold text-sm text-brand-navy dark:text-white">{cls.class_name}</span>
+                        <Badge variant={cls.is_assigned ? "success" : "neutral"} size="sm">
+                          {cls.is_assigned ? "Active" : "Vacant"}
+                        </Badge>
+                      </div>
+
+                      {cls.is_assigned ? (
+                        <div className="space-y-1 p-2.5 rounded-xl bg-gray-50 dark:bg-dark-elevated mb-3 text-xs">
+                          <div className="font-bold text-light-primary dark:text-dark-primary truncate">
+                            {cls.teacher_name}
+                          </div>
+                          <div className="text-[11px] text-light-secondary dark:text-dark-secondary font-mono">
+                            {cls.employee_id}
+                          </div>
+                          <div className="text-[10px] text-emerald-600 dark:text-emerald-400">
+                            {cls.department || "Faculty"}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="p-2 rounded-xl bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-300 text-[11px] mb-3">
+                          No Class Teacher
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-1.5 pt-2 border-t border-light-border dark:border-dark-border">
+                      <Button
+                        variant={cls.is_assigned ? "secondary" : "primary"}
+                        size="sm"
+                        className="flex-1 text-xs px-2 py-1"
+                        onClick={() => handleOpenAssignModal(cls)}
+                      >
+                        {cls.is_assigned ? "Change" : "Assign"}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="px-2"
+                        onClick={() => handleOpenHistory(cls)}
+                        title="View History"
+                      >
+                        <History className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ==================================================================== */}
       {/* 1. ADMIT FACULTY MODAL (3-STEP: PERSONAL, PROFESSIONAL, DOCUMENTS) */}
@@ -539,8 +832,8 @@ export const TeachersPage: React.FC = () => {
       <Dialog
         isOpen={isRegisterOpen}
         onClose={() => setIsRegisterOpen(false)}
-        title="Faculty Admission & Onboarding"
-        description="Registers faculty credentials, personal details, professional qualifications, and documents"
+        title={facultyCategory === "Teaching Faculty" ? "Faculty Admission & Onboarding" : "Staff Onboarding & Registration"}
+        description={`Registers ${facultyCategory.toLowerCase()} credentials, personal details, professional qualifications, and documents`}
         maxWidth="2xl"
         footer={
           <div className="flex items-center justify-between w-full">
@@ -557,32 +850,77 @@ export const TeachersPage: React.FC = () => {
             </Button>
 
             <div className="flex items-center gap-2">
-              {registerTab !== "documents" ? (
+              {registerTab !== "documents" && (
                 <Button
                   type="button"
-                  variant="primary"
+                  variant="secondary"
                   onClick={() => {
                     if (registerTab === "personal") setRegisterTab("professional");
                     else setRegisterTab("documents");
                   }}
                 >
-                  Continue to Next Step
-                </Button>
-              ) : (
-                <Button
-                  type="button"
-                  variant="primary"
-                  onClick={handleSubmitCreate(onRegisterTeacher)}
-                  isLoading={isSubmittingCreate || uploadProgress}
-                >
-                  Confirm &amp; Admit Faculty Member
+                  Next Step →
                 </Button>
               )}
+
+              <Button
+                type="button"
+                variant="primary"
+                onClick={handleSubmitCreate(onRegisterTeacher, onInvalidCreate)}
+                isLoading={isSubmittingCreate || uploadProgress}
+                disabled={isSubmittingCreate || uploadProgress}
+              >
+                {registerTab === "documents"
+                  ? `Confirm & Admit ${facultyCategory === "Teaching Faculty" ? "Faculty" : "Staff"}`
+                  : `Save ${facultyCategory === "Teaching Faculty" ? "Faculty" : "Staff"} Member`}
+              </Button>
             </div>
           </div>
         }
       >
         <div className="space-y-5">
+          {/* Category Toggle: Teaching Faculty vs Non-Teaching Staff */}
+          <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-dark-elevated rounded-xl border border-light-border dark:border-dark-border">
+            <span className="text-xs font-bold text-light-primary dark:text-dark-primary uppercase tracking-wider">
+              Category:
+            </span>
+            <div className="inline-flex rounded-lg bg-light-card dark:bg-dark-card p-1 border border-light-border dark:border-dark-border">
+              <button
+                type="button"
+                onClick={() => {
+                  setFacultyCategory("Teaching Faculty");
+                  setCreateValue("department", "Mathematics");
+                  setCreateValue("designation", "Faculty / Senior Teacher");
+                }}
+                className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${
+                  facultyCategory === "Teaching Faculty"
+                    ? "bg-brand-navy text-white shadow-sm"
+                    : "text-light-secondary dark:text-dark-secondary hover:text-light-primary"
+                }`}
+              >
+                🎓 Teaching Faculty
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setFacultyCategory("Non-Teaching Staff");
+                  setCreateValue("department", "Administration");
+                  setCreateValue("designation", "Administrative Staff");
+                }}
+                className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${
+                  facultyCategory === "Non-Teaching Staff"
+                    ? "bg-brand-navy text-white shadow-sm"
+                    : "text-light-secondary dark:text-dark-secondary hover:text-light-primary"
+                }`}
+              >
+                💼 Non-Teaching Staff
+              </button>
+            </div>
+            <span className="text-xs text-light-secondary dark:text-dark-secondary hidden sm:inline">
+              ({facultyCategory === "Teaching Faculty" ? "Teachers & Lecturers" : "Accounts, Admin, Library & Support"})
+            </span>
+          </div>
+
           {/* Progress Step Badges */}
           <div className="grid grid-cols-3 gap-2 border-b border-light-border dark:border-dark-border pb-3">
             <button
@@ -620,134 +958,150 @@ export const TeachersPage: React.FC = () => {
             </button>
           </div>
 
-          <form onSubmit={handleSubmitCreate(onRegisterTeacher)} className="space-y-4">
-            {/* STEP 1: PERSONAL DETAILS */}
-            {registerTab === "personal" && (
-              <div className="space-y-4 animate-in fade-in-50">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Input
-                    label="Faculty Full Name *"
-                    placeholder="e.g. Dr. Syed Khaja Mohiuddin"
-                    error={createErrors.full_name?.message}
-                    required
-                    {...registerCreate("full_name")}
-                  />
-                  <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-light-secondary dark:text-dark-secondary mb-1">
-                      Gender *
-                    </label>
-                    <select
-                      {...registerCreate("gender")}
-                      className="w-full text-xs sm:text-sm px-3 py-2 rounded-lg bg-light-input dark:bg-dark-input text-light-primary dark:text-dark-primary border border-light-border dark:border-dark-border focus:border-brand-gold focus:outline-none"
-                    >
-                      <option value="Male">Male</option>
-                      <option value="Female">Female</option>
-                      <option value="Other">Other</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Input
-                    label="Date of Birth"
-                    type="date"
-                    {...registerCreate("date_of_birth")}
-                  />
-                  <Input
-                    label="Aadhaar Card Number (12 Digits)"
-                    placeholder="e.g. 5432 9876 1234"
-                    error={createErrors.aadhaar_number?.message}
-                    {...registerCreate("aadhaar_number")}
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Input
-                    label="Contact Phone Number *"
-                    placeholder="+91 98490 12345"
-                    error={createErrors.contact_phone?.message}
-                    required
-                    {...registerCreate("contact_phone")}
-                  />
-                  <Input
-                    label="Email Address *"
-                    type="email"
-                    placeholder="e.g. khaja.mohiuddin@dmhs.edu.in"
-                    error={createErrors.email?.message}
-                    required
-                    {...registerCreate("email")}
-                  />
-                </div>
-
-                <div className="col-span-full">
-                  <Input
-                    label="Residential Address"
-                    placeholder="Street, locality, Hyderabad, Telangana"
-                    {...registerCreate("address")}
-                  />
+          <form onSubmit={handleSubmitCreate(onRegisterTeacher, onInvalidCreate)} className="space-y-4">
+            {/* STEP 1: PERSONAL DETAILS (Kept mounted to preserve form state) */}
+            <div className={registerTab === "personal" ? "space-y-4 animate-in fade-in-50" : "hidden"}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Input
+                  label={`${facultyCategory === "Teaching Faculty" ? "Faculty" : "Staff"} Full Name *`}
+                  placeholder="e.g. Dr. Syed Khaja Mohiuddin"
+                  error={createErrors.full_name?.message}
+                  required
+                  {...registerCreate("full_name")}
+                />
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-light-secondary dark:text-dark-secondary mb-1">
+                    Gender *
+                  </label>
+                  <select
+                    {...registerCreate("gender")}
+                    className="w-full text-xs sm:text-sm px-3 py-2 rounded-lg bg-light-input dark:bg-dark-input text-light-primary dark:text-dark-primary border border-light-border dark:border-dark-border focus:border-brand-gold focus:outline-none"
+                  >
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
                 </div>
               </div>
-            )}
 
-            {/* STEP 2: PROFESSIONAL & CLASS ALLOTMENT */}
-            {registerTab === "professional" && (
-              <div className="space-y-4 animate-in fade-in-50">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Input
-                    label="Faculty / Employee ID *"
-                    placeholder="e.g. EMP-104"
-                    error={createErrors.employee_id?.message}
-                    required
-                    {...registerCreate("employee_id")}
-                  />
-                  <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-light-secondary dark:text-dark-secondary mb-1">
-                      Department *
-                    </label>
-                    <select
-                      {...registerCreate("department")}
-                      className="w-full text-xs sm:text-sm px-3 py-2 rounded-lg bg-light-input dark:bg-dark-input text-light-primary dark:text-dark-primary border border-light-border dark:border-dark-border focus:border-brand-gold focus:outline-none"
-                    >
-                      <option value="Mathematics">Mathematics</option>
-                      <option value="Science">Science (Physics/Chemistry/Bio)</option>
-                      <option value="English">English</option>
-                      <option value="Social Studies">Social Studies</option>
-                      <option value="Languages">Languages (Telugu/Hindi/Urdu)</option>
-                      <option value="Computer Science">Computer Science</option>
-                      <option value="Physical Education">Physical Education</option>
-                    </select>
-                  </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Input
+                  label="Date of Birth"
+                  type="date"
+                  {...registerCreate("date_of_birth")}
+                />
+                <Input
+                  label="Aadhaar Card Number (12 Digits)"
+                  placeholder="e.g. 5432 9876 1234"
+                  error={createErrors.aadhaar_number?.message}
+                  {...registerCreate("aadhaar_number")}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Input
+                  label="Contact Phone Number *"
+                  placeholder="+91 98490 12345"
+                  error={createErrors.contact_phone?.message}
+                  required
+                  {...registerCreate("contact_phone")}
+                />
+                <Input
+                  label="Email Address *"
+                  type="email"
+                  placeholder="e.g. khaja.mohiuddin@dmhs.edu.in"
+                  error={createErrors.email?.message}
+                  required
+                  {...registerCreate("email")}
+                />
+              </div>
+
+              <div className="col-span-full">
+                <Input
+                  label="Residential Address"
+                  placeholder="Street, locality, Hyderabad, Telangana"
+                  {...registerCreate("address")}
+                />
+              </div>
+            </div>
+
+            {/* STEP 2: PROFESSIONAL & CLASS ALLOTMENT (Kept mounted to preserve form state) */}
+            <div className={registerTab === "professional" ? "space-y-4 animate-in fade-in-50" : "hidden"}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Input
+                  label={`${facultyCategory === "Teaching Faculty" ? "Faculty" : "Staff"} / Employee ID *`}
+                  placeholder="e.g. EMP-104"
+                  error={createErrors.employee_id?.message}
+                  required
+                  {...registerCreate("employee_id")}
+                />
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-light-secondary dark:text-dark-secondary mb-1">
+                    Department *
+                  </label>
+                  <select
+                    {...registerCreate("department")}
+                    className="w-full text-xs sm:text-sm px-3 py-2 rounded-lg bg-light-input dark:bg-dark-input text-light-primary dark:text-dark-primary border border-light-border dark:border-dark-border focus:border-brand-gold focus:outline-none"
+                  >
+                    {facultyCategory === "Teaching Faculty" ? (
+                      <>
+                        <option value="Mathematics">Mathematics</option>
+                        <option value="Science">Science (Physics/Chemistry/Bio)</option>
+                        <option value="English">English</option>
+                        <option value="Social Studies">Social Studies</option>
+                        <option value="Languages">Languages (Telugu/Hindi/Urdu)</option>
+                        <option value="Computer Science">Computer Science</option>
+                        <option value="Physical Education">Physical Education</option>
+                        <option value="Pre-Primary">Pre-Primary (Nursery/LKG/UKG)</option>
+                      </>
+                    ) : (
+                      <>
+                        <option value="Administration">Administration</option>
+                        <option value="Accounts & Finance">Accounts & Finance</option>
+                        <option value="Library">Library</option>
+                        <option value="Laboratory">Laboratory Operations</option>
+                        <option value="Front Desk">Front Desk & Admissions</option>
+                        <option value="Operations">Operations & Campus</option>
+                      </>
+                    )}
+                  </select>
                 </div>
+              </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Input
-                    label="Designation / Title *"
-                    placeholder="e.g. Senior Faculty / PGT Mathematics"
-                    error={createErrors.designation?.message}
-                    required
-                    {...registerCreate("designation")}
-                  />
-                  <Input
-                    label="Educational Qualifications"
-                    placeholder="e.g. M.Sc. Mathematics, B.Ed"
-                    {...registerCreate("qualification")}
-                  />
-                </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Input
+                  label="Designation / Title *"
+                  placeholder={
+                    facultyCategory === "Teaching Faculty"
+                      ? "e.g. Senior Faculty / PGT Mathematics"
+                      : "e.g. Senior Accountant / Admin Officer"
+                  }
+                  error={createErrors.designation?.message}
+                  required
+                  {...registerCreate("designation")}
+                />
+                <Input
+                  label="Educational Qualifications"
+                  placeholder="e.g. M.Sc. Mathematics, B.Ed / M.Com, MBA"
+                  {...registerCreate("qualification")}
+                />
+              </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Input
-                    label="Subject Specialization"
-                    placeholder="e.g. Algebra & Calculus"
-                    {...registerCreate("specialization")}
-                  />
-                  <Input
-                    label="Date of Joining"
-                    type="date"
-                    {...registerCreate("joining_date")}
-                  />
-                </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Input
+                  label="Specialization / Subject Domain"
+                  placeholder="e.g. Algebra & Calculus / Financial Accounting"
+                  {...registerCreate("specialization")}
+                />
+                <Input
+                  label="Date of Joining"
+                  type="date"
+                  {...registerCreate("joining_date")}
+                />
+              </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {facultyCategory === "Teaching Faculty" ? (
                   <div>
                     <label className="block text-xs font-semibold uppercase tracking-wider text-light-secondary dark:text-dark-secondary mb-1">
                       Initial Assigned Class
@@ -763,39 +1117,51 @@ export const TeachersPage: React.FC = () => {
                       <option value="Class 6">Class 6</option>
                       <option value="Class 5">Class 5</option>
                       <option value="Class 1">Class 1</option>
+                      <option value="UKG">UKG</option>
+                      <option value="LKG">LKG</option>
+                      <option value="Nursery">Nursery</option>
                     </select>
                   </div>
-
+                ) : (
                   <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="text-xs font-semibold uppercase tracking-wider text-light-secondary dark:text-dark-secondary">
-                        Portal Login Password *
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const pass = "TCH@" + Math.floor(1000 + Math.random() * 9000);
-                          setCreateValue("password", pass);
-                          toast.success(`Generated portal password: ${pass}`);
-                        }}
-                        className="text-[11px] font-bold text-brand-blue dark:text-brand-gold hover:underline"
-                      >
-                        Auto-Generate
-                      </button>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-light-secondary dark:text-dark-secondary mb-1">
+                      Staff Role Category
+                    </label>
+                    <div className="px-3 py-2 text-xs rounded-lg bg-gray-100 dark:bg-dark-elevated text-light-primary dark:text-dark-primary border border-light-border dark:border-dark-border font-medium">
+                      Non-Teaching Staff (Operations / Admin)
                     </div>
-                    <Input
-                      placeholder="Password for portal"
-                      error={createErrors.password?.message}
-                      required
-                      {...registerCreate("password")}
-                    />
                   </div>
+                )}
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-semibold uppercase tracking-wider text-light-secondary dark:text-dark-secondary">
+                      Portal Login Password *
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const pass = "DMHS@" + Math.floor(1000 + Math.random() * 9000);
+                        setCreateValue("password", pass);
+                        toast.success(`Generated portal password: ${pass}`);
+                      }}
+                      className="text-[11px] font-bold text-brand-blue dark:text-brand-gold hover:underline"
+                    >
+                      Auto-Generate
+                    </button>
+                  </div>
+                  <Input
+                    placeholder="Password for portal"
+                    error={createErrors.password?.message}
+                    required
+                    {...registerCreate("password")}
+                  />
                 </div>
               </div>
-            )}
+            </div>
 
-            {/* STEP 3: CERTIFICATES & DOCUMENTS */}
-            {registerTab === "documents" && (
+            {/* STEP 3: CERTIFICATES & DOCUMENTS (Kept mounted to preserve state) */}
+            <div className={registerTab === "documents" ? "space-y-4 animate-in fade-in-50" : "hidden"}>
               <div className="space-y-4 animate-in fade-in-50">
                 <div className="p-4 rounded-xl bg-blue-50/70 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/40 text-xs text-blue-900 dark:text-blue-300">
                   <p className="font-semibold mb-1 flex items-center gap-1.5">
@@ -873,7 +1239,7 @@ export const TeachersPage: React.FC = () => {
                   </div>
                 )}
               </div>
-            )}
+            </div>
           </form>
         </div>
       </Dialog>
@@ -1285,6 +1651,133 @@ export const TeachersPage: React.FC = () => {
         variant="danger"
         isLoading={isDeactivating}
       />
+
+      {/* ==================================================================== */}
+      {/* 7. ASSIGN / CHANGE CLASS TEACHER MODAL (PHASE 2) */}
+      {/* ==================================================================== */}
+      <Dialog
+        isOpen={isAssignModalOpen}
+        onClose={() => setIsAssignModalOpen(false)}
+        title={`Assign Class Teacher — ${selectedClassForAssign?.class_name || "Class"}`}
+        description="Select an admitted faculty member to appoint as the sole active Class Teacher with exclusive daily attendance permissions."
+        maxWidth="md"
+        footer={
+          <div className="flex items-center justify-end gap-2 w-full">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setIsAssignModalOpen(false)}
+              disabled={isSavingAssignment}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              onClick={handleConfirmAssignment}
+              isLoading={isSavingAssignment}
+            >
+              Confirm &amp; Save Assignment
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 text-amber-800 dark:text-amber-300 text-xs flex items-start gap-2">
+            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+            <span>
+              <strong>Permission Transfer:</strong> Assigning a teacher will immediately grant them attendance marking authority for {selectedClassForAssign?.class_name}. Any previously assigned teacher will lose attendance rights instantly.
+            </span>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold uppercase text-light-secondary dark:text-dark-secondary mb-1">
+              Select Admitted Faculty Member *
+            </label>
+            <select
+              value={chosenTeacherId}
+              onChange={(e) => setChosenTeacherId(e.target.value)}
+              className="w-full text-xs sm:text-sm px-3 py-2 rounded-lg bg-light-input dark:bg-dark-input text-light-primary dark:text-dark-primary border border-light-border dark:border-dark-border focus:border-brand-gold focus:outline-none"
+            >
+              <option value="">-- Choose Faculty Member --</option>
+              {teachers
+                .filter((t) => t.is_active)
+                .map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.full_name} ({t.employee_id}) — {t.department || "General"}
+                  </option>
+                ))}
+            </select>
+          </div>
+
+          {selectedClassForAssign?.is_assigned && (
+            <div className="p-3 rounded-xl bg-gray-50 dark:bg-dark-elevated text-xs space-y-1">
+              <span className="text-light-secondary dark:text-dark-secondary block font-semibold">Currently Active Teacher:</span>
+              <span className="font-bold text-light-primary dark:text-dark-primary">
+                {selectedClassForAssign.teacher_name} ({selectedClassForAssign.employee_id})
+              </span>
+            </div>
+          )}
+        </div>
+      </Dialog>
+
+      {/* ==================================================================== */}
+      {/* 8. CLASS TEACHER ASSIGNMENT AUDIT HISTORY MODAL (PHASE 2 REQ 11) */}
+      {/* ==================================================================== */}
+      <Dialog
+        isOpen={isHistoryModalOpen}
+        onClose={() => setIsHistoryModalOpen(false)}
+        title={`Class Teacher Assignment History — ${historyTargetClassName}`}
+        description="Immutable audit trail of faculty appointments, class responsibilities, and reassignment timestamps."
+        maxWidth="2xl"
+        footer={
+          <Button variant="secondary" onClick={() => setIsHistoryModalOpen(false)}>
+            Close History
+          </Button>
+        }
+      >
+        <div className="space-y-3 max-h-[450px] overflow-y-auto pr-1">
+          {assignmentHistory.length === 0 ? (
+            <div className="p-8 text-center text-xs text-light-secondary dark:text-dark-secondary">
+              No historical assignment records found.
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {assignmentHistory.map((h) => (
+                <div
+                  key={h.id}
+                  className="p-3.5 rounded-xl bg-gray-50 dark:bg-dark-elevated border border-light-border dark:border-dark-border flex items-center justify-between"
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-xs sm:text-sm text-light-primary dark:text-dark-primary">
+                        {h.teacher_name}
+                      </span>
+                      <span className="font-mono text-[11px] text-light-secondary dark:text-dark-secondary">
+                        ({h.employee_id})
+                      </span>
+                      <Badge variant="blue" size="sm">{h.class_name}</Badge>
+                    </div>
+                    <div className="text-[11px] text-light-secondary dark:text-dark-secondary flex items-center gap-3">
+                      <span>Assigned: {new Date(h.assigned_at).toLocaleString()}</span>
+                      {h.revoked_at && (
+                        <span className="text-rose-600 dark:text-rose-400">
+                          Changed / Revoked: {new Date(h.revoked_at).toLocaleString()}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <Badge variant={h.is_active ? "success" : "neutral"} size="sm">
+                      {h.is_active ? "Active" : "Archived"}
+                    </Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </Dialog>
     </div>
   );
 };
