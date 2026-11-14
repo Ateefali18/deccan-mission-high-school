@@ -295,12 +295,12 @@ async function dispatchRealGmailOtp(params: {
     if (data?.code === "SMTP_CREDENTIALS_MISSING") {
       return {
         delivered: false,
-        notice: "Gmail credentials (GMAIL_USER & GMAIL_APP_PASSWORD) pending configuration in Netlify environment variables.",
+        notice: "Gmail credentials (GMAIL_USER & GMAIL_APP_PASSWORD) pending configuration in Vercel environment variables.",
       };
     }
     return { delivered: false, notice: data?.message || "Email delivery awaiting network response." };
   } catch {
-    return { delivered: false, notice: "Netlify serverless function /api/send-otp is active in deployed environment." };
+    return { delivered: false, notice: "Serverless function /api/send-otp is active in deployed environment." };
   }
 }
 
@@ -381,7 +381,7 @@ export const authRecoveryService = {
       timestamp: new Date().toISOString(),
     });
 
-    // Real Gmail delivery via Netlify Function
+    // Real Gmail delivery via Serverless Function
     const dispatchResult = await dispatchRealGmailOtp({
       email: account.email,
       otp: generatedOtp,
@@ -517,7 +517,7 @@ export const authRecoveryService = {
       timestamp: new Date().toISOString(),
     });
 
-    // Real Gmail delivery via Netlify Function
+    // Real Gmail delivery via Serverless Function
     const resendDispatch = await dispatchRealGmailOtp({
       email: session.email,
       otp: newOtp,
