@@ -31,6 +31,7 @@ import {
   Sparkles,
   School,
   GraduationCap as GradCap,
+  UserX,
 } from "lucide-react";
 import { api } from "../../services/api";
 import { useRealtimeSync } from "../../hooks/useRealtimeSync";
@@ -137,6 +138,11 @@ export const TeachersPage: React.FC = () => {
   const [isDeactivateOpen, setIsDeactivateOpen] = useState(false);
   const [deactivatingTeacher, setDeactivatingTeacher] = useState<TeacherListItem | null>(null);
   const [isDeactivating, setIsDeactivating] = useState(false);
+
+  // Permanent Delete Faculty State
+  const [permanentlyDeletingTeacher, setPermanentlyDeletingTeacher] = useState<TeacherListItem | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [isPermanentlyDeleting, setIsPermanentlyDeleting] = useState(false);
 
   // Class & Subject Allotment State
   const [isAssignOpen, setIsAssignOpen] = useState(false);
@@ -397,6 +403,24 @@ export const TeachersPage: React.FC = () => {
     }
   };
 
+  const handleConfirmPermanentDeleteTeacher = async () => {
+    if (!permanentlyDeletingTeacher || deleteConfirmText.trim() !== "DELETE") return;
+    setIsPermanentlyDeleting(true);
+    try {
+      await api.teachers.deletePermanently(permanentlyDeletingTeacher.id);
+      toast.success(
+        `Faculty member ${permanentlyDeletingTeacher.full_name} (${permanentlyDeletingTeacher.employee_id}) permanently deleted from DMHS database.`
+      );
+      setPermanentlyDeletingTeacher(null);
+      setDeleteConfirmText("");
+      fetchTeachers();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to permanently delete faculty member");
+    } finally {
+      setIsPermanentlyDeleting(false);
+    }
+  };
+
   const handleConfirmAssign = async () => {
     if (!assigningTeacher) return;
     setIsSubmittingAssign(true);
@@ -447,16 +471,18 @@ export const TeachersPage: React.FC = () => {
 
   const columns: Column<TeacherListItem>[] = [
     {
+      key: "employee_id",
       header: "Faculty ID",
-      accessor: (row) => (
+      render: (row) => (
         <span className="font-mono font-bold text-xs text-brand-navy dark:text-brand-gold">
           {row.employee_id}
         </span>
       ),
     },
     {
+      key: "full_name",
       header: "Full Name",
-      accessor: (row) => (
+      render: (row) => (
         <div>
           <div className="font-bold text-light-primary dark:text-dark-primary">{row.full_name}</div>
           <div className="text-[11px] text-light-secondary dark:text-dark-secondary">{row.email}</div>
@@ -464,8 +490,9 @@ export const TeachersPage: React.FC = () => {
       ),
     },
     {
+      key: "department",
       header: "Department & Role",
-      accessor: (row) => (
+      render: (row) => (
         <div>
           <div className="font-medium text-xs text-light-primary dark:text-dark-primary">
             {row.department || "General"}
@@ -475,16 +502,18 @@ export const TeachersPage: React.FC = () => {
       ),
     },
     {
+      key: "aadhaar_number",
       header: "Aadhaar Card",
-      accessor: (row) => (
+      render: (row) => (
         <span className="font-mono text-xs text-light-secondary dark:text-dark-secondary">
           {maskAadhaar((row as any).aadhaar_number)}
         </span>
       ),
     },
     {
+      key: "documents",
       header: "Certificates",
-      accessor: (row) => (
+      render: (row) => (
         <Badge variant={row.documents_count && row.documents_count > 0 ? "gold" : "neutral"} size="sm">
           <FileText className="w-3 h-3 mr-1 inline" />
           {row.documents_count || 0} Docs
@@ -492,16 +521,18 @@ export const TeachersPage: React.FC = () => {
       ),
     },
     {
+      key: "employment_status",
       header: "Status",
-      accessor: (row) => (
+      render: (row) => (
         <Badge variant={row.employment_status === "active" ? "success" : "neutral"}>
           {row.employment_status === "active" ? "Active" : "Inactive"}
         </Badge>
       ),
     },
     {
+      key: "actions",
       header: "Actions",
-      accessor: (row) => (
+      render: (row) => (
         <div className="flex items-center gap-1.5">
           <Button
             variant="ghost"
@@ -536,7 +567,19 @@ export const TeachersPage: React.FC = () => {
             onClick={() => handleOpenDeactivate(row)}
             title="Deactivate Faculty"
           >
-            <Trash2 className="w-4 h-4 text-rose-600" />
+            <Trash2 className="w-4 h-4 text-amber-600" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setPermanentlyDeletingTeacher(row);
+              setDeleteConfirmText("");
+            }}
+            title="Delete Permanently"
+            className="hover:bg-red-50 dark:hover:bg-red-950/30"
+          >
+            <UserX className="w-4 h-4 text-rose-600" />
           </Button>
         </div>
       ),
@@ -663,7 +706,12 @@ export const TeachersPage: React.FC = () => {
 
           {/* Teachers Table */}
           <div className="rounded-2xl bg-white dark:bg-dark-card border border-light-border dark:border-dark-border overflow-hidden shadow-sm">
-            <Table columns={columns} data={teachers} isLoading={isLoading} />
+            <Table
+              columns={columns}
+              data={teachers}
+              keyExtractor={(row) => String(row.id || row.employee_id)}
+              isLoading={isLoading}
+            />
             <Pagination
               currentPage={page}
               totalPages={Math.ceil(total / pageSize) || 1}
@@ -693,8 +741,8 @@ export const TeachersPage: React.FC = () => {
               <Badge variant="gold">Nursery, LKG &amp; UKG</Badge>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {classAssignments
-                .filter((c) => ["Nursery", "LKG", "UKG"].includes(c.class_name) || c.grade_level <= 0)
+              {(Array.isArray(classAssignments) ? classAssignments : [])
+                .filter((c) => ["Nursery", "LKG", "UKG"].includes(c?.class_name) || (c?.grade_level !== undefined && c?.grade_level <= 0))
                 .map((cls) => (
                   <div
                     key={cls.class_id}
@@ -766,8 +814,8 @@ export const TeachersPage: React.FC = () => {
               <Badge variant="blue">Classes 1 — 10</Badge>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-              {classAssignments
-                .filter((c) => !["Nursery", "LKG", "UKG"].includes(c.class_name) && c.grade_level > 0)
+              {(Array.isArray(classAssignments) ? classAssignments : [])
+                .filter((c) => !["Nursery", "LKG", "UKG"].includes(c?.class_name) && (c?.grade_level !== undefined && c?.grade_level > 0))
                 .map((cls) => (
                   <div
                     key={cls.class_id}
@@ -1776,6 +1824,78 @@ export const TeachersPage: React.FC = () => {
               ))}
             </div>
           )}
+        </div>
+      </Dialog>
+
+      {/* Permanent Delete Faculty Dialog with Typed Confirmation */}
+      <Dialog
+        isOpen={!!permanentlyDeletingTeacher}
+        onClose={() => {
+          if (!isPermanentlyDeleting) {
+            setPermanentlyDeletingTeacher(null);
+            setDeleteConfirmText("");
+          }
+        }}
+        title="Permanently Delete Faculty / Staff Record"
+        size="md"
+      >
+        <div className="space-y-4">
+          <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl space-y-2">
+            <div className="flex items-center gap-2 text-red-600 dark:text-red-400 font-semibold text-sm">
+              <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+              <span>Permanent Database Cascade Deletion</span>
+            </div>
+            <p className="text-xs text-light-secondary dark:text-dark-secondary leading-relaxed">
+              You are about to permanently delete faculty/staff record for{" "}
+              <strong className="text-light-primary dark:text-dark-primary font-bold">
+                {permanentlyDeletingTeacher?.full_name}
+              </strong>{" "}
+              (Employee ID:{" "}
+              <strong className="font-mono text-brand-gold">
+                {permanentlyDeletingTeacher?.employee_id}
+              </strong>
+              ).
+            </p>
+            <p className="text-xs text-red-600 dark:text-red-400 leading-relaxed font-medium">
+              This action will completely remove this faculty member, revoke all active class and subject teacher allotments, unlink attendance/grading logs safely, and purge their login account from the DMHS database. This operation cannot be reversed.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <label className="block text-xs font-semibold text-light-primary dark:text-dark-primary">
+              To confirm deletion, please type <span className="font-mono text-red-600 font-bold">DELETE</span> below:
+            </label>
+            <Input
+              type="text"
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              placeholder="Type DELETE"
+              className="font-mono text-center tracking-widest font-bold border-red-300 focus:border-red-500"
+              autoFocus
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-2 border-t border-light-border dark:border-dark-border">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setPermanentlyDeletingTeacher(null);
+                setDeleteConfirmText("");
+              }}
+              disabled={isPermanentlyDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              className="bg-red-600 hover:bg-red-700 text-white font-semibold"
+              disabled={deleteConfirmText.trim() !== "DELETE" || isPermanentlyDeleting}
+              onClick={handleConfirmPermanentDeleteTeacher}
+              isLoading={isPermanentlyDeleting}
+            >
+              Permanently Delete Record
+            </Button>
+          </div>
         </div>
       </Dialog>
     </div>

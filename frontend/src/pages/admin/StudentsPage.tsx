@@ -28,6 +28,8 @@ import {
   AlertCircle,
   RefreshCw,
   FolderOpen,
+  UserX,
+  AlertTriangle,
 } from "lucide-react";
 import { api, getCategoryForClass } from "../../services/api";
 import { useRealtimeSync } from "../../hooks/useRealtimeSync";
@@ -173,6 +175,11 @@ export const StudentsPage: React.FC = () => {
   // Deactivate Confirmation
   const [deactivatingStudent, setDeactivatingStudent] = useState<StudentListItem | null>(null);
   const [isDeactivating, setIsDeactivating] = useState(false);
+
+  // Permanent Delete Confirmation
+  const [permanentlyDeletingStudent, setPermanentlyDeletingStudent] = useState<StudentListItem | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [isPermanentlyDeleting, setIsPermanentlyDeleting] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const docInputRef = useRef<HTMLInputElement>(null);
@@ -570,6 +577,25 @@ export const StudentsPage: React.FC = () => {
     }
   };
 
+  // Permanent Delete
+  const handleConfirmPermanentDeleteStudent = async () => {
+    if (!permanentlyDeletingStudent || deleteConfirmText.trim() !== "DELETE") return;
+    setIsPermanentlyDeleting(true);
+    try {
+      await api.students.deletePermanently(permanentlyDeletingStudent.id);
+      toast.success(
+        `Student ${permanentlyDeletingStudent.full_name} (${permanentlyDeletingStudent.admission_number}) permanently deleted from DMHS database.`
+      );
+      setPermanentlyDeletingStudent(null);
+      setDeleteConfirmText("");
+      fetchStudents();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to permanently delete student");
+    } finally {
+      setIsPermanentlyDeleting(false);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status.toLowerCase()) {
       case "active":
@@ -678,7 +704,19 @@ export const StudentsPage: React.FC = () => {
             onClick={() => setDeactivatingStudent(row)}
             title="Deactivate Student"
           >
-            <Trash2 className="w-3.5 h-3.5 text-red-500" />
+            <Trash2 className="w-3.5 h-3.5 text-amber-500" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setPermanentlyDeletingStudent(row);
+              setDeleteConfirmText("");
+            }}
+            title="Delete Permanently"
+            className="hover:bg-red-50 dark:hover:bg-red-950/30"
+          >
+            <UserX className="w-3.5 h-3.5 text-red-600" />
           </Button>
         </div>
       ),
@@ -1744,6 +1782,78 @@ export const StudentsPage: React.FC = () => {
         isDestructive
         isLoading={isDeactivating}
       />
+
+      {/* Permanent Delete Student Dialog with Typed Confirmation */}
+      <Dialog
+        isOpen={!!permanentlyDeletingStudent}
+        onClose={() => {
+          if (!isPermanentlyDeleting) {
+            setPermanentlyDeletingStudent(null);
+            setDeleteConfirmText("");
+          }
+        }}
+        title="Permanently Delete Student Record"
+        size="md"
+      >
+        <div className="space-y-4">
+          <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl space-y-2">
+            <div className="flex items-center gap-2 text-red-600 dark:text-red-400 font-semibold text-sm">
+              <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+              <span>Permanent Database Cascade Deletion</span>
+            </div>
+            <p className="text-xs text-light-secondary dark:text-dark-secondary leading-relaxed">
+              You are about to permanently delete student{" "}
+              <strong className="text-light-primary dark:text-dark-primary font-bold">
+                {permanentlyDeletingStudent?.full_name}
+              </strong>{" "}
+              (Admission No:{" "}
+              <strong className="font-mono text-brand-gold">
+                {permanentlyDeletingStudent?.admission_number}
+              </strong>
+              ).
+            </p>
+            <p className="text-xs text-red-600 dark:text-red-400 leading-relaxed font-medium">
+              This action will completely remove this student, their enrollments, documents, academic/fee mappings, and their institutional GoTrue login account from the DMHS database. This operation cannot be reversed.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <label className="block text-xs font-semibold text-light-primary dark:text-dark-primary">
+              To confirm deletion, please type <span className="font-mono text-red-600 font-bold">DELETE</span> below:
+            </label>
+            <Input
+              type="text"
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              placeholder="Type DELETE"
+              className="font-mono text-center tracking-widest font-bold border-red-300 focus:border-red-500"
+              autoFocus
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-2 border-t border-light-border dark:border-dark-border">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setPermanentlyDeletingStudent(null);
+                setDeleteConfirmText("");
+              }}
+              disabled={isPermanentlyDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              className="bg-red-600 hover:bg-red-700 text-white font-semibold"
+              disabled={deleteConfirmText.trim() !== "DELETE" || isPermanentlyDeleting}
+              onClick={handleConfirmPermanentDeleteStudent}
+              isLoading={isPermanentlyDeleting}
+            >
+              Permanently Delete Record
+            </Button>
+          </div>
+        </div>
+      </Dialog>
     </div>
   );
 };

@@ -889,6 +889,15 @@ export const supabaseService = {
     async deactivate(id: string | number) {
       return this.update(id, { is_active: false, employment_status: "inactive" });
     },
+
+    async deletePermanently(id: string | number) {
+      if (!isSupabaseConfigured()) throw new SupabaseServiceError("Supabase not configured");
+      const { data, error } = await supabase.rpc("admin_delete_faculty", {
+        p_teacher_id: String(id),
+      });
+      if (error) throw new SupabaseServiceError(error.message, error.code, error.details);
+      return data;
+    },
   },
 
   // --------------------------------------------------------------------------
@@ -1103,6 +1112,7 @@ export const supabaseService = {
           p_section_id: payload.section_id && isUUID(payload.section_id) ? payload.section_id : null,
           p_roll_number: payload.roll_number ? String(payload.roll_number) : null,
           p_academic_year_id: payload.academic_year_id && isUUID(payload.academic_year_id) ? payload.academic_year_id : null,
+          p_password: payload.password || "1234",
         });
 
         if (!rpcErr && rpcData) {
@@ -1286,6 +1296,15 @@ export const supabaseService = {
       });
 
       return true;
+    },
+
+    async deletePermanently(id: string | number) {
+      if (!isSupabaseConfigured()) throw new SupabaseServiceError("Supabase not configured");
+      const { data, error } = await supabase.rpc("admin_delete_student", {
+        p_student_id: String(id),
+      });
+      if (error) throw new SupabaseServiceError(error.message, error.code, error.details);
+      return data;
     },
 
     // Upload photo to profile-photos bucket

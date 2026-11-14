@@ -177,8 +177,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Desktop Collapse Toggle */}
       <div className="hidden md:flex items-center justify-between p-3 border-t border-[#1E3A5F] dark:border-dark-border">
         {!isCollapsed && (
-          <div className="text-[11px] text-blue-200/80 truncate font-mono">
-            TS-HYD-SSC-41092
+          <div className="flex flex-col min-w-0">
+            <span className="text-[10px] text-blue-200/80 truncate font-mono">
+              TS-HYD-SSC-41092
+            </span>
+            <span className="text-[9px] text-amber-300/80 font-mono tracking-tight font-semibold">
+              Build v2.5.0
+            </span>
           </div>
         )}
         <button

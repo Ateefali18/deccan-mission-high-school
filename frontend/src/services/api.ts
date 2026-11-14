@@ -1085,7 +1085,9 @@ export const api = {
         cleanUser === "sta_khadri" ||
         cleanUser === "admin" ||
         cleanUser === "admin@dmhs.edu.in" ||
-        cleanUser === "sta.khadri@dmhs.edu.in";
+        cleanUser === "sta.khadri@dmhs.edu.in" ||
+        cleanUser === "admin.dmhs.hyd@gmail.com" ||
+        cleanUser === "stakhadri.dmhs@gmail.com";
 
       if (isAdminMatch) {
         const expectedAdminPass = authRecoveryService.getAdminPassword ? (authRecoveryService as any).getAdminPassword() : ((typeof localStorage !== "undefined" && localStorage && localStorage.getItem("dmhs_admin_password")) || "1234");
@@ -1164,6 +1166,76 @@ export const api = {
           }
         } catch (e) {
           console.warn("Supabase teacher auth lookup:", e);
+        }
+      }
+
+      // 1.6 Supabase Authenticated Student Login (By Admission Number or Email)
+      if (isSupabaseConfigured()) {
+        try {
+          const studentLoginEmail = `${cleanUser.replace(/\s+/g, "")}@student.dmhs.edu.in`;
+          const targetEmails = [
+            studentLoginEmail,
+            cleanUser.includes("@") ? cleanUser : null,
+          ].filter(Boolean) as string[];
+
+          for (const tryEmail of targetEmails) {
+            const authRes = await supabase.auth.signInWithPassword({
+              email: tryEmail,
+              password: cleanPass || "1234",
+            });
+
+            if (!authRes.error && authRes.data?.session && authRes.data?.user) {
+              const authUser = authRes.data.user;
+
+              // Fetch matching student profile from Supabase with RLS
+              const { data: studentRow } = await supabase
+                .from("students")
+                .select(`
+                  id,
+                  admission_number,
+                  full_name,
+                  first_name,
+                  last_name,
+                  email,
+                  student_status,
+                  is_active,
+                  student_enrollments(
+                    id,
+                    roll_number,
+                    classes(id, name),
+                    sections(id, name),
+                    academic_years(name)
+                  )
+                `)
+                .maybeSingle();
+
+              const currentEnrollment = Array.isArray(studentRow?.student_enrollments)
+                ? studentRow.student_enrollments[0]
+                : null;
+
+              const studentSession = {
+                access_token: authRes.data.session.access_token || createSessionToken({ id: studentRow?.id || authUser.id, role: "STUDENT", username: studentRow?.admission_number || cleanUser, email: tryEmail }),
+                token_type: "bearer",
+                role: "STUDENT" as UserRole,
+                full_name: studentRow?.full_name || authUser.user_metadata?.full_name || "Student",
+                username: studentRow?.admission_number || authUser.user_metadata?.admission_number || cleanUser,
+                email: authUser.email || studentRow?.email || tryEmail,
+                admission_number: studentRow?.admission_number || authUser.user_metadata?.admission_number || cleanUser,
+                student_id: studentRow?.id || authUser.id,
+                class_name: currentEnrollment?.classes?.name || "Class 10",
+                section_name: currentEnrollment?.sections?.name || "A",
+                roll_number: currentEnrollment?.roll_number ? String(currentEnrollment.roll_number) : null,
+              };
+
+              localStorage.setItem("dmhs_token", studentSession.access_token);
+              localStorage.setItem("dmhs_demo_role", "STUDENT");
+              localStorage.setItem("dmhs_session_user", JSON.stringify(studentSession));
+              setSupabaseAdminHeader(false);
+              return studentSession;
+            }
+          }
+        } catch (stdAuthErr) {
+          console.warn("Supabase student auth lookup error:", stdAuthErr);
         }
       }
 
@@ -2481,6 +2553,18 @@ export const api = {
       }
     },
 
+    deletePermanently: async (id: number | string) => {
+      const customStudents = getStoredCustomStudents();
+      const updated = customStudents.filter((s) => String(s.id) !== String(id));
+      localStorage.setItem("dmhs_custom_students", JSON.stringify(updated));
+      broadcastDataMutation("students", "DELETE", { id });
+
+      if (isSupabaseConfigured() && isUUID(id)) {
+        return await supabaseService.students.deletePermanently(id);
+      }
+      return { success: true, message: "Student permanently deleted" };
+    },
+
     updateStatus: async (id: number | string, status: string, reason?: string) => {
       const customStudents = getStoredCustomStudents();
       const updated = customStudents.map((s) =>
@@ -2979,6 +3063,18 @@ export const api = {
         broadcastDataMutation("teachers", "DELETE", { id });
         return { message: "Deactivated" };
       }
+    },
+
+    deletePermanently: async (id: number | string) => {
+      const customTeachers = getStoredCustomTeachers();
+      const updated = customTeachers.filter((t) => String(t.id) !== String(id));
+      saveStoredCustomTeachers(updated);
+      broadcastDataMutation("teachers", "DELETE", { id });
+
+      if (isSupabaseConfigured() && isUUID(id)) {
+        return await supabaseService.teachers.deletePermanently(id);
+      }
+      return { success: true, message: "Faculty member permanently deleted" };
     },
   },
 

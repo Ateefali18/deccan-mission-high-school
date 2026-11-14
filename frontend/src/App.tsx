@@ -28,9 +28,15 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
     console.error("Global ErrorBoundary caught error:", error, errorInfo);
   }
 
+  handleReload = () => {
+    this.setState({ hasError: false, error: undefined });
+    window.location.reload();
+  };
+
   handleReset = () => {
     localStorage.removeItem("dmhs_token");
     localStorage.removeItem("dmhs_demo_role");
+    localStorage.removeItem("dmhs_session_user");
     window.location.href = "/login";
   };
 
@@ -45,14 +51,22 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
             Deccan Mission High School ERP
           </h2>
           <p className="text-sm text-gray-600 dark:text-gray-300 max-w-md mb-6">
-            A temporary session issue occurred. Click the button below to reset your session and return to the login screen.
+            An unexpected application rendering issue occurred. You can reload the application without losing your login session.
           </p>
-          <button
-            onClick={this.handleReset}
-            className="px-5 py-2.5 rounded-xl bg-[#2563EB] text-white font-semibold text-sm shadow-md hover:bg-[#1D4ED8] transition-all cursor-pointer"
-          >
-            Reset Session & Return to Login
-          </button>
+          <div className="flex flex-col sm:flex-row items-center gap-3">
+            <button
+              onClick={this.handleReload}
+              className="px-5 py-2.5 rounded-xl bg-[#2563EB] text-white font-semibold text-sm shadow-md hover:bg-[#1D4ED8] transition-all cursor-pointer"
+            >
+              Reload Application
+            </button>
+            <button
+              onClick={this.handleReset}
+              className="px-4 py-2.5 rounded-xl bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-semibold text-xs hover:bg-gray-300 transition-all cursor-pointer"
+            >
+              Reset Session &amp; Login
+            </button>
+          </div>
         </div>
       );
     }
