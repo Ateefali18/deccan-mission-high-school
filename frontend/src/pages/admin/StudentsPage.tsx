@@ -289,6 +289,59 @@ export const StudentsPage: React.FC = () => {
   // --------------------------------------------------------------------------
   // STUDENT ADMISSION SUBMISSION (GUARANTEES EXACT CLASS ASSIGNMENT)
   // --------------------------------------------------------------------------
+  const onInvalidStudent = (errs: any) => {
+    const step1Keys = [
+      "full_name",
+      "date_of_birth",
+      "gender",
+      "caste",
+      "religion",
+      "mother_tongue",
+      "aadhaar_number",
+      "apaar_id",
+      "email",
+      "student_phone",
+      "blood_group",
+      "address",
+    ];
+    const step2Keys = [
+      "father_name",
+      "father_phone",
+      "father_email",
+      "father_occupation",
+      "mother_name",
+      "mother_phone",
+      "mother_email",
+      "mother_occupation",
+    ];
+    const step3Keys = [
+      "academic_year_id",
+      "academic_term_id",
+      "class_id",
+      "section_id",
+      "admission_number",
+      "roll_number",
+      "password",
+    ];
+
+    if (step1Keys.some((k) => errs[k])) {
+      setAdmissionFormStep(1);
+      const firstK = step1Keys.find((k) => errs[k]);
+      toast.error(errs[firstK]?.message || "Please complete required personal details in Step 1.");
+    } else if (step2Keys.some((k) => errs[k])) {
+      setAdmissionFormStep(2);
+      const firstK = step2Keys.find((k) => errs[k]);
+      toast.error(errs[firstK]?.message || "Please complete required parent details in Step 2.");
+    } else if (step3Keys.some((k) => errs[k])) {
+      setAdmissionFormStep(3);
+      const firstK = step3Keys.find((k) => errs[k]);
+      toast.error(errs[firstK]?.message || "Please complete required academic allotment fields in Step 3.");
+    } else {
+      const firstK = Object.keys(errs)[0];
+      toast.error(errs[firstK]?.message || "Please check required fields.");
+    }
+  };
+
   const onRegisterStudent = async (data: StudentCreateFormData) => {
     try {
       // Duplicate admission number check
@@ -310,16 +363,18 @@ export const StudentsPage: React.FC = () => {
       const resolvedSectionName = selectedSectionObj ? selectedSectionObj.name : "A";
       const resolvedCategory = selectedClassObj?.category || getCategoryForClass(resolvedClassName);
 
+      const cleanEmail = data.email && data.email.trim() !== "" ? data.email.trim().toLowerCase() : null;
+
       const payload = {
         ...data,
         class_name: resolvedClassName,
         section_name: resolvedSectionName,
         academic_category: resolvedCategory,
-        academic_year_name: selectedAyObj?.name || "2026-2027",
+        academic_year_name: selectedAyObj?.name || "2025-2026",
         academic_term_name: selectedTermObj?.name || "Term 1",
         class_teacher_name: selectedClassObj?.class_teacher_name || null,
         username: data.admission_number,
-        email: data.email || `${data.admission_number.toLowerCase().replace(/[^a-z0-9]/g, "")}@student.dmhs.edu.in`,
+        email: cleanEmail,
       };
 
       await api.students.create(payload);
@@ -843,7 +898,7 @@ export const StudentsPage: React.FC = () => {
                   Next Step →
                 </Button>
               ) : (
-                <Button variant="primary" onClick={handleSubmit(onRegisterStudent)} isLoading={isSubmitting}>
+                <Button variant="primary" onClick={handleSubmit(onRegisterStudent, onInvalidStudent)} isLoading={isSubmitting}>
                   Confirm Admission &amp; Enrol
                 </Button>
               )}
@@ -894,18 +949,17 @@ export const StudentsPage: React.FC = () => {
             </button>
           </div>
 
-          <form onSubmit={handleSubmit(onRegisterStudent)} className="space-y-4">
+          <form onSubmit={handleSubmit(onRegisterStudent, onInvalidStudent)} className="space-y-4">
             {/* STEP 1: PERSONAL INFORMATION */}
-            {admissionFormStep === 1 && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Input
-                    label="Student Full Name *"
-                    placeholder="e.g. Mohammed Rayan Ahmed"
-                    error={errors.full_name?.message}
-                    required
-                    {...register("full_name")}
-                  />
+            <div className={admissionFormStep === 1 ? "space-y-4 animate-in fade-in-50" : "hidden"}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Input
+                  label="Student Full Name *"
+                  placeholder="Enter student's full name"
+                  error={errors.full_name?.message}
+                  required
+                  {...register("full_name")}
+                />
                   <Input
                     label="Date of Birth *"
                     type="date"
@@ -959,7 +1013,7 @@ export const StudentsPage: React.FC = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                   <Input
                     label="Mother Tongue"
-                    placeholder="e.g. Urdu, Telugu"
+                    placeholder="Enter mother tongue (e.g. Urdu, Telugu)"
                     {...register("mother_tongue")}
                   />
                   <Select
@@ -1027,21 +1081,20 @@ export const StudentsPage: React.FC = () => {
                   <Input
                     label="Student Email Address (Optional)"
                     type="email"
-                    placeholder="Auto-generated if left blank"
+                    placeholder="Enter student email (optional)"
                     {...register("email")}
                   />
                 </div>
 
                 <Input
                   label="Residential Address"
-                  placeholder="e.g. H.No 18-2-45, Moghalpura, Hyderabad"
+                  placeholder="Enter residential address"
                   {...register("address")}
                 />
               </div>
-            )}
 
             {/* STEP 2: PARENT INFORMATION (SEPARATE FATHER & MOTHER) */}
-            {admissionFormStep === 2 && (
+            <div className={admissionFormStep === 2 ? "space-y-4 animate-in fade-in-50" : "hidden"}>
               <div className="space-y-4">
                 {/* Father Information Card */}
                 <div className="p-4 rounded-xl border border-light-border dark:border-dark-border bg-gray-50 dark:bg-dark-elevated space-y-3">
@@ -1052,7 +1105,7 @@ export const StudentsPage: React.FC = () => {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <Input
                       label="Father's Full Name *"
-                      placeholder="e.g. Mohammed Ahmed"
+                      placeholder="Enter father's full name"
                       error={errors.father_name?.message}
                       required
                       {...register("father_name")}
@@ -1069,12 +1122,12 @@ export const StudentsPage: React.FC = () => {
                     <Input
                       label="Father's Email Address (Optional)"
                       type="email"
-                      placeholder="e.g. father@example.com"
+                      placeholder="Enter father's email (optional)"
                       {...register("father_email")}
                     />
                     <Input
                       label="Father's Occupation (Optional)"
-                      placeholder="e.g. Business / Government Service"
+                      placeholder="Enter father's occupation"
                       {...register("father_occupation")}
                     />
                   </div>
@@ -1089,7 +1142,7 @@ export const StudentsPage: React.FC = () => {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <Input
                       label="Mother's Full Name *"
-                      placeholder="e.g. Fatima Begum"
+                      placeholder="Enter mother's full name"
                       error={errors.mother_name?.message}
                       required
                       {...register("mother_name")}
@@ -1104,26 +1157,26 @@ export const StudentsPage: React.FC = () => {
                     <Input
                       label="Mother's Email Address (Optional)"
                       type="email"
-                      placeholder="e.g. mother@example.com"
+                      placeholder="Enter mother's email (optional)"
                       {...register("mother_email")}
                     />
                     <Input
                       label="Mother's Occupation (Optional)"
-                      placeholder="e.g. Educator / Homemaker"
+                      placeholder="Enter mother's occupation"
                       {...register("mother_occupation")}
                     />
                   </div>
                 </div>
               </div>
-            )}
+            </div>
 
             {/* STEP 3: ACADEMIC & ENROLMENT INFORMATION */}
-            {admissionFormStep === 3 && (
+            <div className={admissionFormStep === 3 ? "space-y-4 animate-in fade-in-50" : "hidden"}>
               <div className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Input
                     label="Admission Number *"
-                    placeholder="e.g. DMHS-2026-0150"
+                    placeholder="Enter admission number (e.g. DMHS-2025-001)"
                     error={errors.admission_number?.message}
                     required
                     {...register("admission_number")}
@@ -1207,7 +1260,7 @@ export const StudentsPage: React.FC = () => {
 
                     <Input
                       label="Roll Number"
-                      placeholder="e.g. 15"
+                      placeholder="Enter roll number"
                       {...register("roll_number")}
                     />
                   </div>
@@ -1253,7 +1306,7 @@ export const StudentsPage: React.FC = () => {
                   </div>
                 </div>
               </div>
-            )}
+            </div>
           </form>
         </div>
       </Dialog>

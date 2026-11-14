@@ -67,7 +67,7 @@ export const supabaseService = {
       }
 
       return {
-        id: "e0000000-0000-0000-0000-000000000001",
+        id: "3eef50ca-91eb-416b-89bc-e9ca8c629213",
         code: "DMHS-HYD",
         name: "Deccan Mission High School",
         affiliation_number: "TS-HYD-SSC-41092",
@@ -953,8 +953,8 @@ export const supabaseService = {
         return {
           id: s.id,
           admission_number: s.admission_number,
-          full_name: `${s.first_name} ${s.last_name || ""}`.trim(),
-          email: `${s.admission_number.toLowerCase().replace(/[^a-z0-9]/g, "")}@student.dmhs.edu.in`,
+          full_name: s.full_name || `${s.first_name} ${s.last_name || ""}`.trim(),
+          email: s.email || null,
           class_name: currentEnrollment?.classes?.name || "Unassigned",
           section_name: currentEnrollment?.sections?.name || "-",
           roll_number: currentEnrollment?.roll_number ? String(currentEnrollment.roll_number) : null,
@@ -1019,8 +1019,8 @@ export const supabaseService = {
         id: data.id,
         user_id: data.profile_id,
         admission_number: data.admission_number,
-        full_name: `${data.first_name} ${data.last_name || ""}`.trim(),
-        email: `${data.admission_number.toLowerCase().replace(/[^a-z0-9]/g, "")}@student.dmhs.edu.in`,
+        full_name: data.full_name || `${data.first_name} ${data.last_name || ""}`.trim(),
+        email: data.email || null,
         gender: data.gender,
         date_of_birth: data.date_of_birth,
         blood_group: data.blood_group,
@@ -1049,7 +1049,7 @@ export const supabaseService = {
       first_name?: string;
       last_name?: string;
       full_name?: string;
-      email?: string;
+      email?: string | null;
       date_of_birth?: string;
       gender?: string;
       blood_group?: string;
@@ -1065,35 +1065,70 @@ export const supabaseService = {
     }) {
       if (!isSupabaseConfigured()) throw new SupabaseServiceError("Supabase not configured");
 
-      const school = await supabaseService.schools.getCurrent();
-      const schoolId = school?.id;
+      const cleanAdm = payload.admission_number.trim();
+      const rawName = (payload.full_name || `${payload.first_name || ""} ${payload.last_name || ""}`).trim();
+      const parts = rawName.split(" ");
+      const firstName = payload.first_name || parts[0] || "Student";
+      const lastName = payload.last_name || parts.slice(1).join(" ") || "";
+      const cleanEmail = payload.email && payload.email.trim() !== "" ? payload.email.trim().toLowerCase() : null;
 
       // Duplicate check for Admission Number
       const { data: existingAdm } = await supabase
         .from("students")
         .select("id")
-        .eq("admission_number", payload.admission_number)
+        .eq("admission_number", cleanAdm)
         .maybeSingle();
 
       if (existingAdm) {
-        throw new SupabaseServiceError(`Student with Admission Number "${payload.admission_number}" already exists.`);
+        throw new SupabaseServiceError(`Student with Admission Number "${cleanAdm}" already exists.`);
       }
 
-      const rawName = (payload.full_name || `${payload.first_name || ""} ${payload.last_name || ""}`).trim();
-      const parts = rawName.split(" ");
-      const firstName = payload.first_name || parts[0] || "Student";
-      const lastName = payload.last_name || parts.slice(1).join(" ") || "";
+      // 1. Try secure stored procedure admin_admit_student
+      try {
+        const { data: rpcData, error: rpcErr } = await supabase.rpc("admin_admit_student", {
+          p_admission_number: cleanAdm,
+          p_full_name: rawName,
+          p_first_name: firstName,
+          p_last_name: lastName,
+          p_email: cleanEmail,
+          p_date_of_birth: payload.date_of_birth || null,
+          p_gender: payload.gender || "Male",
+          p_blood_group: payload.blood_group || null,
+          p_guardian_name: payload.guardian_name || null,
+          p_guardian_relationship: payload.guardian_relationship || "Guardian",
+          p_guardian_phone: payload.guardian_phone || null,
+          p_emergency_contact: payload.emergency_contact || payload.guardian_phone || null,
+          p_address: payload.address || null,
+          p_class_id: payload.class_id && isUUID(payload.class_id) ? payload.class_id : null,
+          p_section_id: payload.section_id && isUUID(payload.section_id) ? payload.section_id : null,
+          p_roll_number: payload.roll_number ? String(payload.roll_number) : null,
+          p_academic_year_id: payload.academic_year_id && isUUID(payload.academic_year_id) ? payload.academic_year_id : null,
+        });
 
-      // 1. Insert Student
+        if (!rpcErr && rpcData) {
+          return rpcData;
+        }
+
+        if (rpcErr && rpcErr.message && !rpcErr.message.includes("function") && !rpcErr.message.includes("does not exist")) {
+          throw new SupabaseServiceError(rpcErr.message, rpcErr.code, rpcErr.details);
+        }
+      } catch (err: any) {
+        if (err instanceof SupabaseServiceError) throw err;
+      }
+
+      // 2. Direct fallback
+      const school = await supabaseService.schools.getCurrent();
+      const schoolId = school?.id || "3eef50ca-91eb-416b-89bc-e9ca8c629213";
+
       const { data: student, error: sError } = await supabase
         .from("students")
         .insert({
           school_id: schoolId,
-          admission_number: payload.admission_number,
+          admission_number: cleanAdm,
           first_name: firstName,
           last_name: lastName,
           full_name: rawName,
-          email: payload.email || `${payload.admission_number.toLowerCase().replace(/[^a-z0-9]/g, "")}@student.dmhs.edu.in`,
+          email: cleanEmail,
           date_of_birth: payload.date_of_birth || null,
           gender: payload.gender || null,
           blood_group: payload.blood_group || null,
@@ -1110,16 +1145,16 @@ export const supabaseService = {
 
       if (sError) throw new SupabaseServiceError(sError.message, sError.code, sError.details);
 
-      // 2. Insert Enrollment if class provided
-      if (payload.class_id && payload.section_id) {
+      // Insert Enrollment if class provided
+      if (payload.class_id && payload.section_id && isUUID(payload.class_id) && isUUID(payload.section_id)) {
         let ayId = payload.academic_year_id;
-        if (!ayId) {
+        if (!ayId || !isUUID(ayId)) {
           const currentAy = await supabaseService.academicYears.getCurrent();
-          ayId = currentAy?.id;
+          ayId = currentAy?.id || "a9ff3a09-6fe9-498b-93c7-512b482a4a8f";
         }
 
-        if (ayId) {
-          await supabase.from("student_enrollments").insert({
+        if (ayId && isUUID(ayId)) {
+          const { error: eError } = await supabase.from("student_enrollments").insert({
             student_id: student.id,
             academic_year_id: ayId,
             class_id: payload.class_id,
@@ -1129,6 +1164,9 @@ export const supabaseService = {
             status: "active",
             enrollment_status: "enrolled",
           });
+          if (eError) {
+            console.warn("Student enrollment creation error:", eError);
+          }
         }
       }
 
@@ -1157,7 +1195,9 @@ export const supabaseService = {
       }
       if (payload.first_name) updates.first_name = payload.first_name;
       if (payload.last_name) updates.last_name = payload.last_name;
-      if (payload.email) updates.email = payload.email;
+      if (payload.email !== undefined) {
+        updates.email = payload.email && payload.email.trim() !== "" ? payload.email.trim().toLowerCase() : null;
+      }
       if (payload.gender !== undefined) updates.gender = payload.gender;
       if (payload.date_of_birth !== undefined) updates.date_of_birth = payload.date_of_birth;
       if (payload.blood_group !== undefined) updates.blood_group = payload.blood_group;

@@ -328,7 +328,7 @@ export const LoginPage: React.FC = () => {
                 <input
                   type="text"
                   maxLength={18}
-                  placeholder="e.g. 123456 or DMHS-RECOVERY-2026"
+                  placeholder="Enter 6-digit verification code"
                   value={mfaCode}
                   onChange={(e) => setMfaCode(e.target.value)}
                   className="w-full rounded-lg text-sm px-3.5 py-2.5 font-mono tracking-widest text-center bg-light-input dark:bg-dark-input text-light-primary dark:text-dark-primary border border-light-border dark:border-dark-border focus:border-brand-blue focus:ring-1 focus:ring-brand-blue focus:outline-none"
@@ -359,7 +359,7 @@ export const LoginPage: React.FC = () => {
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <Input
                 label="School Email, Admission Number or Employee ID"
-                placeholder="e.g. sta.khadri@dmhs.edu.in, ADM-2026-001, or EMP-ATEEF"
+                placeholder="Enter school email, admission number, or employee ID"
                 leftIcon={<User className="w-4 h-4" />}
                 error={errors.username_or_email?.message}
                 {...register("username_or_email")}
@@ -442,7 +442,7 @@ export const LoginPage: React.FC = () => {
           <form onSubmit={handleRequestOtp} className="space-y-4 py-2">
             <Input
               label="Registered Email, Username or Admission / Employee ID"
-              placeholder="e.g. sta.khadri@dmhs.edu.in, ADM-ALI, or EMP-ATEEF"
+              placeholder="Enter registered email, admission number, or employee ID"
               value={forgotIdentifier}
               onChange={(e) => setForgotIdentifier(e.target.value)}
               required

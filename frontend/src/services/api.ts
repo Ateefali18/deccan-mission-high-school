@@ -512,26 +512,26 @@ export const saveStoredAttendanceSession = (session: any) => {
 
 const DEFAULT_BASELINE_ACADEMIC_YEARS: AcademicYear[] = [
   {
-    id: 1,
-    school_id: 1,
-    name: "2026-2027",
-    start_date: "2026-06-01",
-    end_date: "2027-04-30",
-    is_current: true,
-    status: "active",
-    created_at: "2026-06-01T00:00:00Z",
-    updated_at: "2026-06-01T00:00:00Z",
-  },
-  {
-    id: 2,
-    school_id: 1,
+    id: "a9ff3a09-6fe9-498b-93c7-512b482a4a8f" as any,
+    school_id: "3eef50ca-91eb-416b-89bc-e9ca8c629213" as any,
     name: "2025-2026",
     start_date: "2025-06-01",
     end_date: "2026-04-30",
-    is_current: false,
-    status: "completed",
+    is_current: true,
+    status: "active",
     created_at: "2025-06-01T00:00:00Z",
     updated_at: "2026-04-30T00:00:00Z",
+  },
+  {
+    id: "fdf068ac-ddc8-4818-9c82-82bdc472452c" as any,
+    school_id: "3eef50ca-91eb-416b-89bc-e9ca8c629213" as any,
+    name: "2026-2027",
+    start_date: "2026-06-01",
+    end_date: "2027-04-30",
+    is_current: false,
+    status: "planned",
+    created_at: "2026-06-01T00:00:00Z",
+    updated_at: "2026-06-01T00:00:00Z",
   },
 ];
 
@@ -2314,25 +2314,22 @@ export const api = {
 
       let createdStudent: any = null;
       if (isSupabaseConfigured()) {
-        try {
-          createdStudent = await supabaseService.students.create(data);
-        } catch (err) {
-          console.warn("Supabase students.create warning:", err);
-        }
+        createdStudent = await supabaseService.students.create(data);
       }
 
       const studentId = createdStudent?.id || "std_" + Date.now();
+      const cleanEmail = data.email && data.email.trim() !== "" ? data.email.trim().toLowerCase() : null;
       const newStudentItem: StudentListItem = {
         id: studentId,
         admission_number: data.admission_number,
         full_name: data.full_name,
-        email: data.email || `${data.admission_number.toLowerCase().replace(/[^a-z0-9]/g, "")}@student.dmhs.edu.in`,
+        email: cleanEmail,
         class_name: className,
         section_name: sectionName,
         class_id: data.class_id,
         section_id: data.section_id,
         academic_year_id: data.academic_year_id,
-        academic_year_name: data.academic_year_name || "2026-2027",
+        academic_year_name: data.academic_year_name || "2025-2026",
         academic_term_id: data.academic_term_id,
         academic_term_name: data.academic_term_name || "Term 1",
         academic_category: category,

@@ -964,7 +964,7 @@ export const TeachersPage: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Input
                   label={`${facultyCategory === "Teaching Faculty" ? "Faculty" : "Staff"} Full Name *`}
-                  placeholder="e.g. Dr. Syed Khaja Mohiuddin"
+                  placeholder="Enter full name"
                   error={createErrors.full_name?.message}
                   required
                   {...registerCreate("full_name")}
@@ -992,7 +992,7 @@ export const TeachersPage: React.FC = () => {
                 />
                 <Input
                   label="Aadhaar Card Number (12 Digits)"
-                  placeholder="e.g. 5432 9876 1234"
+                  placeholder="Enter 12-digit Aadhaar number"
                   error={createErrors.aadhaar_number?.message}
                   {...registerCreate("aadhaar_number")}
                 />
@@ -1001,7 +1001,7 @@ export const TeachersPage: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Input
                   label="Contact Phone Number *"
-                  placeholder="+91 98490 12345"
+                  placeholder="Enter phone number (+91 ...)"
                   error={createErrors.contact_phone?.message}
                   required
                   {...registerCreate("contact_phone")}
@@ -1009,7 +1009,7 @@ export const TeachersPage: React.FC = () => {
                 <Input
                   label="Email Address *"
                   type="email"
-                  placeholder="e.g. khaja.mohiuddin@dmhs.edu.in"
+                  placeholder="Enter official email address"
                   error={createErrors.email?.message}
                   required
                   {...registerCreate("email")}
@@ -1019,7 +1019,7 @@ export const TeachersPage: React.FC = () => {
               <div className="col-span-full">
                 <Input
                   label="Residential Address"
-                  placeholder="Street, locality, Hyderabad, Telangana"
+                  placeholder="Enter residential address"
                   {...registerCreate("address")}
                 />
               </div>
@@ -1030,7 +1030,7 @@ export const TeachersPage: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Input
                   label={`${facultyCategory === "Teaching Faculty" ? "Faculty" : "Staff"} / Employee ID *`}
-                  placeholder="e.g. EMP-104"
+                  placeholder="Enter employee ID (e.g. EMP-001)"
                   error={createErrors.employee_id?.message}
                   required
                   {...registerCreate("employee_id")}
@@ -1073,8 +1073,8 @@ export const TeachersPage: React.FC = () => {
                   label="Designation / Title *"
                   placeholder={
                     facultyCategory === "Teaching Faculty"
-                      ? "e.g. Senior Faculty / PGT Mathematics"
-                      : "e.g. Senior Accountant / Admin Officer"
+                      ? "Enter faculty designation (e.g. Senior Faculty)"
+                      : "Enter staff designation (e.g. Accountant)"
                   }
                   error={createErrors.designation?.message}
                   required
@@ -1082,7 +1082,7 @@ export const TeachersPage: React.FC = () => {
                 />
                 <Input
                   label="Educational Qualifications"
-                  placeholder="e.g. M.Sc. Mathematics, B.Ed / M.Com, MBA"
+                  placeholder="Enter educational qualifications"
                   {...registerCreate("qualification")}
                 />
               </div>
@@ -1090,7 +1090,7 @@ export const TeachersPage: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Input
                   label="Specialization / Subject Domain"
-                  placeholder="e.g. Algebra & Calculus / Financial Accounting"
+                  placeholder="Enter specialization or subject domain"
                   {...registerCreate("specialization")}
                 />
                 <Input
@@ -1509,7 +1509,7 @@ export const TeachersPage: React.FC = () => {
         <form onSubmit={handleSubmitEdit(onSaveEdit)} className="space-y-4">
           <Input
             label="Faculty Full Name"
-            placeholder="e.g. Dr. Syed Ibrahim"
+            placeholder="Enter faculty full name"
             error={editErrors.full_name?.message}
             required
             {...registerEdit("full_name")}
@@ -1517,7 +1517,7 @@ export const TeachersPage: React.FC = () => {
           <Input
             label="Email Address"
             type="email"
-            placeholder="e.g. syed.ibrahim@dmhs.edu.in"
+            placeholder="Enter official email address"
             error={editErrors.email?.message}
             required
             {...registerEdit("email")}
@@ -1525,14 +1525,14 @@ export const TeachersPage: React.FC = () => {
           <div className="grid grid-cols-2 gap-3">
             <Input
               label="Designation"
-              placeholder="e.g. Senior Faculty"
+              placeholder="Enter designation"
               error={editErrors.designation?.message}
               required
               {...registerEdit("designation")}
             />
             <Input
               label="Department"
-              placeholder="e.g. Mathematics"
+              placeholder="Enter department"
               error={editErrors.department?.message}
               {...registerEdit("department")}
             />
@@ -1540,12 +1540,12 @@ export const TeachersPage: React.FC = () => {
           <div className="grid grid-cols-2 gap-3">
             <Input
               label="Qualifications"
-              placeholder="e.g. M.Sc, B.Ed"
+              placeholder="Enter educational qualifications"
               {...registerEdit("qualification")}
             />
             <Input
               label="Contact Phone"
-              placeholder="+91 98490 00000"
+              placeholder="Enter phone number (+91 ...)"
               error={editErrors.contact_phone?.message}
               {...registerEdit("contact_phone")}
             />
