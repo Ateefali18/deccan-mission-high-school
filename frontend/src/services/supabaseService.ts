@@ -348,13 +348,41 @@ export const supabaseService = {
   classes: {
     async list(): Promise<SchoolClass[]> {
       if (!isSupabaseConfigured()) return [];
-      const { data, error } = await supabase
-        .from("classes")
-        .select("*, sections(*)")
-        .order("grade_level", { ascending: true });
+      const [classesRes, enrollmentsRes] = await Promise.all([
+        supabase
+          .from("classes")
+          .select("*, sections(*)")
+          .order("grade_level", { ascending: true }),
+        supabase
+          .from("student_enrollments")
+          .select("class_id, student_id")
+          .eq("is_current", true)
+          .eq("status", "active"),
+      ]);
 
-      if (error) throw new SupabaseServiceError(error.message, error.code, error.details);
-      return data || [];
+      if (classesRes.error) throw new SupabaseServiceError(classesRes.error.message, classesRes.error.code, classesRes.error.details);
+
+      const enrollments = enrollmentsRes.data || [];
+      const countMap: Record<string, number> = {};
+      enrollments.forEach((e: any) => {
+        if (e.class_id) {
+          countMap[e.class_id] = (countMap[e.class_id] || 0) + 1;
+        }
+      });
+
+      return (classesRes.data || []).map((cls: any) => ({
+        ...cls,
+        student_count: countMap[cls.id] || 0,
+        category:
+          cls.category ||
+          (cls.grade_level <= 0
+            ? "Pre-Primary"
+            : cls.grade_level <= 5
+            ? "Primary"
+            : cls.grade_level <= 10
+            ? "Higher Classes"
+            : "Higher Secondary"),
+      }));
     },
 
     async create(payload: {
@@ -1112,6 +1140,7 @@ export const supabaseService = {
           p_section_id: payload.section_id && isUUID(payload.section_id) ? payload.section_id : null,
           p_roll_number: payload.roll_number ? String(payload.roll_number) : null,
           p_academic_year_id: payload.academic_year_id && isUUID(payload.academic_year_id) ? payload.academic_year_id : null,
+          p_admission_date: new Date().toISOString().split("T")[0],
           p_password: payload.password || "1234",
         });
 
@@ -1154,6 +1183,37 @@ export const supabaseService = {
         .single();
 
       if (sError) throw new SupabaseServiceError(sError.message, sError.code, sError.details);
+
+      // Setup authentication account and profile
+      try {
+        await supabase.rpc("admin_setup_student_auth", {
+          p_student_id: student.id,
+          p_password: payload.password || "1234",
+        });
+      } catch (authErr) {
+        console.warn("Student auth setup notice:", authErr);
+      }
+
+      // Automatically generate canonical invoice in Supabase
+      try {
+        const ayId = payload.academic_year_id && isUUID(payload.academic_year_id)
+          ? payload.academic_year_id
+          : "e53acd79-d655-4650-b92f-c3cf643b1b28";
+        const invNum = `INV-${cleanAdm.replace(/[^a-zA-Z0-9]/g, "")}`;
+        await supabase.from("invoices").insert({
+          school_id: schoolId,
+          student_id: student.id,
+          academic_year_id: ayId,
+          invoice_number: invNum,
+          total_amount: 28000,
+          paid_amount: 0,
+          balance_amount: 28000,
+          due_date: new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString().split("T")[0],
+          status: "pending",
+        });
+      } catch (invErr) {
+        console.warn("Auto invoice notice:", invErr);
+      }
 
       // Insert Enrollment if class provided
       if (payload.class_id && payload.section_id && isUUID(payload.class_id) && isUUID(payload.section_id)) {
@@ -1804,28 +1864,37 @@ export const supabaseService = {
       if (!isSupabaseConfigured() || !isUUID(studentId)) {
         return {
           student_id: studentId,
-          total_sessions: 30,
-          present_count: 28,
-          late_count: 1,
-          absent_count: 1,
+          total_sessions: 0,
+          present_count: 0,
+          late_count: 0,
+          absent_count: 0,
           excused_count: 0,
-          attendance_percentage: 95.0,
+          attendance_percentage: 100.0,
           is_low_attendance: false,
         };
       }
 
-      const { data, error } = await supabase
-        .from("attendance_records")
+      // 1. Query active live table student_attendance
+      const { data: liveData } = await supabase
+        .from("student_attendance")
         .select("id, status")
         .eq("student_id", studentId);
 
-      if (error) throw new SupabaseServiceError(error.message, error.code, error.details);
+      let records = liveData || [];
 
-      const records = data || [];
-      const present = records.filter((r) => r.status === "present").length;
-      const late = records.filter((r) => r.status === "late").length;
-      const absent = records.filter((r) => r.status === "absent").length;
-      const excused = records.filter((r) => r.status === "excused").length;
+      // 2. Fallback to legacy attendance_records if liveData is empty
+      if (records.length === 0) {
+        const { data: legacyData } = await supabase
+          .from("attendance_records")
+          .select("id, status")
+          .eq("student_id", studentId);
+        if (legacyData && legacyData.length > 0) records = legacyData;
+      }
+
+      const present = records.filter((r: any) => r.status === "present").length;
+      const late = records.filter((r: any) => r.status === "late").length;
+      const absent = records.filter((r: any) => r.status === "absent").length;
+      const excused = records.filter((r: any) => r.status === "excused").length;
       const total = records.length;
       const pct = total > 0 ? Math.round(((present + late * 0.5) / total) * 10000) / 100 : 100.0;
 
@@ -1987,13 +2056,7 @@ export const supabaseService = {
             student_status: e.students.student_status,
           }));
       } else {
-        // Fallback: select all active students
-        const { data: allActive } = await supabase
-          .from("students")
-          .select("id, admission_number, full_name, profile_photo_url, photo_url, student_status")
-          .eq("is_active", true)
-          .limit(50);
-        studentsList = allActive || [];
+        studentsList = [];
       }
 
       // 2. Fetch existing attendance records for (classId, date, session)
@@ -3137,18 +3200,21 @@ export const supabaseService = {
     async getFinancialSummary(): Promise<FeeFinancialSummary> {
       if (!isSupabaseConfigured()) {
         return {
-          total_applicable_fees: 1850000,
-          total_collected_fees: 1420000,
-          total_remaining_fees: 430000,
-          collection_rate: 76.76,
-          completed_payments_count: 42,
+          total_applicable_fees: 0,
+          total_collected_fees: 0,
+          total_remaining_fees: 0,
+          collection_rate: 0,
+          completed_payments_count: 0,
+          total_enrolled_students: 0,
         };
       }
+
+      await this.syncEnrolledStudents();
 
       const [invoicesRes, paymentsRes] = await Promise.all([
         supabase
           .from("invoices")
-          .select("total_amount, status")
+          .select("total_amount, paid_amount, status")
           .neq("status", "cancelled"),
         supabase
           .from("payments")
@@ -3179,14 +3245,85 @@ export const supabaseService = {
         total_remaining_fees,
         collection_rate,
         completed_payments_count: payments.length,
+        total_enrolled_students: invoices.length,
       };
     },
 
-    async getInvoices(params: { student_id?: string | number; status?: string } = {}) {
+    async syncEnrolledStudents(): Promise<any[]> {
       if (!isSupabaseConfigured()) return [];
+
+      const { data: students, error: sErr } = await supabase
+        .from("students")
+        .select(`
+          id, admission_number, full_name, school_id,
+          student_enrollments(
+            id, class_id, section_id, academic_year_id,
+            classes(id, name),
+            sections(id, name),
+            academic_years(id, name)
+          )
+        `)
+        .eq("is_active", true);
+
+      if (sErr || !students) return [];
+
+      const { data: existingInvoices } = await supabase
+        .from("invoices")
+        .select("id, student_id");
+
+      const existingStudentIds = new Set((existingInvoices || []).map((i: any) => String(i.student_id)));
+
+      for (const s of students) {
+        if (!existingStudentIds.has(String(s.id))) {
+          const enr = Array.isArray(s.student_enrollments) ? s.student_enrollments[0] : null;
+          const ayId = enr?.academic_year_id || "e53acd79-d655-4650-b92f-c3cf643b1b28";
+          const invNum = `INV-${(s.admission_number || "").replace(/[^a-zA-Z0-9]/g, "")}`;
+          await supabase.from("invoices").insert({
+            school_id: s.school_id || "3eef50ca-91eb-416b-89bc-e9ca8c629213",
+            student_id: s.id,
+            academic_year_id: ayId,
+            invoice_number: invNum,
+            total_amount: 28000,
+            paid_amount: 0,
+            balance_amount: 28000,
+            due_date: new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString().split("T")[0],
+            status: "pending",
+          });
+        }
+      }
+
+      return this.getInvoices();
+    },
+
+    async getInvoices(params: {
+      category?: string;
+      class_id?: string | number;
+      class_name?: string;
+      search?: string;
+      status?: string;
+      academic_year?: string;
+      student_id?: string | number;
+    } = {}) {
+      if (!isSupabaseConfigured()) return [];
+
       let query = supabase
         .from("invoices")
-        .select("*, students(first_name, last_name, admission_number)")
+        .select(`
+          *,
+          students(
+            id,
+            admission_number,
+            full_name,
+            student_enrollments(
+              id,
+              class_id,
+              section_id,
+              classes(id, name),
+              sections(id, name),
+              academic_years(id, name)
+            )
+          )
+        `)
         .order("created_at", { ascending: false });
 
       if (params.student_id) query = query.eq("student_id", params.student_id);
@@ -3198,19 +3335,44 @@ export const supabaseService = {
         return [];
       }
 
-      return (data || []).map((inv: any) => ({
-        id: inv.id,
-        invoice_number: inv.invoice_number,
-        student_id: inv.student_id,
-        student_name: inv.students ? `${inv.students.first_name} ${inv.students.last_name || ""}`.trim() : "Student",
-        admission_number: inv.students?.admission_number || "—",
-        total_amount: Number(inv.total_amount),
-        paid_amount: Number(inv.paid_amount || 0),
-        balance: Number(inv.balance_amount || 0),
-        status: inv.status,
-        due_date: inv.due_date,
-        created_at: inv.created_at,
-      }));
+      let mapped = (data || []).map((inv: any) => {
+        const std = inv.students;
+        const enr = Array.isArray(std?.student_enrollments) ? std.student_enrollments[0] : null;
+        const className = enr?.classes?.name || "Class 10";
+        const sectionName = enr?.sections?.name || "A";
+        return {
+          id: inv.id,
+          invoice_number: inv.invoice_number,
+          student_id: inv.student_id,
+          student_name: std?.full_name || "Student",
+          admission_number: std?.admission_number || "—",
+          class_name: className,
+          class_id: enr?.class_id,
+          section_name: sectionName,
+          section_id: enr?.section_id,
+          academic_year: enr?.academic_years?.name || "2024-2025",
+          academic_category: "Higher Classes",
+          fee_category: "Higher Classes",
+          total_amount: Number(inv.total_amount),
+          paid_amount: Number(inv.paid_amount || 0),
+          balance: Number(inv.balance_amount || 0),
+          status: inv.status,
+          due_date: inv.due_date,
+          created_at: inv.created_at,
+        };
+      });
+
+      if (params.search) {
+        const q = params.search.toLowerCase();
+        mapped = mapped.filter(
+          (i: any) =>
+            i.student_name.toLowerCase().includes(q) ||
+            i.admission_number.toLowerCase().includes(q) ||
+            i.invoice_number.toLowerCase().includes(q)
+        );
+      }
+
+      return mapped;
     },
 
     async recordPayment(payload: {
@@ -3235,7 +3397,8 @@ export const supabaseService = {
           student_id: payload.student_id,
           receipt_number: payload.receipt_number,
           amount: payload.amount,
-          payment_method: payload.payment_mode ? payload.payment_mode.toLowerCase() : "cash",
+          payment_mode: payload.payment_mode || "Cash",
+          payment_date: new Date().toISOString(),
           transaction_reference: payload.transaction_reference || null,
           collected_by: userRes?.user?.id || null,
           remarks: payload.remarks || null,
@@ -3268,6 +3431,40 @@ export const supabaseService = {
       }
 
       return data;
+    },
+
+    async getPaymentHistory(studentId?: string | number) {
+      if (!isSupabaseConfigured()) return [];
+      let query = supabase
+        .from("payments")
+        .select(`
+          *,
+          students(id, full_name, admission_number)
+        `)
+        .order("payment_date", { ascending: false });
+
+      if (studentId) query = query.eq("student_id", studentId);
+
+      const { data, error } = await query;
+      if (error) {
+        console.warn("Supabase payments error:", error.message);
+        return [];
+      }
+
+      return (data || []).map((p: any) => ({
+        id: p.id,
+        receipt_number: p.receipt_number,
+        invoice_id: p.invoice_id,
+        student_id: p.student_id,
+        student_name: p.students?.full_name || "Student",
+        admission_number: p.students?.admission_number || "—",
+        amount: Number(p.amount),
+        payment_mode: p.payment_mode || "Cash",
+        payment_date: p.payment_date,
+        status: "completed",
+        transaction_reference: p.transaction_reference,
+        remarks: p.remarks,
+      }));
     },
   },
 };

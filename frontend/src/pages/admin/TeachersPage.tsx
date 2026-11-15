@@ -532,8 +532,9 @@ export const TeachersPage: React.FC = () => {
     {
       key: "actions",
       header: "Actions",
+      className: "min-w-[160px] text-right",
       render: (row) => (
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 whitespace-nowrap">
           <Button
             variant="ghost"
             size="sm"

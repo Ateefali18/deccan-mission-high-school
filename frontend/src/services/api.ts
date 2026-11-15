@@ -156,17 +156,32 @@ export const getStoredCustomUsers = (): CustomUserAccount[] => {
 };
 
 export const saveCustomUser = (user: CustomUserAccount) => {
-  const secureUser = {
+  if (!user) return;
+  const targetUsername = String(user.username || user.admission_number || "user").trim().toLowerCase();
+  const targetEmail = String(user.email || (user.admission_number ? `${user.admission_number.toLowerCase()}@student.dmhs.edu.in` : "")).trim().toLowerCase();
+  const targetEmp = user.employee_id ? String(user.employee_id).trim().toLowerCase() : "";
+  const targetAdm = user.admission_number ? String(user.admission_number).trim().toLowerCase() : "";
+
+  const secureUser: CustomUserAccount = {
     ...user,
+    username: user.username || user.admission_number || "user",
+    email: user.email || (user.admission_number ? `${user.admission_number.toLowerCase()}@student.dmhs.edu.in` : undefined),
     password: user.password ? hashPassword(user.password) : undefined,
   };
-  const users = getStoredCustomUsers().filter(
-    (u) =>
-      u.username.toLowerCase() !== user.username.toLowerCase() &&
-      u.email.toLowerCase() !== user.email.toLowerCase() &&
-      (!user.employee_id || u.employee_id?.toLowerCase() !== user.employee_id.toLowerCase()) &&
-      (!user.admission_number || u.admission_number?.toLowerCase() !== user.admission_number.toLowerCase())
-  );
+
+  const users = getStoredCustomUsers().filter((u) => {
+    const uUser = u.username ? String(u.username).trim().toLowerCase() : "";
+    const uEmail = u.email ? String(u.email).trim().toLowerCase() : "";
+    const uEmp = u.employee_id ? String(u.employee_id).trim().toLowerCase() : "";
+    const uAdm = u.admission_number ? String(u.admission_number).trim().toLowerCase() : "";
+
+    if (uUser && uUser === targetUsername) return false;
+    if (uEmail && targetEmail && uEmail === targetEmail) return false;
+    if (uEmp && targetEmp && uEmp === targetEmp) return false;
+    if (uAdm && targetAdm && uAdm === targetAdm) return false;
+    return true;
+  });
+
   users.unshift(secureUser);
   inMemoryCustomUsers = users;
   try {
@@ -1172,10 +1187,11 @@ export const api = {
       // 1.6 Supabase Authenticated Student Login (By Admission Number or Email)
       if (isSupabaseConfigured()) {
         try {
-          const studentLoginEmail = `${cleanUser.replace(/\s+/g, "")}@student.dmhs.edu.in`;
+          const cleanUserLower = (cleanUser || "").trim().toLowerCase();
+          const studentLoginEmail = `${cleanUserLower.replace(/\s+/g, "")}@student.dmhs.edu.in`;
           const targetEmails = [
             studentLoginEmail,
-            cleanUser.includes("@") ? cleanUser : null,
+            cleanUser.includes("@") ? cleanUserLower : null,
           ].filter(Boolean) as string[];
 
           for (const tryEmail of targetEmails) {
@@ -1241,12 +1257,13 @@ export const api = {
 
       // 2. Check Dynamically Registered Teachers & Admitted Students in Persistent Storage
       const customUsers = getStoredCustomUsers();
+      const cleanUserLower = (cleanUser || "").trim().toLowerCase();
       const matchedUser = customUsers.find(
         (u) =>
-          u.username.toLowerCase() === cleanUser ||
-          u.email.toLowerCase() === cleanUser ||
-          (u.employee_id && u.employee_id.toLowerCase() === cleanUser) ||
-          (u.admission_number && u.admission_number.toLowerCase() === cleanUser)
+          (u.username && u.username.toLowerCase() === cleanUserLower) ||
+          (u.email && u.email.toLowerCase() === cleanUserLower) ||
+          (u.employee_id && u.employee_id.toLowerCase() === cleanUserLower) ||
+          (u.admission_number && u.admission_number.toLowerCase() === cleanUserLower)
       );
 
       if (matchedUser) {
@@ -1909,18 +1926,21 @@ export const api = {
 
   classes: {
     list: async (): Promise<SchoolClass[]> => {
+      if (isSupabaseConfigured()) {
+        try {
+          const liveClasses = await supabaseService.classes.list();
+          if (liveClasses && liveClasses.length > 0) {
+            return liveClasses;
+          }
+        } catch (e) {
+          console.warn("Could not load classes from Supabase:", e);
+        }
+      }
+
       let remoteClasses: SchoolClass[] = [];
       try {
         remoteClasses = await request<SchoolClass[]>("/classes/");
-      } catch {
-        if (isSupabaseConfigured()) {
-          try {
-            remoteClasses = await supabaseService.classes.list();
-          } catch (e) {
-            console.warn("Could not load classes from Supabase:", e);
-          }
-        }
-      }
+      } catch {}
 
       // Merge remote classes with baseline and local custom classes
       const customClasses = getStoredCustomClasses();
@@ -4151,6 +4171,14 @@ export const api = {
   // --------------------------------------------------------------------------
   fees: {
     getFinancialSummary: async (): Promise<FeeFinancialSummary> => {
+      if (isSupabaseConfigured()) {
+        try {
+          return await supabaseService.fees.getFinancialSummary();
+        } catch (e) {
+          console.warn("Supabase getFinancialSummary error, using fallback:", e);
+        }
+      }
+
       // First ensure all enrolled students are synced
       await api.fees.syncEnrolledStudents();
 
@@ -4214,6 +4242,14 @@ export const api = {
     },
 
     syncEnrolledStudents: async (): Promise<any[]> => {
+      if (isSupabaseConfigured()) {
+        try {
+          return await supabaseService.fees.syncEnrolledStudents();
+        } catch (e) {
+          console.warn("Supabase syncEnrolledStudents error, using fallback:", e);
+        }
+      }
+
       const customStudents = getStoredCustomStudents();
       const allStudents = [...customStudents, ...BASELINE_STUDENTS];
       const invoices = getStoredInvoices();
@@ -4295,6 +4331,14 @@ export const api = {
         student_id?: string | number;
       } = {}
     ): Promise<any[]> => {
+      if (isSupabaseConfigured()) {
+        try {
+          return await supabaseService.fees.getInvoices(params);
+        } catch (e) {
+          console.warn("Supabase getInvoices error, using fallback:", e);
+        }
+      }
+
       // Synchronize students first
       await api.fees.syncEnrolledStudents();
       let invoices = getStoredInvoices();
@@ -4603,6 +4647,17 @@ export const api = {
     },
 
     getPaymentHistory: async (studentId?: string | number): Promise<FeePaymentTransaction[]> => {
+      if (isSupabaseConfigured()) {
+        try {
+          const liveHistory = await supabaseService.fees.getPaymentHistory(studentId);
+          if (liveHistory && liveHistory.length > 0) {
+            return liveHistory;
+          }
+        } catch (e) {
+          console.warn("Supabase getPaymentHistory error, using fallback:", e);
+        }
+      }
+
       let history: FeePaymentTransaction[] = [];
       if (typeof localStorage !== "undefined") {
         const raw = localStorage.getItem("dmhs_payments_history");

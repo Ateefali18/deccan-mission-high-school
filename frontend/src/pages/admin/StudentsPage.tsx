@@ -680,8 +680,9 @@ export const StudentsPage: React.FC = () => {
     {
       key: "actions",
       header: "Actions",
+      className: "min-w-[160px] text-right",
       render: (row) => (
-        <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-1.5 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
           <Button
             variant="ghost"
             size="sm"

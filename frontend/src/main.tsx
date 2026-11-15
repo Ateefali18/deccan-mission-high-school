@@ -3,7 +3,7 @@ import ReactDOM from "react-dom/client";
 import App from "./App";
 import "./index.css";
 
-export const APP_BUILD_VERSION = "v2.5.0-2026.11.14";
+export const APP_BUILD_VERSION = "v2.6.0-2026.11.15";
 
 // Phase 1: Self-healing browser cache & service worker cleanup for Google Chrome & Edge
 if (typeof window !== "undefined") {
@@ -38,6 +38,9 @@ if (typeof window !== "undefined") {
       localStorage.removeItem("dmhs_custom_students");
       localStorage.removeItem("dmhs_custom_teachers");
       localStorage.removeItem("dmhs_custom_classes");
+      localStorage.removeItem("dmhs_invoices");
+      localStorage.removeItem("dmhs_payments_history");
+      localStorage.removeItem("dmhs_fee_structures");
     }
     localStorage.setItem("dmhs_app_build_version", APP_BUILD_VERSION);
   } catch {}

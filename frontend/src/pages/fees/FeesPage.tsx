@@ -24,6 +24,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { api, getCategoryForClass } from "../../services/api";
+import { useRealtimeSync } from "../../hooks/useRealtimeSync";
 import type {
   FeeFinancialSummary,
   FeeStructure,
@@ -154,6 +155,14 @@ export const FeesPage: React.FC = () => {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Real-time synchronization across browsers and devices
+  useRealtimeSync({
+    tables: ["invoices", "payments", "students", "student_enrollments"],
+    onSync: () => {
+      loadData();
+    },
+  });
 
   // Open Payment Recording
   const handleOpenPayment = (inv: InvoiceItem) => {
