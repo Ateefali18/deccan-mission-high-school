@@ -208,7 +208,42 @@ export interface TeacherProfile {
   documents?: FacultyDocumentItem[];
 }
 
+export interface AcademicHierarchyClassSection {
+  id: string;
+  name: string;
+  capacity: number;
+  student_count: number;
+}
+
+export interface AcademicHierarchyClass {
+  id: string;
+  name: string;
+  grade_level: number;
+  student_count: number;
+  sections: AcademicHierarchyClassSection[];
+}
+
+export interface AcademicHierarchyCategory {
+  category: string;
+  count: number;
+  student_count: number;
+  percentage: number;
+  classes: AcademicHierarchyClass[];
+}
+
+export interface AcademicHierarchySummary {
+  academic_year: string;
+  total_eligible_students: number;
+  total_active_students: number;
+  unassigned_students_count: number;
+  inactive_students_count: number;
+  categories: AcademicHierarchyCategory[];
+}
+
 export interface AdminDashboardStats {
+  academic_hierarchy?: AcademicHierarchySummary;
+  unassigned_students_count?: number;
+  inactive_students_count?: number;
   total_active_students: number;
   total_active_teachers: number;
   total_classes: number;

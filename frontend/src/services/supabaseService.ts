@@ -58,7 +58,7 @@ export const supabaseService = {
           .eq("code", "DMHS-HYD")
           .maybeSingle();
 
-        if (data) return data;
+        if (data && !error) return data;
 
         const { data: anySchool } = await supabase.from("schools").select("*").limit(1).maybeSingle();
         if (anySchool) return anySchool;
@@ -72,8 +72,8 @@ export const supabaseService = {
         name: "Deccan Mission High School",
         affiliation_number: "TS-HYD-SSC-41092",
         board: "Telangana State Board of Secondary Education (SSC)",
-        address: "Moghulpura, Charminar Zone, Hyderabad, Telangana 500002",
-        contact_email: "contact@dmhs.edu.in",
+        address: "Old City, Hyderabad, Telangana 500002, India",
+        contact_email: "admin@deccanmission.edu.in",
         contact_phone: "+91 40 2456 7890",
         website: "https://dmhs.edu.in",
         logo_url: "/dmhs-logo-128.png",
@@ -83,13 +83,13 @@ export const supabaseService = {
     async updateCurrent(payload: any) {
       if (!isSupabaseConfigured()) {
         return {
-          id: "e0000000-0000-0000-0000-000000000001",
+          id: "3eef50ca-91eb-416b-89bc-e9ca8c629213",
           code: "DMHS-HYD",
           name: payload.name || "Deccan Mission High School",
           affiliation_number: payload.affiliation_number || "TS-HYD-SSC-41092",
           board: payload.board || "Telangana State Board of Secondary Education (SSC)",
           address: payload.address || "Old City, Hyderabad, Telangana 500002, India",
-          contact_email: payload.contact_email || "contact@dmhs.edu.in",
+          contact_email: payload.contact_email || "admin@deccanmission.edu.in",
           contact_phone: payload.contact_phone || "+91 40 2456 7890",
           website: payload.website || "https://dmhs.edu.in",
           logo_url: payload.logo_url || "/dmhs-logo-128.png",
@@ -110,31 +110,25 @@ export const supabaseService = {
       if (payload.logo_url !== undefined) updates.logo_url = payload.logo_url;
 
       try {
-        const { data, error } = await supabase
-          .from("schools")
-          .update(updates)
-          .eq("code", "DMHS-HYD")
-          .select()
-          .maybeSingle();
+        let query = supabase.from("schools").update(updates);
+        if (payload.id && isUUID(payload.id)) {
+          query = query.eq("id", payload.id);
+        } else {
+          query = query.eq("code", "DMHS-HYD");
+        }
 
-        if (!error && data) return data;
-      } catch (err) {
-        console.warn("Supabase schools.updateCurrent fallback:", err);
+        const { data, error } = await query.select().maybeSingle();
+
+        if (error) {
+          throw new SupabaseServiceError(error.message, error.code, error.details);
+        }
+        if (data) return data;
+      } catch (err: any) {
+        if (err instanceof SupabaseServiceError) throw err;
+        console.warn("Supabase schools.updateCurrent error:", err);
       }
 
-      return {
-        id: "e0000000-0000-0000-0000-000000000001",
-        code: "DMHS-HYD",
-        name: payload.name || "Deccan Mission High School",
-        affiliation_number: payload.affiliation_number || "TS-HYD-SSC-41092",
-        board: payload.board || "Telangana State Board of Secondary Education (SSC)",
-        address: payload.address || "Old City, Hyderabad, Telangana 500002, India",
-        contact_email: payload.contact_email || "contact@dmhs.edu.in",
-        contact_phone: payload.contact_phone || "+91 40 2456 7890",
-        website: payload.website || "https://dmhs.edu.in",
-        logo_url: payload.logo_url || "/dmhs-logo-128.png",
-        ...payload,
-      };
+      return this.getCurrent();
     },
   },
 
@@ -348,41 +342,63 @@ export const supabaseService = {
   classes: {
     async list(): Promise<SchoolClass[]> {
       if (!isSupabaseConfigured()) return [];
-      const [classesRes, enrollmentsRes] = await Promise.all([
+      const [classesRes, enrollmentsRes, studentsRes] = await Promise.all([
         supabase
           .from("classes")
           .select("*, sections(*)")
           .order("grade_level", { ascending: true }),
         supabase
           .from("student_enrollments")
-          .select("class_id, student_id")
+          .select("class_id, section_id, student_id")
           .eq("is_current", true)
           .eq("status", "active"),
+        supabase
+          .from("students")
+          .select("id")
+          .eq("student_status", "active"),
       ]);
 
       if (classesRes.error) throw new SupabaseServiceError(classesRes.error.message, classesRes.error.code, classesRes.error.details);
 
-      const enrollments = enrollmentsRes.data || [];
-      const countMap: Record<string, number> = {};
+      const activeStudentIdSet = new Set((studentsRes.data || []).map((s: any) => s.id));
+      const enrollments = (enrollmentsRes.data || []).filter((e: any) => activeStudentIdSet.has(e.student_id));
+      
+      const classCountMap: Record<string, number> = {};
+      const sectionCountMap: Record<string, number> = {};
+
       enrollments.forEach((e: any) => {
         if (e.class_id) {
-          countMap[e.class_id] = (countMap[e.class_id] || 0) + 1;
+          classCountMap[e.class_id] = (classCountMap[e.class_id] || 0) + 1;
+        }
+        if (e.section_id) {
+          sectionCountMap[e.section_id] = (sectionCountMap[e.section_id] || 0) + 1;
         }
       });
 
-      return (classesRes.data || []).map((cls: any) => ({
-        ...cls,
-        student_count: countMap[cls.id] || 0,
-        category:
+      return (classesRes.data || []).map((cls: any) => {
+        const sections = (cls.sections || []).map((sec: any) => ({
+          ...sec,
+          student_count: sectionCountMap[sec.id] || 0,
+        })).sort((a: any, b: any) => (a.name || "").localeCompare(b.name || ""));
+
+        const cName = (cls.name || "").toLowerCase();
+        const category =
           cls.category ||
-          (cls.grade_level <= 0
+          (cls.grade_level <= 0 || cName.includes("nursery") || cName.includes("lkg") || cName.includes("ukg")
             ? "Pre-Primary"
             : cls.grade_level <= 5
             ? "Primary"
             : cls.grade_level <= 10
             ? "Higher Classes"
-            : "Higher Secondary"),
-      }));
+            : "Higher Secondary");
+
+        return {
+          ...cls,
+          sections,
+          student_count: classCountMap[cls.id] || 0,
+          category,
+        };
+      });
     },
 
     async create(payload: {
@@ -1052,33 +1068,113 @@ export const supabaseService = {
         ? data.student_enrollments.find((e: any) => e.status === "active") || data.student_enrollments[0]
         : null;
 
+      const className = currentEnrollment?.classes?.name || "Enrolled Class";
+      const sectionName = currentEnrollment?.sections?.name || "A";
+      const rollNumber = currentEnrollment?.roll_number ? String(currentEnrollment.roll_number) : null;
+      const ayName = currentEnrollment?.academic_years?.name || "2025-2026";
+
       return {
         id: data.id,
         user_id: data.profile_id,
         admission_number: data.admission_number,
-        full_name: data.full_name || `${data.first_name} ${data.last_name || ""}`.trim(),
+        full_name: data.full_name || `${data.first_name || ""} ${data.last_name || ""}`.trim(),
         email: data.email || null,
-        gender: data.gender,
-        date_of_birth: data.date_of_birth,
-        blood_group: data.blood_group,
-        guardian_name: data.guardian_name,
-        guardian_phone: data.guardian_phone,
-        emergency_contact: data.emergency_contact,
-        address: data.address,
-        student_status: data.student_status,
+        class_name: className,
+        section_name: sectionName,
+        roll_number: rollNumber,
+        academic_year_name: ayName,
+        academic_category: "Higher Classes",
+        gender: data.gender || "—",
+        date_of_birth: data.date_of_birth || null,
+        blood_group: data.blood_group || null,
+        religion: data.religion || null,
+        caste: data.caste || null,
+        mother_tongue: data.mother_tongue || null,
+        first_language: data.first_language || null,
+        second_language: data.second_language || null,
+        third_language: data.third_language || null,
+        aadhaar_number: data.aadhaar_number || null,
+        apaar_id: data.apaar_id || null,
+        admission_date: data.admission_date || null,
+        father_name: data.father_name || data.guardian_name || null,
+        father_phone: data.father_phone || data.guardian_phone || null,
+        father_email: data.father_email || null,
+        father_occupation: data.father_occupation || null,
+        mother_name: data.mother_name || null,
+        mother_phone: data.mother_phone || null,
+        mother_email: data.mother_email || null,
+        mother_occupation: data.mother_occupation || null,
+        guardian_name: data.guardian_name || data.father_name || null,
+        guardian_phone: data.guardian_phone || data.father_phone || null,
+        guardian_relationship: data.guardian_relationship || "Father",
+        emergency_contact: data.emergency_contact || data.guardian_phone || null,
+        student_phone: data.student_phone || data.father_phone || null,
+        address: data.address || null,
+        student_status: data.student_status || "active",
         is_active: data.student_status === "active",
-        photo_url: data.photo_url,
+        photo_url: data.photo_url || data.profile_photo_url || null,
         current_enrollment: currentEnrollment
           ? {
               id: currentEnrollment.id,
-              academic_year_name: currentEnrollment.academic_years?.name || "2025-2026",
-              class_name: currentEnrollment.classes?.name || "Enrolled Class",
-              section_name: currentEnrollment.sections?.name || "A",
-              roll_number: currentEnrollment.roll_number ? String(currentEnrollment.roll_number) : null,
+              academic_year_name: ayName,
+              class_name: className,
+              section_name: sectionName,
+              roll_number: rollNumber,
               enrollment_status: currentEnrollment.status,
             }
           : null,
       };
+    },
+
+    async getMyProfile(): Promise<StudentProfile> {
+      if (!isSupabaseConfigured()) throw new SupabaseServiceError("Supabase not configured");
+
+      const { data: authData } = await supabase.auth.getUser();
+      if (!authData?.user) {
+        throw new SupabaseServiceError("Not authenticated");
+      }
+
+      // 1. Resolve student row via profiles auth_user_id or user metadata
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("id, role")
+        .eq("auth_user_id", authData.user.id)
+        .maybeSingle();
+
+      const profileId = profile?.id;
+
+      let studentQuery = supabase
+        .from("students")
+        .select("id")
+        .limit(1);
+
+      if (profileId) {
+        studentQuery = studentQuery.or(`profile_id.eq.${profileId},user_id.eq.${profileId}`);
+      } else {
+        studentQuery = studentQuery.ilike("email", authData.user.email || "");
+      }
+
+      const { data, error } = await studentQuery.maybeSingle();
+      if (!error && data) {
+        return this.getById(data.id);
+      }
+
+      // Fallback: lookup by admission number in email or metadata
+      const metaAdm = authData.user.user_metadata?.admission_number;
+      const emailAdm = authData.user.email?.split("@")[0]?.toUpperCase();
+      const admTarget = metaAdm || emailAdm;
+      if (admTarget) {
+        const { data: byAdm } = await supabase
+          .from("students")
+          .select("id")
+          .ilike("admission_number", admTarget)
+          .maybeSingle();
+        if (byAdm) {
+          return this.getById(byAdm.id);
+        }
+      }
+
+      throw new SupabaseServiceError("Student record not found for this account.");
     },
 
     async create(payload: {
@@ -1131,10 +1227,10 @@ export const supabaseService = {
           p_date_of_birth: payload.date_of_birth || null,
           p_gender: payload.gender || "Male",
           p_blood_group: payload.blood_group || null,
-          p_guardian_name: payload.guardian_name || null,
+          p_guardian_name: payload.guardian_name || payload.father_name || null,
           p_guardian_relationship: payload.guardian_relationship || "Guardian",
-          p_guardian_phone: payload.guardian_phone || null,
-          p_emergency_contact: payload.emergency_contact || payload.guardian_phone || null,
+          p_guardian_phone: payload.guardian_phone || payload.father_phone || null,
+          p_emergency_contact: payload.emergency_contact || payload.father_phone || payload.guardian_phone || null,
           p_address: payload.address || null,
           p_class_id: payload.class_id && isUUID(payload.class_id) ? payload.class_id : null,
           p_section_id: payload.section_id && isUUID(payload.section_id) ? payload.section_id : null,
@@ -1142,6 +1238,20 @@ export const supabaseService = {
           p_academic_year_id: payload.academic_year_id && isUUID(payload.academic_year_id) ? payload.academic_year_id : null,
           p_admission_date: new Date().toISOString().split("T")[0],
           p_password: payload.password || "1234",
+          p_religion: (payload as any).religion || null,
+          p_caste: (payload as any).caste || null,
+          p_mother_tongue: (payload as any).mother_tongue || null,
+          p_aadhaar_number: (payload as any).aadhaar_number || null,
+          p_apaar_id: (payload as any).apaar_id || null,
+          p_father_name: (payload as any).father_name || null,
+          p_father_phone: (payload as any).father_phone || null,
+          p_father_email: (payload as any).father_email || null,
+          p_father_occupation: (payload as any).father_occupation || null,
+          p_mother_name: (payload as any).mother_name || null,
+          p_mother_phone: (payload as any).mother_phone || null,
+          p_mother_email: (payload as any).mother_email || null,
+          p_mother_occupation: (payload as any).mother_occupation || null,
+          p_student_phone: (payload as any).student_phone || null,
         });
 
         if (!rpcErr && rpcData) {
@@ -1171,11 +1281,29 @@ export const supabaseService = {
           date_of_birth: payload.date_of_birth || null,
           gender: payload.gender || null,
           blood_group: payload.blood_group || null,
-          guardian_name: payload.guardian_name || null,
+          guardian_name: payload.guardian_name || (payload as any).father_name || null,
           guardian_relationship: payload.guardian_relationship || "Guardian",
-          guardian_phone: payload.guardian_phone || null,
-          emergency_contact: payload.emergency_contact || payload.guardian_phone || null,
+          guardian_phone: payload.guardian_phone || (payload as any).father_phone || null,
+          emergency_contact: payload.emergency_contact || (payload as any).father_phone || payload.guardian_phone || null,
           address: payload.address || null,
+          religion: (payload as any).religion || null,
+          caste: (payload as any).caste || null,
+          mother_tongue: (payload as any).mother_tongue || null,
+          first_language: (payload as any).first_language || null,
+          second_language: (payload as any).second_language || null,
+          third_language: (payload as any).third_language || null,
+          aadhaar_number: (payload as any).aadhaar_number || null,
+          apaar_id: (payload as any).apaar_id || null,
+          father_name: (payload as any).father_name || null,
+          father_phone: (payload as any).father_phone || null,
+          father_email: (payload as any).father_email || null,
+          father_occupation: (payload as any).father_occupation || null,
+          mother_name: (payload as any).mother_name || null,
+          mother_phone: (payload as any).mother_phone || null,
+          mother_email: (payload as any).mother_email || null,
+          mother_occupation: (payload as any).mother_occupation || null,
+          student_phone: (payload as any).student_phone || null,
+          admission_date: new Date().toISOString().split("T")[0],
           student_status: "active",
           is_active: true,
         })
@@ -1532,40 +1660,238 @@ export const supabaseService = {
         };
       }
 
-      // Aggregate live counts from Supabase
-      const [studentsRes, teachersRes, classesRes, sectionsRes, currentAyRes, auditRes] =
-        await Promise.all([
-          supabase.from("students").select("id", { count: "exact", head: true }).eq("student_status", "active"),
-          supabase.from("teachers").select("id", { count: "exact", head: true }).eq("is_active", true),
-          supabase.from("classes").select("id", { count: "exact", head: true }).eq("is_active", true),
-          supabase.from("sections").select("id", { count: "exact", head: true }).eq("is_active", true),
-          supabase.from("academic_years").select("id, name").eq("is_current", true).maybeSingle(),
-          supabase.from("audit_logs").select("*").order("created_at", { ascending: false }).limit(5),
-        ]);
+      // Aggregate live counts and full hierarchy from Supabase
+      const [
+        studentsRes,
+        teachersRes,
+        classesRes,
+        sectionsRes,
+        enrollmentsRes,
+        currentAyRes,
+        auditRes,
+      ] = await Promise.all([
+        supabase
+          .from("students")
+          .select("id, admission_number, first_name, last_name, full_name, student_status, photo_url, created_at")
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("teachers")
+          .select("id, employee_id, first_name, last_name, full_name, designation, department, is_active, employment_status, created_at")
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("classes")
+          .select("*, sections(*)")
+          .order("grade_level", { ascending: true }),
+        supabase
+          .from("sections")
+          .select("id, class_id, name, capacity, is_active")
+          .order("name", { ascending: true }),
+        supabase
+          .from("student_enrollments")
+          .select("id, student_id, class_id, section_id, is_current, status, roll_number")
+          .eq("is_current", true)
+          .eq("status", "active"),
+        supabase
+          .from("academic_years")
+          .select("id, name")
+          .eq("is_current", true)
+          .maybeSingle(),
+        supabase
+          .from("audit_logs")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .limit(8),
+      ]);
+
+      const allStudents = studentsRes.data || [];
+      const allTeachers = teachersRes.data || [];
+      const allClasses = classesRes.data || [];
+      const allSections = sectionsRes.data || [];
+      const activeEnrollments = enrollmentsRes.data || [];
+
+      const activeStudents = allStudents.filter((s: any) => s.student_status === "active");
+      const inactiveStudents = allStudents.filter((s: any) => s.student_status !== "active");
+      const activeTeachers = allTeachers.filter(
+        (t: any) => t.is_active !== false && t.employment_status !== "inactive"
+      );
+
+      // Map student enrollment to class & section
+      const activeStudentIds = new Set(activeStudents.map((s: any) => s.id));
+      const validEnrollments = activeEnrollments.filter((e: any) => activeStudentIds.has(e.student_id));
+
+      const classStudentCountMap: Record<string, number> = {};
+      const sectionStudentCountMap: Record<string, number> = {};
+      const enrolledStudentIds = new Set<string>();
+
+      validEnrollments.forEach((e: any) => {
+        enrolledStudentIds.add(e.student_id);
+        if (e.class_id) {
+          classStudentCountMap[e.class_id] = (classStudentCountMap[e.class_id] || 0) + 1;
+        }
+        if (e.section_id) {
+          sectionStudentCountMap[e.section_id] = (sectionStudentCountMap[e.section_id] || 0) + 1;
+        }
+      });
+
+      const unassignedStudentsCount = activeStudents.filter((s: any) => !enrolledStudentIds.has(s.id)).length;
+      const totalEligibleStudents = activeStudents.length;
+
+      // Group classes into Pre-Primary, Primary, Higher Classes, and Higher Secondary
+      const prePrimaryClasses: any[] = [];
+      const primaryClasses: any[] = [];
+      const higherClasses: any[] = [];
+      const higherSecClasses: any[] = [];
+
+      allClasses.forEach((cls: any) => {
+        const cSections = (cls.sections || []).map((sec: any) => ({
+          id: sec.id,
+          name: sec.name,
+          capacity: sec.capacity || 40,
+          student_count: sectionStudentCountMap[sec.id] || 0,
+        })).sort((a: any, b: any) => (a.name || "").localeCompare(b.name || ""));
+
+        const cObj = {
+          id: cls.id,
+          name: cls.name,
+          grade_level: cls.grade_level,
+          student_count: classStudentCountMap[cls.id] || 0,
+          sections: cSections,
+        };
+
+        const cName = (cls.name || "").toLowerCase();
+        if (cls.grade_level <= 0 || cName.includes("nursery") || cName.includes("lkg") || cName.includes("ukg")) {
+          prePrimaryClasses.push(cObj);
+        } else if (cls.grade_level >= 1 && cls.grade_level <= 5) {
+          primaryClasses.push(cObj);
+        } else if (cls.grade_level >= 6 && cls.grade_level <= 10) {
+          higherClasses.push(cObj);
+        } else {
+          higherSecClasses.push(cObj);
+        }
+      });
+
+      const sumStudents = (arr: any[]) => arr.reduce((acc: number, c: any) => acc + c.student_count, 0);
+
+      const prePrimaryStudentCount = sumStudents(prePrimaryClasses);
+      const primaryStudentCount = sumStudents(primaryClasses);
+      const higherStudentCount = sumStudents(higherClasses);
+      const higherSecStudentCount = sumStudents(higherSecClasses);
+
+      const calcPct = (count: number) =>
+        totalEligibleStudents > 0 ? Math.round((count / totalEligibleStudents) * 100) : 0;
+
+      const categories = [
+        {
+          category: "Pre-Primary (Nursery, LKG, UKG)",
+          count: prePrimaryClasses.length,
+          student_count: prePrimaryStudentCount,
+          percentage: calcPct(prePrimaryStudentCount),
+          classes: prePrimaryClasses,
+        },
+        {
+          category: "Primary (Classes 1 - 5)",
+          count: primaryClasses.length,
+          student_count: primaryStudentCount,
+          percentage: calcPct(primaryStudentCount),
+          classes: primaryClasses,
+        },
+        {
+          category: "Higher Classes (Classes 6 - 10)",
+          count: higherClasses.length,
+          student_count: higherStudentCount,
+          percentage: calcPct(higherStudentCount),
+          classes: higherClasses,
+        },
+      ];
+
+      if (higherSecClasses.length > 0) {
+        categories.push({
+          category: "Higher Secondary (Classes 11 - 12)",
+          count: higherSecClasses.length,
+          student_count: higherSecStudentCount,
+          percentage: calcPct(higherSecStudentCount),
+          classes: higherSecClasses,
+        });
+      }
+
+      // Backward compatible class_distribution array
+      const class_distribution = categories.map((cat) => ({
+        category: cat.category,
+        count: cat.count,
+        student_count: cat.student_count,
+      }));
+
+      if (unassignedStudentsCount > 0) {
+        class_distribution.push({
+          category: "Unassigned Students",
+          count: 0,
+          student_count: unassignedStudentsCount,
+        });
+      }
+
+      // Map recent students and teachers
+      const recent_students = allStudents.slice(0, 5).map((s: any) => {
+        const enroll = activeEnrollments.find((e: any) => e.student_id === s.id);
+        const cls = allClasses.find((c: any) => c.id === enroll?.class_id);
+        const sec = allSections.find((sec: any) => sec.id === enroll?.section_id);
+        return {
+          id: s.id,
+          admission_number: s.admission_number,
+          full_name: s.full_name || `${s.first_name || ""} ${s.last_name || ""}`.trim(),
+          class_name: cls?.name || "Unassigned",
+          section_name: sec?.name || "-",
+          roll_number: enroll?.roll_number || null,
+          student_status: s.student_status,
+          photo_url: s.photo_url,
+        };
+      });
+
+      const recent_teachers = allTeachers.slice(0, 5).map((t: any) => ({
+        id: t.id,
+        employee_id: t.employee_id,
+        full_name: t.full_name || `${t.first_name || ""} ${t.last_name || ""}`.trim(),
+        designation: t.designation || "Faculty Member",
+        department: t.department || "General",
+        is_active: t.is_active !== false,
+      }));
 
       const recentActivity = (auditRes.data || []).map((log: any) => ({
         id: log.id,
-        action: log.action,
-        resource_type: log.resource_type,
-        details: typeof log.details === "object" ? JSON.stringify(log.details) : log.details,
+        action: log.action || "System Event",
+        resource_type: log.resource_type || "records",
+        details: typeof log.details === "object" ? JSON.stringify(log.details) : log.details || "Administrative update",
         created_at: log.created_at,
-        user_name: "Admin User",
+        user_name: "Administrator",
       }));
 
+      const currentAyName = currentAyRes.data?.name || "2025-2026";
+
       return {
-        total_active_students: studentsRes.count || 0,
-        total_active_teachers: teachersRes.count || 0,
-        total_classes: classesRes.count || 0,
-        total_sections: sectionsRes.count || 0,
-        current_academic_year: currentAyRes.data?.name || "2025-2026",
+        total_active_students: totalEligibleStudents,
+        total_active_teachers: activeTeachers.length,
+        total_classes: allClasses.length,
+        total_sections: allSections.length,
+        current_academic_year: currentAyName,
         current_academic_year_id: currentAyRes.data?.id || null,
+        unassigned_students_count: unassignedStudentsCount,
+        inactive_students_count: inactiveStudents.length,
+        class_distribution,
+        academic_hierarchy: {
+          academic_year: currentAyName,
+          total_eligible_students: totalEligibleStudents,
+          total_active_students: totalEligibleStudents,
+          unassigned_students_count: unassignedStudentsCount,
+          inactive_students_count: inactiveStudents.length,
+          categories,
+        },
+        recent_students,
+        recent_teachers,
         recent_activity: recentActivity,
         upcoming_features: [
-          "Phase 2: Live Supabase DB Persistence",
-          "Biometric & Daily Attendance",
-          "SSC Examination Marks Ledger",
-          "Fee Invoicing & Online Receipts",
-          "AI Student Assistant (Authorized queries)",
+          "Telangana State SSC Academic Verification",
+          "Automated Biometric & Period-wise Attendance",
+          "Digital Marks Ledger & FA/SA Grade Sheets",
+          "Tuition & Transport Fee Reconciliation",
         ],
       };
     },

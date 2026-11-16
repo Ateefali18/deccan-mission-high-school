@@ -20,6 +20,8 @@ import {
   RefreshCw,
   Clock,
   Shield,
+  Briefcase,
+  GraduationCap,
 } from "lucide-react";
 import { useAuth } from "../../app/AuthContext";
 import { Input } from "../../components/ui/Input";
@@ -37,11 +39,12 @@ const loginSchema = z.object({
 type LoginFormData = z.infer<typeof loginSchema>;
 
 export const LoginPage: React.FC = () => {
-  const { login } = useAuth();
+  const { login, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const toast = useToast();
 
+  const [selectedPortal, setSelectedPortal] = useState<"ADMIN" | "TEACHER" | "STUDENT">("ADMIN");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -126,13 +129,37 @@ export const LoginPage: React.FC = () => {
       // Check if Admin 2-Step Verification is active
       const isMfaEnabled = localStorage.getItem("dmhs_admin_mfa_enabled") === "true";
 
+      const session = await login(data.username_or_email, data.password);
+
+      // Enforce strict portal vs role authorization
+      const userRole = (session?.role || "").toUpperCase();
+      if (selectedPortal === "ADMIN" && userRole !== "ADMIN") {
+        await logout();
+        setErrorMessage(
+          `Access Denied: This account is registered as a ${userRole === "STUDENT" ? "Student" : "Faculty member"}. Please switch to the ${userRole === "STUDENT" ? "Student Portal" : "Faculty Portal"} to sign in.`
+        );
+        return;
+      }
+      if (selectedPortal === "TEACHER" && userRole !== "TEACHER") {
+        await logout();
+        setErrorMessage(
+          `Access Denied: This account is registered as ${userRole === "ADMIN" ? "an Administrator" : "a Student"}. Please switch to the ${userRole === "ADMIN" ? "Admin Portal" : "Student Portal"} to sign in.`
+        );
+        return;
+      }
+      if (selectedPortal === "STUDENT" && userRole !== "STUDENT") {
+        await logout();
+        setErrorMessage(
+          `Access Denied: This account is registered as ${userRole === "ADMIN" ? "an Administrator" : "a Faculty member"}. Please switch to the ${userRole === "ADMIN" ? "Admin Portal" : "Faculty Portal"} to sign in.`
+        );
+        return;
+      }
+
       if (isAdminAttempt && isMfaEnabled) {
-        const session = await login(data.username_or_email, data.password);
         setPendingMfaSession(session);
         return;
       }
 
-      const session = await login(data.username_or_email, data.password);
       handleSuccessfulAuth(session);
     } catch (err: any) {
       setErrorMessage(err.message || "Invalid authentication credentials. Please try again.");
@@ -295,6 +322,55 @@ export const LoginPage: React.FC = () => {
             </p>
           </div>
 
+          {/* Three Portal Selection */}
+          <div className="grid grid-cols-3 gap-2 p-1.5 bg-gray-100 dark:bg-dark-elevated rounded-xl mb-6 border border-light-border dark:border-dark-border">
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedPortal("ADMIN");
+                setErrorMessage(null);
+              }}
+              className={`flex flex-col sm:flex-row items-center justify-center gap-1.5 py-2.5 px-2 rounded-lg text-xs font-bold transition-all ${
+                selectedPortal === "ADMIN"
+                  ? "bg-brand-navy text-white shadow-md"
+                  : "text-light-secondary dark:text-dark-secondary hover:text-light-primary dark:hover:text-dark-primary"
+              }`}
+            >
+              <ShieldCheck className="w-4 h-4 shrink-0" />
+              <span>Admin</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedPortal("TEACHER");
+                setErrorMessage(null);
+              }}
+              className={`flex flex-col sm:flex-row items-center justify-center gap-1.5 py-2.5 px-2 rounded-lg text-xs font-bold transition-all ${
+                selectedPortal === "TEACHER"
+                  ? "bg-brand-blue text-white shadow-md"
+                  : "text-light-secondary dark:text-dark-secondary hover:text-light-primary dark:hover:text-dark-primary"
+              }`}
+            >
+              <Briefcase className="w-4 h-4 shrink-0" />
+              <span>Faculty</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedPortal("STUDENT");
+                setErrorMessage(null);
+              }}
+              className={`flex flex-col sm:flex-row items-center justify-center gap-1.5 py-2.5 px-2 rounded-lg text-xs font-bold transition-all ${
+                selectedPortal === "STUDENT"
+                  ? "bg-brand-gold text-brand-navy shadow-md font-extrabold"
+                  : "text-light-secondary dark:text-dark-secondary hover:text-light-primary dark:hover:text-dark-primary"
+              }`}
+            >
+              <GraduationCap className="w-4 h-4 shrink-0" />
+              <span>Student</span>
+            </button>
+          </div>
+
           {errorMessage && (
             <div className="mb-5 p-3.5 rounded-xl bg-status-error/15 border border-status-error/30 text-status-error text-xs flex items-start gap-2.5">
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
@@ -358,8 +434,20 @@ export const LoginPage: React.FC = () => {
           ) : (
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <Input
-                label="School Email, Admission Number or Employee ID"
-                placeholder="Enter school email, admission number, or employee ID"
+                label={
+                  selectedPortal === "STUDENT"
+                    ? "Student Admission Number or Email"
+                    : selectedPortal === "TEACHER"
+                    ? "Faculty Email or Employee ID"
+                    : "Administrator Email or Username"
+                }
+                placeholder={
+                  selectedPortal === "STUDENT"
+                    ? "Enter admission number (e.g. DMHS-0576) or email"
+                    : selectedPortal === "TEACHER"
+                    ? "Enter registered faculty email or employee ID"
+                    : "Enter admin email or username (e.g. admin@dmhs.edu.in)"
+                }
                 leftIcon={<User className="w-4 h-4" />}
                 error={errors.username_or_email?.message}
                 {...register("username_or_email")}
@@ -412,7 +500,11 @@ export const LoginPage: React.FC = () => {
                 className="w-full mt-2"
                 isLoading={isSubmitting}
               >
-                Sign In to Portal
+                {selectedPortal === "STUDENT"
+                  ? "Sign In to Student Portal"
+                  : selectedPortal === "TEACHER"
+                  ? "Sign In to Faculty Portal"
+                  : "Sign In to Admin Portal"}
               </Button>
             </form>
           )}

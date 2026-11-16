@@ -1475,6 +1475,61 @@ export const api = {
     },
 
     getMe: async (): Promise<CurrentUserSession> => {
+      // 1. Authoritative check: Supabase Auth session
+      if (isSupabaseConfigured()) {
+        try {
+          const { data: authData } = await supabase.auth.getUser();
+          if (authData?.user) {
+            const { data: profile } = await supabase
+              .from("profiles")
+              .select("*, schools(name, code)")
+              .eq("auth_user_id", authData.user.id)
+              .maybeSingle();
+
+            const roleStr = (profile?.role || "STUDENT").toUpperCase();
+            const role = (roleStr === "SUPERADMIN" || roleStr === "PRINCIPAL" ? "ADMIN" : roleStr) as UserRole;
+
+            // Resolve student info if student
+            let studentInfo: any = null;
+            if (role === "STUDENT") {
+              const { data: stdRow } = await supabase
+                .from("students")
+                .select("id, admission_number, full_name, student_enrollments(classes(name), sections(name), roll_number)")
+                .or(`profile_id.eq.${profile?.id || authData.user.id},user_id.eq.${profile?.id || authData.user.id}`)
+                .maybeSingle();
+              studentInfo = stdRow;
+            }
+
+            const currentEnr = Array.isArray(studentInfo?.student_enrollments) ? studentInfo.student_enrollments[0] : null;
+
+            return {
+              user: {
+                id: profile?.id || authData.user.id,
+                school_id: profile?.school_id || 1,
+                username: studentInfo?.admission_number || authData.user.user_metadata?.admission_number || authData.user.email || "user",
+                email: authData.user.email || "",
+                full_name: profile ? `${profile.first_name} ${profile.last_name || ""}`.trim() : (studentInfo?.full_name || "School Member"),
+                phone_number: profile?.phone,
+                is_active: true,
+                roles: [role],
+                student_id: studentInfo?.id,
+                admission_number: studentInfo?.admission_number,
+                class_name: currentEnr?.classes?.name || "Class 10",
+                section_name: currentEnr?.sections?.name || "A",
+                roll_number: currentEnr?.roll_number,
+              },
+              role: role,
+              school_name: profile?.schools?.name || "Deccan Mission High School",
+              school_code: profile?.schools?.code || "DMHS-HYD",
+              profile_id: profile?.id,
+            };
+          }
+        } catch (sbErr) {
+          console.warn("Supabase auth.getUser error in getMe:", sbErr);
+        }
+      }
+
+      // 2. Client-side verified session check
       const token = typeof localStorage !== "undefined" ? localStorage.getItem("dmhs_token") : null;
       const verifiedToken = verifySessionToken(token);
       const sessionUserRaw = typeof localStorage !== "undefined" ? localStorage.getItem("dmhs_session_user") : null;
@@ -1495,6 +1550,11 @@ export const api = {
                 roles: [su.role],
                 employee_id: su.employee_id,
                 teacher_id: su.teacher_id,
+                student_id: su.student_id,
+                admission_number: su.admission_number,
+                class_name: su.class_name,
+                section_name: su.section_name,
+                roll_number: su.roll_number,
               },
               role: su.role,
               school_name: "Deccan Mission High School",
@@ -1505,7 +1565,7 @@ export const api = {
         } catch {}
       }
 
-      // If token is invalid or tampered with
+      // If token is invalid or tampered with and no session exists
       if (token && !verifiedToken) {
         if (typeof localStorage !== "undefined") {
           localStorage.removeItem("dmhs_token");
@@ -1537,61 +1597,12 @@ export const api = {
         };
       }
 
-      if (isSupabaseConfigured()) {
-        const { data: authData } = await supabase.auth.getUser();
-        if (authData?.user) {
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("*, schools(name, code)")
-            .eq("auth_user_id", authData.user.id)
-            .maybeSingle();
-
-          const roleStr = (profile?.role || "ADMIN").toUpperCase();
-          const role = (roleStr === "SUPERADMIN" || roleStr === "PRINCIPAL" ? "ADMIN" : roleStr) as any;
-
-          return {
-            user: {
-              id: profile?.id || authData.user.id,
-              school_id: profile?.school_id || 1,
-              username: authData.user.email || "user",
-              email: authData.user.email || "",
-              full_name: profile ? `${profile.first_name} ${profile.last_name || ""}`.trim() : "School Member",
-              phone_number: profile?.phone_number,
-              is_active: true,
-              roles: [role],
-            },
-            role: role,
-            school_name: profile?.schools?.name || "Deccan Mission High School",
-            school_code: profile?.schools?.code || "DMHS-HYD",
-            profile_id: profile?.id,
-          };
-        }
-      }
-
       return request<CurrentUserSession>("/auth/me");
     },
   },
 
   schools: {
     getCurrent: async (): Promise<SchoolConfig> => {
-      if (typeof localStorage !== "undefined") {
-        const cached = localStorage.getItem("dmhs_school_settings");
-        if (cached) {
-          try {
-            return JSON.parse(cached);
-          } catch {}
-        }
-      }
-      try {
-        const remote = await request<any>("/schools/current");
-        if (remote && remote.name) {
-          if (typeof localStorage !== "undefined") {
-            localStorage.setItem("dmhs_school_settings", JSON.stringify(remote));
-          }
-          return remote;
-        }
-      } catch {}
-
       if (isSupabaseConfigured()) {
         try {
           const sb = await supabaseService.schools.getCurrent();
@@ -1602,7 +1613,7 @@ export const api = {
               code: sb.code || "DMHS-HYD",
               affiliation_number: sb.affiliation_number || "TS-HYD-SSC-41092",
               board: sb.board || "Telangana State Board of Secondary Education (SSC)",
-              contact_email: sb.contact_email || "contact@dmhs.edu.in",
+              contact_email: sb.contact_email || "admin@deccanmission.edu.in",
               contact_phone: sb.contact_phone || "+91 40 2456 7890",
               address: sb.address || "Old City, Hyderabad, Telangana 500002, India",
               website: sb.website || "https://dmhs.edu.in",
@@ -1613,17 +1624,28 @@ export const api = {
             }
             return cfg;
           }
-        } catch {}
+        } catch (e) {
+          console.warn("Could not load schools from Supabase, checking cache:", e);
+        }
+      }
+
+      if (typeof localStorage !== "undefined") {
+        const cached = localStorage.getItem("dmhs_school_settings");
+        if (cached) {
+          try {
+            return JSON.parse(cached);
+          } catch {}
+        }
       }
 
       const defaultSchool: SchoolConfig = {
-        id: "e0000000-0000-0000-0000-000000000001",
+        id: "3eef50ca-91eb-416b-89bc-e9ca8c629213",
         code: "DMHS-HYD",
         name: "Deccan Mission High School",
         affiliation_number: "TS-HYD-SSC-41092",
         board: "Telangana State Board of Secondary Education (SSC)",
         address: "Old City, Hyderabad, Telangana 500002, India",
-        contact_email: "contact@dmhs.edu.in",
+        contact_email: "admin@deccanmission.edu.in",
         contact_phone: "+91 40 2456 7890",
         website: "https://dmhs.edu.in",
         logo_url: "/dmhs-logo-128.png",
@@ -1636,30 +1658,33 @@ export const api = {
 
     updateCurrent: async (data: Partial<SchoolConfig>): Promise<SchoolConfig> => {
       assertAdminRole();
-      const current = await api.schools.getCurrent();
-      const updated: SchoolConfig = {
-        ...current,
+      let updated: SchoolConfig = {
+        name: data.name || "Deccan Mission High School",
+        code: data.code || "DMHS-HYD",
         ...data,
       };
+
+      if (isSupabaseConfigured()) {
+        const saved = await supabaseService.schools.updateCurrent(updated);
+        if (saved) {
+          updated = {
+            id: saved.id,
+            name: saved.name || updated.name,
+            code: saved.code || updated.code,
+            affiliation_number: saved.affiliation_number || updated.affiliation_number,
+            board: saved.board || updated.board,
+            contact_email: saved.contact_email || updated.contact_email,
+            contact_phone: saved.contact_phone || updated.contact_phone,
+            address: saved.address || updated.address,
+            website: saved.website || updated.website,
+            logo_url: saved.logo_url || updated.logo_url,
+          };
+        }
+      }
 
       if (typeof localStorage !== "undefined") {
         localStorage.setItem("dmhs_school_settings", JSON.stringify(updated));
       }
-
-      if (isSupabaseConfigured()) {
-        try {
-          await supabaseService.schools.updateCurrent(updated);
-        } catch (e) {
-          console.warn("Supabase school update fallback:", e);
-        }
-      }
-
-      try {
-        await request<any>("/schools/current", {
-          method: "PUT",
-          body: JSON.stringify(updated),
-        });
-      } catch {}
 
       broadcastDataMutation("schools", "UPDATE", updated);
       return updated;
@@ -2216,6 +2241,14 @@ export const api = {
     },
 
     getById: async (id: number | string): Promise<StudentProfile> => {
+      if (isSupabaseConfigured() && isUUID(id)) {
+        try {
+          return await supabaseService.students.getById(id);
+        } catch (e) {
+          console.warn("Supabase getById error, using fallback:", e);
+        }
+      }
+
       const customStudents = getStoredCustomStudents();
       const foundCustom = customStudents.find((s) => String(s.id) === String(id));
       if (foundCustom) {
@@ -2298,7 +2331,16 @@ export const api = {
     },
 
     getMyProfile: async (): Promise<StudentProfile> => {
-      // 1. Try REST backend endpoint
+      // 1. Authoritative check: live Supabase authenticated student profile
+      if (isSupabaseConfigured()) {
+        try {
+          return await supabaseService.students.getMyProfile();
+        } catch (e) {
+          console.warn("Supabase getMyProfile notice:", e);
+        }
+      }
+
+      // 2. Try REST backend endpoint
       try {
         return await request<StudentProfile>("/students/me/profile");
       } catch {}
@@ -3251,6 +3293,14 @@ export const api = {
 
   dashboards: {
     getAdmin: async (): Promise<AdminDashboardStats> => {
+      if (isSupabaseConfigured()) {
+        try {
+          return await supabaseService.dashboards.getAdmin();
+        } catch (e) {
+          console.warn("Could not fetch dashboard stats from Supabase, falling back:", e);
+        }
+      }
+
       // 1. Fetch real student list, teacher list, classes, academic years and terms in parallel
       const [studentsData, teachersData, classesList, currentAy, currentTerm] = await Promise.all([
         api.students.list({ limit: 1000 }).catch(() => ({ items: [], total: 0 })),

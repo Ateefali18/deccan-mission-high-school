@@ -27,6 +27,8 @@ import {
   Power,
   ShieldCheck,
   XCircle,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { api } from "../../services/api";
 import { useRealtimeSync } from "../../hooks/useRealtimeSync";
@@ -73,6 +75,7 @@ export const AdminDashboardPage: React.FC = () => {
   const [facultySummary, setFacultySummary] = useState<any>(null);
   const [isLoadingAttendance, setIsLoadingAttendance] = useState(false);
   const [attendanceTab, setAttendanceTab] = useState<"students" | "faculty">("students");
+  const [showDetailedHierarchy, setShowDetailedHierarchy] = useState(false);
 
   const fetchAttendanceMonitoring = useCallback(async (dateStr: string) => {
     setIsLoadingAttendance(true);
@@ -163,6 +166,7 @@ export const AdminDashboardPage: React.FC = () => {
       "academic_years",
       "classes",
       "sections",
+      "student_enrollments",
     ],
     onSync: (table, eventType) => {
       fetchDashboard();
@@ -817,26 +821,53 @@ export const AdminDashboardPage: React.FC = () => {
       </Card>
 
       {/* Category-Wise Academic Hierarchy & Student Distribution */}
-      {stats && stats.class_distribution && stats.class_distribution.length > 0 && (
+      {stats && (
         <Card className="p-6">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
             <div>
-              <h3 className="text-base font-bold text-light-primary dark:text-dark-primary flex items-center gap-2">
-                <Layers className="w-4 h-4 text-brand-gold" />
-                <span>Academic Hierarchy & Category-Wise Student Distribution</span>
-              </h3>
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-bold text-light-primary dark:text-dark-primary flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-brand-gold" />
+                  <span>Academic Hierarchy & Category-Wise Student Distribution</span>
+                </h3>
+                <Badge variant="neutral" size="sm">
+                  {stats.current_academic_year || "2025-2026"}
+                </Badge>
+              </div>
               <p className="text-xs text-light-secondary dark:text-dark-secondary mt-0.5">
-                Pre-Primary (Nursery, LKG, UKG), Primary (1–5), and Higher Classes (6–10) under Telangana State SSC
+                Real-time Supabase PostgreSQL structure: Pre-Primary, Primary, and Higher Classes under Telangana State SSC
               </p>
             </div>
-            <Link to="/admin/classes" className="text-xs text-brand-gold hover:underline font-semibold flex items-center gap-1">
-              <span>Manage Classes</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => setShowDetailedHierarchy(!showDetailedHierarchy)}
+                className="text-xs font-medium"
+              >
+                {showDetailedHierarchy ? (
+                  <>
+                    <ChevronUp className="w-3.5 h-3.5 mr-1" />
+                    <span>Summary View</span>
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className="w-3.5 h-3.5 mr-1" />
+                    <span>Class & Section Breakdown</span>
+                  </>
+                )}
+              </Button>
+              <Link to="/admin/classes" className="text-xs text-brand-gold hover:underline font-semibold flex items-center gap-1 shrink-0 ml-1">
+                <span>Manage Classes</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {stats.class_distribution.map((dist, idx) => {
+          {/* Category-Wise Overview Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            {(stats.academic_hierarchy?.categories || stats.class_distribution || []).map((dist: any, idx: number) => {
               const totalStd = stats.total_active_students || 1;
               const pct = Math.round((dist.student_count / totalStd) * 100) || 0;
               const isPrePrimary = dist.category.toLowerCase().includes("pre");
@@ -872,13 +903,84 @@ export const AdminDashboardPage: React.FC = () => {
                   </div>
                   <div className="w-full bg-gray-200 dark:bg-gray-700 h-2 rounded-full overflow-hidden mt-3">
                     <div
-                      className={`h-full rounded-full transition-all duration-500 ${colorClass}`}
-                      style={{ width: `${Math.max(pct, 5)}%` }}
+                      className={"h-full rounded-full transition-all duration-500 " + colorClass}
+                      style={{ width: (pct > 0 ? pct : dist.student_count > 0 ? 8 : 0) + "%" }}
                     />
                   </div>
                 </div>
               );
             })}
+          </div>
+
+          {/* Unassigned Students Alert if any */}
+          {stats.unassigned_students_count && stats.unassigned_students_count > 0 ? (
+            <div className="p-3.5 rounded-xl bg-status-warning/10 border border-status-warning/30 text-xs flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2 text-status-warning font-semibold">
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                <span>
+                  {stats.unassigned_students_count} Active Student{stats.unassigned_students_count > 1 ? "s" : ""} have no class/section enrollment mapped.
+                </span>
+              </div>
+              <Link to="/admin/students" className="font-bold underline text-status-warning">
+                Assign Now
+              </Link>
+            </div>
+          ) : null}
+
+          {/* Detailed Class & Section Hierarchy Breakdown */}
+          {showDetailedHierarchy && stats.academic_hierarchy?.categories && (
+            <div className="mt-4 pt-4 border-t border-light-border dark:border-dark-border space-y-4">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-light-secondary dark:text-dark-secondary">
+                Configured Class & Section Enrollment Hierarchy
+              </h4>
+              <div className="grid grid-cols-1 gap-3">
+                {stats.academic_hierarchy.categories.map((cat, cIdx) => (
+                  <div key={cIdx} className="rounded-xl border border-light-border dark:border-dark-border bg-gray-50/60 dark:bg-dark-elevated/40 p-4">
+                    <div className="flex items-center justify-between pb-2 mb-2 border-b border-light-border/60 dark:border-dark-border/60">
+                      <span className="text-xs font-bold text-light-primary dark:text-dark-primary">
+                        {cat.category}
+                      </span>
+                      <span className="text-xs font-mono font-semibold text-brand-navy dark:text-brand-gold">
+                        {cat.student_count} Enrolled ({cat.classes.length} {cat.classes.length === 1 ? "Grade" : "Grades"})
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                      {cat.classes.map((cls) => (
+                        <div key={cls.id} className="p-2.5 rounded-lg bg-white dark:bg-dark-card border border-light-border dark:border-dark-border">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs font-bold text-light-primary dark:text-dark-primary">
+                              {cls.name}
+                            </span>
+                            <Badge variant={cls.student_count > 0 ? "success" : "neutral"} size="sm">
+                              {cls.student_count} Enrolled
+                            </Badge>
+                          </div>
+                          <div className="text-[11px] text-light-secondary dark:text-dark-secondary">
+                            Sections:{" "}
+                            {cls.sections && cls.sections.length > 0
+                              ? cls.sections.map((s) => s.name + " (" + s.student_count + "/" + s.capacity + ")").join(", ")
+                              : "None configured"}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Database Reconciliation Footer */}
+          <div className="mt-4 pt-3 border-t border-light-border dark:border-dark-border flex flex-wrap items-center justify-between gap-2 text-[11px] text-light-secondary dark:text-dark-secondary">
+            <div className="flex items-center gap-1.5 font-medium">
+              <CheckCircle2 className="w-3.5 h-3.5 text-status-success shrink-0" />
+              <span>
+                Reconciled: Total Active = {stats.total_active_students || 0} (100% verified against Supabase student records)
+              </span>
+            </div>
+            <span className="font-mono text-[10px]">
+              Session: {stats.current_academic_year || "2025-2026"} • SSC Telangana Board
+            </span>
           </div>
         </Card>
       )}

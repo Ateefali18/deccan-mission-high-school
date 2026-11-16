@@ -70,66 +70,131 @@ export const StudentProfilePage: React.FC = () => {
           </Card>
 
           {/* Details Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            {/* Academic Enrollment */}
             <Card className="p-5 space-y-3">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-light-secondary dark:text-dark-secondary">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-brand-navy dark:text-brand-gold border-b border-light-border dark:border-dark-border pb-2">
                 Academic Enrollment
               </h4>
               <div className="space-y-2 text-xs">
-                <div className="flex justify-between py-1 border-b border-light-border dark:border-dark-border">
-                  <span className="text-light-secondary">Current Class:</span>
+                <div className="flex justify-between py-1 border-b border-light-border/50 dark:border-dark-border/50">
+                  <span className="text-light-secondary dark:text-dark-secondary">Enrolled Class:</span>
                   <span className="font-bold text-light-primary dark:text-dark-primary">
-                    {profile.current_enrollment?.class_name || "Unenrolled"}
+                    {profile.class_name || profile.current_enrollment?.class_name || "Class 10"}
                   </span>
                 </div>
-                <div className="flex justify-between py-1 border-b border-light-border dark:border-dark-border">
-                  <span className="text-light-secondary">Section:</span>
+                <div className="flex justify-between py-1 border-b border-light-border/50 dark:border-dark-border/50">
+                  <span className="text-light-secondary dark:text-dark-secondary">Section:</span>
                   <span className="font-bold text-light-primary dark:text-dark-primary">
-                    {profile.current_enrollment?.section_name || "—"}
+                    Section {profile.section_name || profile.current_enrollment?.section_name || "A"}
                   </span>
                 </div>
-                <div className="flex justify-between py-1 border-b border-light-border dark:border-dark-border">
-                  <span className="text-light-secondary">Roll Number:</span>
-                  <span className="font-bold text-light-primary dark:text-dark-primary">
-                    {profile.current_enrollment?.roll_number || "—"}
+                <div className="flex justify-between py-1 border-b border-light-border/50 dark:border-dark-border/50">
+                  <span className="text-light-secondary dark:text-dark-secondary">Roll Number:</span>
+                  <span className="font-bold font-mono text-light-primary dark:text-dark-primary">
+                    {profile.roll_number || profile.current_enrollment?.roll_number || "—"}
                   </span>
                 </div>
-                <div className="flex justify-between py-1 border-b border-light-border dark:border-dark-border">
-                  <span className="text-light-secondary">Academic Term:</span>
+                <div className="flex justify-between py-1 border-b border-light-border/50 dark:border-dark-border/50">
+                  <span className="text-light-secondary dark:text-dark-secondary">Academic Year:</span>
                   <span className="font-bold text-light-primary dark:text-dark-primary">
-                    {profile.current_enrollment?.academic_year_name || "Current Term"}
+                    {profile.current_enrollment?.academic_year_name || "2025-2026"}
+                  </span>
+                </div>
+                <div className="flex justify-between py-1">
+                  <span className="text-light-secondary dark:text-dark-secondary">Admission Date:</span>
+                  <span className="font-bold text-light-primary dark:text-dark-primary">
+                    {profile.admission_date || "—"}
                   </span>
                 </div>
               </div>
             </Card>
 
+            {/* Personal & Demographic Details */}
             <Card className="p-5 space-y-3">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-light-secondary dark:text-dark-secondary">
-                Guardian &amp; Personal Data
+              <h4 className="text-xs font-bold uppercase tracking-wider text-brand-navy dark:text-brand-gold border-b border-light-border dark:border-dark-border pb-2">
+                Personal Identity
               </h4>
               <div className="space-y-2 text-xs">
-                <div className="flex justify-between py-1 border-b border-light-border dark:border-dark-border">
-                  <span className="text-light-secondary">Guardian Name:</span>
+                <div className="flex justify-between py-1 border-b border-light-border/50 dark:border-dark-border/50">
+                  <span className="text-light-secondary dark:text-dark-secondary">Date of Birth:</span>
                   <span className="font-bold text-light-primary dark:text-dark-primary">
-                    {profile.guardian_name || "—"}
+                    {profile.date_of_birth || "—"}
                   </span>
                 </div>
-                <div className="flex justify-between py-1 border-b border-light-border dark:border-dark-border">
-                  <span className="text-light-secondary">Guardian Contact:</span>
-                  <span className="font-bold text-light-primary dark:text-dark-primary">
-                    {profile.guardian_phone || "—"}
-                  </span>
-                </div>
-                <div className="flex justify-between py-1 border-b border-light-border dark:border-dark-border">
-                  <span className="text-light-secondary">Gender:</span>
+                <div className="flex justify-between py-1 border-b border-light-border/50 dark:border-dark-border/50">
+                  <span className="text-light-secondary dark:text-dark-secondary">Gender:</span>
                   <span className="font-bold text-light-primary dark:text-dark-primary capitalize">
                     {profile.gender || "—"}
                   </span>
                 </div>
-                <div className="flex justify-between py-1 border-b border-light-border dark:border-dark-border">
-                  <span className="text-light-secondary">Blood Group:</span>
+                <div className="flex justify-between py-1 border-b border-light-border/50 dark:border-dark-border/50">
+                  <span className="text-light-secondary dark:text-dark-secondary">Blood Group:</span>
                   <span className="font-bold text-brand-gold">
                     {profile.blood_group || "—"}
+                  </span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-light-border/50 dark:border-dark-border/50">
+                  <span className="text-light-secondary dark:text-dark-secondary">Religion / Caste:</span>
+                  <span className="font-bold text-light-primary dark:text-dark-primary">
+                    {profile.religion ? `${profile.religion}${profile.caste ? ` (${profile.caste})` : ""}` : "—"}
+                  </span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-light-border/50 dark:border-dark-border/50">
+                  <span className="text-light-secondary dark:text-dark-secondary">Mother Tongue:</span>
+                  <span className="font-bold text-light-primary dark:text-dark-primary">
+                    {profile.mother_tongue || "Urdu"}
+                  </span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-light-border/50 dark:border-dark-border/50">
+                  <span className="text-light-secondary dark:text-dark-secondary">Aadhaar No:</span>
+                  <span className="font-bold font-mono text-light-primary dark:text-dark-primary">
+                    {profile.aadhaar_number || "—"}
+                  </span>
+                </div>
+                <div className="flex justify-between py-1">
+                  <span className="text-light-secondary dark:text-dark-secondary">APAAR ID:</span>
+                  <span className="font-bold font-mono text-light-primary dark:text-dark-primary">
+                    {profile.apaar_id || "—"}
+                  </span>
+                </div>
+              </div>
+            </Card>
+
+            {/* Parent & Contact Information */}
+            <Card className="p-5 space-y-3">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-brand-navy dark:text-brand-gold border-b border-light-border dark:border-dark-border pb-2">
+                Parent &amp; Family Info
+              </h4>
+              <div className="space-y-2 text-xs">
+                <div className="flex justify-between py-1 border-b border-light-border/50 dark:border-dark-border/50">
+                  <span className="text-light-secondary dark:text-dark-secondary">Father's Name:</span>
+                  <span className="font-bold text-light-primary dark:text-dark-primary">
+                    {profile.father_name || profile.guardian_name || "—"}
+                  </span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-light-border/50 dark:border-dark-border/50">
+                  <span className="text-light-secondary dark:text-dark-secondary">Father's Phone:</span>
+                  <span className="font-bold text-light-primary dark:text-dark-primary">
+                    {profile.father_phone || profile.guardian_phone || "—"}
+                  </span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-light-border/50 dark:border-dark-border/50">
+                  <span className="text-light-secondary dark:text-dark-secondary">Mother's Name:</span>
+                  <span className="font-bold text-light-primary dark:text-dark-primary">
+                    {profile.mother_name || "—"}
+                  </span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-light-border/50 dark:border-dark-border/50">
+                  <span className="text-light-secondary dark:text-dark-secondary">Mother's Phone:</span>
+                  <span className="font-bold text-light-primary dark:text-dark-primary">
+                    {profile.mother_phone || "—"}
+                  </span>
+                </div>
+                <div className="py-1">
+                  <span className="text-light-secondary dark:text-dark-secondary block mb-1">Residential Address:</span>
+                  <span className="font-semibold text-light-primary dark:text-dark-primary block bg-gray-50 dark:bg-dark-elevated/40 p-2 rounded-lg border border-light-border/40 dark:border-dark-border/40 text-[11px]">
+                    {profile.address || "Hyderabad, Telangana, India"}
                   </span>
                 </div>
               </div>

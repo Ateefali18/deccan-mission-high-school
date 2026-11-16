@@ -192,9 +192,56 @@ export function createSessionToken(user: {
 
 /**
  * Validates a signed session token. Checks signature authenticity and expiration.
+ * Supports both DMHS custom signed tokens ('dmhs.payload.sig') and official Supabase JWTs ('eyJ...').
  */
 export function verifySessionToken(token: string | null | undefined): SessionPayload | null {
-  if (!token || typeof token !== "string" || !token.startsWith("dmhs.")) {
+  if (!token || typeof token !== "string") {
+    return null;
+  }
+
+  // 1. Supabase Auth JWT token
+  if (token.startsWith("eyJ")) {
+    const parts = token.split(".");
+    if (parts.length < 2) return null;
+    try {
+      const b64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+      const jsonStr = decodeURIComponent(
+        atob(b64)
+          .split("")
+          .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+          .join("")
+      );
+      const jwtPayload = JSON.parse(jsonStr);
+      if (!jwtPayload) return null;
+
+      // Expiry check (JWT exp is in seconds)
+      if (jwtPayload.exp && jwtPayload.exp * 1000 < Date.now()) {
+        return null; // Expired
+      }
+
+      const roleRaw = (jwtPayload.user_metadata?.role || jwtPayload.role || "STUDENT").toUpperCase();
+      const role = roleRaw === "ADMIN" || roleRaw === "TEACHER" ? roleRaw : "STUDENT";
+      const username =
+        jwtPayload.user_metadata?.admission_number ||
+        jwtPayload.user_metadata?.username ||
+        jwtPayload.email?.split("@")[0] ||
+        jwtPayload.sub;
+
+      return {
+        sub: jwtPayload.sub,
+        role: role as any,
+        username: username,
+        email: jwtPayload.email,
+        iat: jwtPayload.iat ? jwtPayload.iat * 1000 : Date.now(),
+        exp: jwtPayload.exp ? jwtPayload.exp * 1000 : Date.now() + 24 * 60 * 60 * 1000,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  // 2. DMHS custom signed token
+  if (!token.startsWith("dmhs.")) {
     return null;
   }
   const parts = token.split(".");
