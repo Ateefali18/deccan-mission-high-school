@@ -93,8 +93,27 @@ export const supabaseService = {
           contact_phone: payload.contact_phone || "+91 40 2456 7890",
           website: payload.website || "https://dmhs.edu.in",
           logo_url: payload.logo_url || "/dmhs-logo-128.png",
+          principal_name: payload.principal_name || "STA Khadri",
+          principal_email: payload.principal_email || "admin@deccanmission.edu.in",
+          principal_phone: payload.principal_phone || "+91 9949083181",
           ...payload,
         };
+      }
+
+      // 1. Authoritative Persistence via save_institution_settings RPC (SECURITY DEFINER)
+      try {
+        const { data: rpcData, error: rpcError } = await supabase.rpc("save_institution_settings", {
+          p_payload: payload,
+        });
+
+        if (!rpcError && rpcData) {
+          return rpcData;
+        }
+        if (rpcError) {
+          console.warn("RPC save_institution_settings returned error, trying direct update:", rpcError);
+        }
+      } catch (rpcErr) {
+        console.warn("RPC save_institution_settings call threw, falling back:", rpcErr);
       }
 
       const updates: Record<string, any> = {
@@ -108,6 +127,9 @@ export const supabaseService = {
       if (payload.address !== undefined) updates.address = payload.address;
       if (payload.website !== undefined) updates.website = payload.website;
       if (payload.logo_url !== undefined) updates.logo_url = payload.logo_url;
+      if (payload.principal_name !== undefined) updates.principal_name = payload.principal_name;
+      if (payload.principal_email !== undefined) updates.principal_email = payload.principal_email;
+      if (payload.principal_phone !== undefined) updates.principal_phone = payload.principal_phone;
 
       try {
         let query = supabase.from("schools").update(updates);

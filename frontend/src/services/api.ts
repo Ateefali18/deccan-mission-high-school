@@ -1105,14 +1105,54 @@ export const api = {
         cleanUser === "stakhadri.dmhs@gmail.com";
 
       if (isAdminMatch) {
-        const expectedAdminPass = authRecoveryService.getAdminPassword ? (authRecoveryService as any).getAdminPassword() : ((typeof localStorage !== "undefined" && localStorage && localStorage.getItem("dmhs_admin_password")) || "1234");
-        if (!verifyPassword(cleanPass, expectedAdminPass)) {
-          throw new ApiError("Incorrect password for administrator account.", 401);
+        let authUser: any = null;
+        let sessionToken = "";
+
+        if (isSupabaseConfigured()) {
+          const adminEmails = ["admin.dmhs.hyd@gmail.com", "stakhadri.dmhs@gmail.com"];
+          let lastAuthError: any = null;
+
+          for (const email of adminEmails) {
+            try {
+              const authRes = await supabase.auth.signInWithPassword({
+                email,
+                password: cleanPass,
+              });
+              if (!authRes.error && authRes.data?.session) {
+                authUser = authRes.data.user;
+                sessionToken = authRes.data.session.access_token;
+                break;
+              } else if (authRes.error) {
+                lastAuthError = authRes.error;
+              }
+            } catch (err: any) {
+              lastAuthError = err;
+            }
+          }
+
+          if (!authUser) {
+            // Check fallback for offline/development if configured, otherwise reject
+            const localPass = typeof localStorage !== "undefined" && localStorage ? localStorage.getItem("dmhs_admin_password") : null;
+            if (localPass && verifyPassword(cleanPass, localPass)) {
+              // Allowed local override
+            } else {
+              throw new ApiError(
+                lastAuthError?.message || "Incorrect password for administrator account.",
+                401
+              );
+            }
+          }
+        } else {
+          const expectedAdminPass = authRecoveryService.getAdminPassword ? (authRecoveryService as any).getAdminPassword() : ((typeof localStorage !== "undefined" && localStorage && localStorage.getItem("dmhs_admin_password")) || "1234");
+          if (!verifyPassword(cleanPass, expectedAdminPass)) {
+            throw new ApiError("Incorrect password for administrator account.", 401);
+          }
         }
+
         const adminSession = {
-          access_token: createSessionToken({ id: 1, role: "ADMIN", username: "STA khadri", email: "sta.khadri@dmhs.edu.in" }),
+          access_token: sessionToken || createSessionToken({ id: 1, role: "ADMIN", username: "STA khadri", email: "sta.khadri@dmhs.edu.in" }),
           token_type: "bearer",
-          role: "ADMIN",
+          role: "ADMIN" as UserRole,
           full_name: "STA Khadri",
           username: "STA khadri",
           email: "sta.khadri@dmhs.edu.in",
@@ -1120,12 +1160,8 @@ export const api = {
         localStorage.setItem("dmhs_token", adminSession.access_token);
         localStorage.setItem("dmhs_demo_role", "ADMIN");
         localStorage.setItem("dmhs_session_user", JSON.stringify(adminSession));
+        localStorage.setItem("dmhs_admin_password", cleanPass);
         setSupabaseAdminHeader(true);
-        if (isSupabaseConfigured()) {
-          try {
-            await supabase.auth.signInWithPassword({ email: "admin.dmhs.hyd@gmail.com", password: cleanPass || "1234" });
-          } catch {}
-        }
         return adminSession;
       }
 
@@ -1619,6 +1655,9 @@ export const api = {
               address: sb.address || "Old City, Hyderabad, Telangana 500002, India",
               website: sb.website || "https://dmhs.edu.in",
               logo_url: sb.logo_url || "/dmhs-logo-128.png",
+              principal_name: sb.principal_name || "STA Khadri",
+              principal_email: sb.principal_email || "admin@deccanmission.edu.in",
+              principal_phone: sb.principal_phone || "+91 9949083181",
             };
             if (typeof localStorage !== "undefined") {
               localStorage.setItem("dmhs_school_settings", JSON.stringify(cfg));
@@ -1650,6 +1689,9 @@ export const api = {
         contact_phone: "+91 40 2456 7890",
         website: "https://dmhs.edu.in",
         logo_url: "/dmhs-logo-128.png",
+        principal_name: "STA Khadri",
+        principal_email: "admin@deccanmission.edu.in",
+        principal_phone: "+91 9949083181",
       };
       if (typeof localStorage !== "undefined") {
         localStorage.setItem("dmhs_school_settings", JSON.stringify(defaultSchool));
@@ -1679,6 +1721,9 @@ export const api = {
             address: saved.address || updated.address,
             website: saved.website || updated.website,
             logo_url: saved.logo_url || updated.logo_url,
+            principal_name: saved.principal_name || updated.principal_name,
+            principal_email: saved.principal_email || updated.principal_email,
+            principal_phone: saved.principal_phone || updated.principal_phone,
           };
         }
       }

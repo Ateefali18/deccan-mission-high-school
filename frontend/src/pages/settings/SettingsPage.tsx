@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { Settings, School, ShieldCheck, Mail, Phone, MapPin, Save, Award, Smartphone, Key, ShieldAlert, CheckCircle2, Copy, Trash2, AlertTriangle } from "lucide-react";
+import { Settings, School, ShieldCheck, Mail, Phone, MapPin, Save, Award, Smartphone, Key, ShieldAlert, CheckCircle2, Copy, Trash2, AlertTriangle, UserCheck } from "lucide-react";
 import { api } from "../../services/api";
+import { supabase, isSupabaseConfigured } from "../../services/supabaseClient";
 import { PageHeader } from "../../components/shared/PageHeader";
 import { Card } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
@@ -23,6 +24,9 @@ interface SchoolConfig {
   website?: string;
   logo_url?: string;
   timezone?: string;
+  principal_name?: string;
+  principal_email?: string;
+  principal_phone?: string;
 }
 
 export const SettingsPage: React.FC = () => {
@@ -40,6 +44,9 @@ export const SettingsPage: React.FC = () => {
   const [address, setAddress] = useState("");
   const [website, setWebsite] = useState("https://dmhs.edu.in");
   const [logoUrl, setLogoUrl] = useState("/dmhs-logo-128.png");
+  const [principalName, setPrincipalName] = useState("STA Khadri");
+  const [principalEmail, setPrincipalEmail] = useState("admin@deccanmission.edu.in");
+  const [principalPhone, setPrincipalPhone] = useState("+91 9949083181");
 
   // 2FA / MFA Security State
   const [isMfaEnabled, setIsMfaEnabled] = useState(false);
@@ -103,6 +110,9 @@ export const SettingsPage: React.FC = () => {
         setAddress(data.address || "Old City, Hyderabad, Telangana 500002, India");
         setWebsite(data.website || "https://dmhs.edu.in");
         setLogoUrl(data.logo_url || "/dmhs-logo-128.png");
+        setPrincipalName(data.principal_name || "STA Khadri");
+        setPrincipalEmail(data.principal_email || "admin@deccanmission.edu.in");
+        setPrincipalPhone(data.principal_phone || "+91 9949083181");
       } catch (err: any) {
         toast.error(err.message || "Failed to load institution settings");
       } finally {
@@ -110,6 +120,40 @@ export const SettingsPage: React.FC = () => {
       }
     };
     fetchConfig();
+  }, []);
+
+  // Supabase Realtime multi-browser synchronization
+  useEffect(() => {
+    if (!isSupabaseConfigured()) return;
+    const channel = supabase
+      .channel("schools_realtime_sync")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "schools" },
+        (payload: any) => {
+          if (payload.new) {
+            const row = payload.new;
+            setConfig(row);
+            if (row.name) setSchoolName(row.name);
+            if (row.affiliation_number) setAffiliationNo(row.affiliation_number);
+            if (row.board) setBoardName(row.board);
+            if (row.code) setSchoolCode(row.code);
+            if (row.contact_email) setContactEmail(row.contact_email);
+            if (row.contact_phone) setContactPhone(row.contact_phone);
+            if (row.address) setAddress(row.address);
+            if (row.website) setWebsite(row.website);
+            if (row.logo_url) setLogoUrl(row.logo_url);
+            if (row.principal_name) setPrincipalName(row.principal_name);
+            if (row.principal_email) setPrincipalEmail(row.principal_email);
+            if (row.principal_phone) setPrincipalPhone(row.principal_phone);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const handleSave = async (e: React.FormEvent) => {
@@ -137,9 +181,12 @@ export const SettingsPage: React.FC = () => {
         address: address.trim(),
         website: website.trim(),
         logo_url: logoUrl.trim(),
+        principal_name: principalName.trim(),
+        principal_email: principalEmail.trim(),
+        principal_phone: principalPhone.trim(),
       });
       setConfig(updated);
-      toast.success("Institution settings saved permanently! Changes updated across portals.");
+      toast.success("Institution settings saved permanently in Supabase! Changes synchronized across all browsers.");
     } catch (err: any) {
       toast.error(err.message || "Failed to save institution settings");
     } finally {
@@ -274,6 +321,40 @@ export const SettingsPage: React.FC = () => {
                 value={logoUrl}
                 onChange={(e) => setLogoUrl(e.target.value)}
                 placeholder="/dmhs-logo-128.png"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold uppercase text-light-muted dark:text-dark-muted mb-1">
+                Principal Name
+              </label>
+              <Input
+                value={principalName}
+                onChange={(e) => setPrincipalName(e.target.value)}
+                placeholder="STA Khadri"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold uppercase text-light-muted dark:text-dark-muted mb-1">
+                Principal Official Email
+              </label>
+              <Input
+                type="email"
+                value={principalEmail}
+                onChange={(e) => setPrincipalEmail(e.target.value)}
+                placeholder="admin@deccanmission.edu.in"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold uppercase text-light-muted dark:text-dark-muted mb-1">
+                Principal Emergency / Direct Phone
+              </label>
+              <Input
+                value={principalPhone}
+                onChange={(e) => setPrincipalPhone(e.target.value)}
+                placeholder="+91 9949083181"
               />
             </div>
           </div>
