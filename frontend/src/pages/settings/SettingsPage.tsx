@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { Settings, School, ShieldCheck, Mail, Phone, MapPin, Save, Award, Smartphone, Key, ShieldAlert, CheckCircle2, Copy, Trash2, AlertTriangle, UserCheck } from "lucide-react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
+import { Settings, School, ShieldCheck, Mail, Phone, MapPin, Save, Award, Smartphone, Key, ShieldAlert, CheckCircle2, Copy, Trash2, AlertTriangle, UserCheck, RefreshCw, AlertCircle } from "lucide-react";
 import { api } from "../../services/api";
 import { supabase, isSupabaseConfigured } from "../../services/supabaseClient";
 import { PageHeader } from "../../components/shared/PageHeader";
@@ -32,21 +32,33 @@ interface SchoolConfig {
 export const SettingsPage: React.FC = () => {
   const [config, setConfig] = useState<SchoolConfig | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [isDirty, setIsDirty] = useState(false);
+  const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
+
+  const reqSeqRef = useRef(0);
+  const isDirtyRef = useRef(false);
 
   // Form
   const [schoolName, setSchoolName] = useState("");
-  const [affiliationNo, setAffiliationNo] = useState("TS-HYD-SSC-41092");
+  const [affiliationNo, setAffiliationNo] = useState("TS-SSC-500002");
   const [boardName, setBoardName] = useState("Telangana State Board of Secondary Education (SSC)");
   const [schoolCode, setSchoolCode] = useState("DMHS-HYD");
   const [contactEmail, setContactEmail] = useState("");
   const [contactPhone, setContactPhone] = useState("");
   const [address, setAddress] = useState("");
-  const [website, setWebsite] = useState("https://dmhs.edu.in");
+  const [website, setWebsite] = useState("https://dmhs-nwgj.vercel.app");
   const [logoUrl, setLogoUrl] = useState("/dmhs-logo-128.png");
   const [principalName, setPrincipalName] = useState("STA Khadri");
-  const [principalEmail, setPrincipalEmail] = useState("admin@deccanmission.edu.in");
+  const [principalEmail, setPrincipalEmail] = useState("sta.khadri@dmhs.edu.in");
   const [principalPhone, setPrincipalPhone] = useState("+91 9949083181");
+
+  // Keep isDirtyRef in sync with isDirty state
+  useEffect(() => {
+    isDirtyRef.current = isDirty;
+  }, [isDirty]);
 
   // 2FA / MFA Security State
   const [isMfaEnabled, setIsMfaEnabled] = useState(false);
@@ -95,32 +107,62 @@ export const SettingsPage: React.FC = () => {
     );
   };
 
-  useEffect(() => {
-    const fetchConfig = async () => {
+  const fetchConfig = useCallback(async (isManualRefresh = false) => {
+    const seq = ++reqSeqRef.current;
+    if (isManualRefresh) {
+      setIsRefreshing(true);
+    } else {
       setIsLoading(true);
-      try {
-        const data = await api.schools.getCurrent();
-        setConfig(data);
-        setSchoolName(data.name || "Deccan Mission High School");
-        setAffiliationNo(data.affiliation_number || "TS-HYD-SSC-41092");
-        setBoardName(data.board || "Telangana State Board of Secondary Education (SSC)");
-        setSchoolCode(data.code || "DMHS-HYD");
-        setContactEmail(data.contact_email || "admin@deccanmission.edu.in");
-        setContactPhone(data.contact_phone || "+91 40 2456 7890");
-        setAddress(data.address || "Old City, Hyderabad, Telangana 500002, India");
-        setWebsite(data.website || "https://dmhs.edu.in");
-        setLogoUrl(data.logo_url || "/dmhs-logo-128.png");
-        setPrincipalName(data.principal_name || "STA Khadri");
-        setPrincipalEmail(data.principal_email || "admin@deccanmission.edu.in");
-        setPrincipalPhone(data.principal_phone || "+91 9949083181");
-      } catch (err: any) {
-        toast.error(err.message || "Failed to load institution settings");
-      } finally {
-        setIsLoading(false);
+    }
+    setFetchError(null);
+
+    try {
+      const data = await api.schools.getCurrent(true);
+      // Discard out-of-order older API responses
+      if (seq !== reqSeqRef.current) return;
+
+      if (!data) {
+        setConfig(null);
+        setFetchError("No school institution record found in Supabase database.");
+        return;
       }
-    };
-    fetchConfig();
-  }, []);
+
+      setConfig(data);
+      setSchoolName(data.name || "Deccan Mission High School");
+      setAffiliationNo(data.affiliation_number || "TS-SSC-500002");
+      setBoardName(data.board || "Telangana State Board of Secondary Education (SSC)");
+      setSchoolCode(data.code || "DMHS-HYD");
+      setContactEmail(data.contact_email || "info@dmhs.edu.in");
+      setContactPhone(data.contact_phone || "+91 40 2456 7890");
+      setAddress(data.address || "Old City, Hyderabad, Telangana 500002, India");
+      setWebsite(data.website || "https://dmhs-nwgj.vercel.app");
+      setLogoUrl(data.logo_url || "/dmhs-logo-128.png");
+      setPrincipalName(data.principal_name || "STA Khadri");
+      setPrincipalEmail(data.principal_email || "sta.khadri@dmhs.edu.in");
+      setPrincipalPhone(data.principal_phone || "+91 9949083181");
+      setIsDirty(false);
+      isDirtyRef.current = false;
+      setLastSyncedAt(new Date());
+
+      if (isManualRefresh) {
+        toast.success("Institution settings refreshed directly from Supabase.");
+      }
+    } catch (err: any) {
+      if (seq !== reqSeqRef.current) return;
+      const msg = err.message || "Failed to load institution settings from Supabase.";
+      setFetchError(msg);
+      toast.error(msg);
+    } finally {
+      if (seq === reqSeqRef.current) {
+        setIsLoading(false);
+        setIsRefreshing(false);
+      }
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    fetchConfig(false);
+  }, [fetchConfig]);
 
   // Supabase Realtime multi-browser synchronization
   useEffect(() => {
@@ -133,19 +175,24 @@ export const SettingsPage: React.FC = () => {
         (payload: any) => {
           if (payload.new) {
             const row = payload.new;
+            if (isDirtyRef.current) {
+              toast.info("Institution settings updated on another browser. Click Refresh to apply.");
+              return;
+            }
             setConfig(row);
-            if (row.name) setSchoolName(row.name);
-            if (row.affiliation_number) setAffiliationNo(row.affiliation_number);
-            if (row.board) setBoardName(row.board);
-            if (row.code) setSchoolCode(row.code);
-            if (row.contact_email) setContactEmail(row.contact_email);
-            if (row.contact_phone) setContactPhone(row.contact_phone);
-            if (row.address) setAddress(row.address);
-            if (row.website) setWebsite(row.website);
-            if (row.logo_url) setLogoUrl(row.logo_url);
-            if (row.principal_name) setPrincipalName(row.principal_name);
-            if (row.principal_email) setPrincipalEmail(row.principal_email);
-            if (row.principal_phone) setPrincipalPhone(row.principal_phone);
+            if (row.name !== undefined) setSchoolName(row.name);
+            if (row.affiliation_number !== undefined) setAffiliationNo(row.affiliation_number);
+            if (row.board !== undefined) setBoardName(row.board);
+            if (row.code !== undefined) setSchoolCode(row.code);
+            if (row.contact_email !== undefined) setContactEmail(row.contact_email);
+            if (row.contact_phone !== undefined) setContactPhone(row.contact_phone);
+            if (row.address !== undefined) setAddress(row.address);
+            if (row.website !== undefined) setWebsite(row.website);
+            if (row.logo_url !== undefined) setLogoUrl(row.logo_url);
+            if (row.principal_name !== undefined) setPrincipalName(row.principal_name);
+            if (row.principal_email !== undefined) setPrincipalEmail(row.principal_email);
+            if (row.principal_phone !== undefined) setPrincipalPhone(row.principal_phone);
+            setLastSyncedAt(new Date());
           }
         }
       )
@@ -154,7 +201,17 @@ export const SettingsPage: React.FC = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [toast]);
+
+  const handleRefreshClick = () => {
+    if (isDirty) {
+      if (window.confirm("You have unsaved changes in the form. Refreshing will discard your edits and load the latest saved record from Supabase. Continue?")) {
+        fetchConfig(true);
+      }
+    } else {
+      fetchConfig(true);
+    }
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -171,7 +228,7 @@ export const SettingsPage: React.FC = () => {
     }
 
     try {
-      const updated = await api.schools.updateCurrent({
+      await api.schools.updateCurrent({
         name: schoolName.trim(),
         affiliation_number: affiliationNo.trim(),
         board: boardName.trim(),
@@ -185,7 +242,8 @@ export const SettingsPage: React.FC = () => {
         principal_email: principalEmail.trim(),
         principal_phone: principalPhone.trim(),
       });
-      setConfig(updated);
+      // Re-fetch to ensure displayed state strictly mirrors the database record
+      await fetchConfig(false);
       toast.success("Institution settings saved permanently in Supabase! Changes synchronized across all browsers.");
     } catch (err: any) {
       toast.error(err.message || "Failed to save institution settings");
@@ -196,9 +254,51 @@ export const SettingsPage: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="py-24 text-center text-light-muted dark:text-dark-muted">
-        <div className="w-8 h-8 border-3 border-brand-blue border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-        Loading settings...
+      <div className="py-24 text-center text-light-muted dark:text-dark-muted space-y-3">
+        <div className="w-9 h-9 border-3 border-brand-blue border-t-transparent rounded-full animate-spin mx-auto" />
+        <p className="text-sm font-medium">Fetching institution settings directly from Supabase...</p>
+      </div>
+    );
+  }
+
+  if (fetchError && !config) {
+    return (
+      <div className="max-w-xl mx-auto py-20 text-center space-y-4">
+        <div className="w-12 h-12 rounded-2xl bg-red-500/10 text-red-500 flex items-center justify-center mx-auto">
+          <AlertTriangle className="w-6 h-6" />
+        </div>
+        <h2 className="text-lg font-bold text-light-primary dark:text-dark-primary">
+          Unable to Load Institution Settings
+        </h2>
+        <p className="text-sm text-light-secondary dark:text-dark-secondary">
+          {fetchError}
+        </p>
+        <div className="pt-2">
+          <Button onClick={() => fetchConfig(false)} icon={<RefreshCw className="w-4 h-4" />}>
+            Retry Connection
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!config && !fetchError) {
+    return (
+      <div className="max-w-xl mx-auto py-20 text-center space-y-4">
+        <div className="w-12 h-12 rounded-2xl bg-brand-blue/10 text-brand-blue flex items-center justify-center mx-auto">
+          <School className="w-6 h-6" />
+        </div>
+        <h2 className="text-lg font-bold text-light-primary dark:text-dark-primary">
+          No Institution Record Found
+        </h2>
+        <p className="text-sm text-light-secondary dark:text-dark-secondary">
+          No school configuration record is currently registered in Supabase.
+        </p>
+        <div className="pt-2">
+          <Button onClick={() => fetchConfig(false)} icon={<RefreshCw className="w-4 h-4" />}>
+            Check Again
+          </Button>
+        </div>
       </div>
     );
   }
@@ -207,8 +307,29 @@ export const SettingsPage: React.FC = () => {
     <div className="space-y-6 max-w-4xl">
       <PageHeader
         title="Institution Settings"
-        description="Manage school legal identification, Telangana SSC affiliation credentials, official contact lines, and campus profile."
-        icon={<Settings className="w-6 h-6 text-brand-blue" />}
+        subtitle="Manage school legal identification, Telangana SSC affiliation credentials, official contact lines, and campus profile."
+        action={
+          <div className="flex items-center gap-3">
+            {isDirty && (
+              <Badge variant="amber">Unsaved Edits</Badge>
+            )}
+            {lastSyncedAt && (
+              <span className="text-[11px] text-light-muted dark:text-dark-muted hidden md:inline">
+                Synced {lastSyncedAt.toLocaleTimeString()}
+              </span>
+            )}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleRefreshClick}
+              disabled={isLoading || isRefreshing}
+              icon={<RefreshCw className={`w-4 h-4 ${isRefreshing ? "animate-spin" : ""}`} />}
+            >
+              {isRefreshing ? "Refreshing..." : "Refresh"}
+            </Button>
+          </div>
+        }
       />
 
       <form onSubmit={handleSave} className="space-y-6">
@@ -239,7 +360,7 @@ export const SettingsPage: React.FC = () => {
               </label>
               <Input
                 value={schoolName}
-                onChange={(e) => setSchoolName(e.target.value)}
+                onChange={(e) => { setSchoolName(e.target.value); setIsDirty(true); }}
                 required
               />
             </div>
@@ -250,7 +371,7 @@ export const SettingsPage: React.FC = () => {
               </label>
               <Input
                 value={affiliationNo}
-                onChange={(e) => setAffiliationNo(e.target.value)}
+                onChange={(e) => { setAffiliationNo(e.target.value); setIsDirty(true); }}
                 required
               />
             </div>
@@ -262,7 +383,7 @@ export const SettingsPage: React.FC = () => {
               <Input
                 type="email"
                 value={contactEmail}
-                onChange={(e) => setContactEmail(e.target.value)}
+                onChange={(e) => { setContactEmail(e.target.value); setIsDirty(true); }}
                 required
               />
             </div>
@@ -273,7 +394,7 @@ export const SettingsPage: React.FC = () => {
               </label>
               <Input
                 value={contactPhone}
-                onChange={(e) => setContactPhone(e.target.value)}
+                onChange={(e) => { setContactPhone(e.target.value); setIsDirty(true); }}
                 required
               />
             </div>
@@ -285,8 +406,8 @@ export const SettingsPage: React.FC = () => {
               <Input
                 type="url"
                 value={website}
-                onChange={(e) => setWebsite(e.target.value)}
-                placeholder="https://dmhs.edu.in"
+                onChange={(e) => { setWebsite(e.target.value); setIsDirty(true); }}
+                placeholder="https://dmhs-nwgj.vercel.app"
               />
             </div>
 
@@ -296,7 +417,7 @@ export const SettingsPage: React.FC = () => {
               </label>
               <Input
                 value={boardName}
-                onChange={(e) => setBoardName(e.target.value)}
+                onChange={(e) => { setBoardName(e.target.value); setIsDirty(true); }}
                 placeholder="Telangana State Board of Secondary Education (SSC)"
                 required
               />
@@ -308,7 +429,7 @@ export const SettingsPage: React.FC = () => {
               </label>
               <Input
                 value={address}
-                onChange={(e) => setAddress(e.target.value)}
+                onChange={(e) => { setAddress(e.target.value); setIsDirty(true); }}
                 required
               />
             </div>
@@ -319,7 +440,7 @@ export const SettingsPage: React.FC = () => {
               </label>
               <Input
                 value={logoUrl}
-                onChange={(e) => setLogoUrl(e.target.value)}
+                onChange={(e) => { setLogoUrl(e.target.value); setIsDirty(true); }}
                 placeholder="/dmhs-logo-128.png"
               />
             </div>
@@ -330,7 +451,7 @@ export const SettingsPage: React.FC = () => {
               </label>
               <Input
                 value={principalName}
-                onChange={(e) => setPrincipalName(e.target.value)}
+                onChange={(e) => { setPrincipalName(e.target.value); setIsDirty(true); }}
                 placeholder="STA Khadri"
               />
             </div>
@@ -342,7 +463,7 @@ export const SettingsPage: React.FC = () => {
               <Input
                 type="email"
                 value={principalEmail}
-                onChange={(e) => setPrincipalEmail(e.target.value)}
+                onChange={(e) => { setPrincipalEmail(e.target.value); setIsDirty(true); }}
                 placeholder="admin@deccanmission.edu.in"
               />
             </div>
@@ -353,7 +474,7 @@ export const SettingsPage: React.FC = () => {
               </label>
               <Input
                 value={principalPhone}
-                onChange={(e) => setPrincipalPhone(e.target.value)}
+                onChange={(e) => { setPrincipalPhone(e.target.value); setIsDirty(true); }}
                 placeholder="+91 9949083181"
               />
             </div>

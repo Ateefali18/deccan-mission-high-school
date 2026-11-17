@@ -1639,7 +1639,7 @@ export const api = {
   },
 
   schools: {
-    getCurrent: async (): Promise<SchoolConfig> => {
+    getCurrent: async (forceFresh = false): Promise<SchoolConfig> => {
       if (isSupabaseConfigured()) {
         try {
           const sb = await supabaseService.schools.getCurrent();
@@ -1648,15 +1648,15 @@ export const api = {
               id: sb.id,
               name: sb.name || "Deccan Mission High School",
               code: sb.code || "DMHS-HYD",
-              affiliation_number: sb.affiliation_number || "TS-HYD-SSC-41092",
+              affiliation_number: sb.affiliation_number || "TS-SSC-500002",
               board: sb.board || "Telangana State Board of Secondary Education (SSC)",
-              contact_email: sb.contact_email || "admin@deccanmission.edu.in",
+              contact_email: sb.contact_email || "info@dmhs.edu.in",
               contact_phone: sb.contact_phone || "+91 40 2456 7890",
               address: sb.address || "Old City, Hyderabad, Telangana 500002, India",
-              website: sb.website || "https://dmhs.edu.in",
+              website: sb.website || "https://dmhs-nwgj.vercel.app",
               logo_url: sb.logo_url || "/dmhs-logo-128.png",
               principal_name: sb.principal_name || "STA Khadri",
-              principal_email: sb.principal_email || "admin@deccanmission.edu.in",
+              principal_email: sb.principal_email || "sta.khadri@dmhs.edu.in",
               principal_phone: sb.principal_phone || "+91 9949083181",
             };
             if (typeof localStorage !== "undefined") {
@@ -1666,10 +1666,13 @@ export const api = {
           }
         } catch (e) {
           console.warn("Could not load schools from Supabase, checking cache:", e);
+          if (forceFresh) {
+            throw e;
+          }
         }
       }
 
-      if (typeof localStorage !== "undefined") {
+      if (!forceFresh && typeof localStorage !== "undefined") {
         const cached = localStorage.getItem("dmhs_school_settings");
         if (cached) {
           try {
@@ -1682,15 +1685,15 @@ export const api = {
         id: "3eef50ca-91eb-416b-89bc-e9ca8c629213",
         code: "DMHS-HYD",
         name: "Deccan Mission High School",
-        affiliation_number: "TS-HYD-SSC-41092",
+        affiliation_number: "TS-SSC-500002",
         board: "Telangana State Board of Secondary Education (SSC)",
         address: "Old City, Hyderabad, Telangana 500002, India",
-        contact_email: "admin@deccanmission.edu.in",
+        contact_email: "info@dmhs.edu.in",
         contact_phone: "+91 40 2456 7890",
-        website: "https://dmhs.edu.in",
+        website: "https://dmhs-nwgj.vercel.app",
         logo_url: "/dmhs-logo-128.png",
         principal_name: "STA Khadri",
-        principal_email: "admin@deccanmission.edu.in",
+        principal_email: "sta.khadri@dmhs.edu.in",
         principal_phone: "+91 9949083181",
       };
       if (typeof localStorage !== "undefined") {
@@ -4877,21 +4880,29 @@ export const api = {
 
     resetData: async (): Promise<{ success: boolean; message: string }> => {
       assertAdminRole();
+      if (isSupabaseConfigured()) {
+        try {
+          await supabase.rpc("dmhs_clean_operational_data");
+        } catch (sbErr) {
+          console.warn("Supabase clean RPC error:", sbErr);
+        }
+      }
       if (typeof localStorage !== "undefined") {
         localStorage.removeItem("dmhs_custom_students");
         localStorage.removeItem("dmhs_custom_teachers");
         localStorage.removeItem("dmhs_custom_users");
         localStorage.removeItem("dmhs_attendance_sessions");
         localStorage.removeItem("dmhs_custom_expenses");
+        localStorage.removeItem("dmhs_custom_invoices");
+        localStorage.removeItem("dmhs_custom_payments");
         localStorage.removeItem("dmhs_teacher_password_tch_ateef");
         localStorage.removeItem("dmhs_student_password_std_ali");
         localStorage.removeItem("dmhs_active_otp_sessions");
         localStorage.removeItem("dmhs_password_reset_logs");
-        localStorage.removeItem("dmhs_admin_password");
       }
       return {
         success: true,
-        message: "School operational data has been successfully reset to fresh default state.",
+        message: "School operational data has been successfully reset in Supabase and local storage.",
       };
     },
   },

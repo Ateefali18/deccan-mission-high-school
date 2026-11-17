@@ -60,24 +60,18 @@ export const supabaseService = {
 
         if (data && !error) return data;
 
-        const { data: anySchool } = await supabase.from("schools").select("*").limit(1).maybeSingle();
-        if (anySchool) return anySchool;
+        const { data: anySchool, error: anyErr } = await supabase.from("schools").select("*").limit(1).maybeSingle();
+        if (anySchool && !anyErr) return anySchool;
+
+        if (error) {
+          throw new SupabaseServiceError(error.message, error.code, error.details);
+        }
       } catch (e) {
         console.warn("Could not retrieve school from Supabase:", e);
+        throw e;
       }
 
-      return {
-        id: "3eef50ca-91eb-416b-89bc-e9ca8c629213",
-        code: "DMHS-HYD",
-        name: "Deccan Mission High School",
-        affiliation_number: "TS-HYD-SSC-41092",
-        board: "Telangana State Board of Secondary Education (SSC)",
-        address: "Old City, Hyderabad, Telangana 500002, India",
-        contact_email: "admin@deccanmission.edu.in",
-        contact_phone: "+91 40 2456 7890",
-        website: "https://dmhs.edu.in",
-        logo_url: "/dmhs-logo-128.png",
-      };
+      return null;
     },
 
     async updateCurrent(payload: any) {
