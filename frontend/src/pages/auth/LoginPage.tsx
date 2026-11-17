@@ -54,20 +54,30 @@ export const LoginPage: React.FC = () => {
   const [mfaError, setMfaError] = useState<string | null>(null);
   const [isVerifyingMfa, setIsVerifyingMfa] = useState(false);
 
-  // Forgot Password / Gmail OTP modal state
+  // Forgot Password / APITxT SMS OTP modal state
   const [isForgotOpen, setIsForgotOpen] = useState(false);
-  const [forgotStep, setForgotStep] = useState<1 | 2 | 3>(1);
+  const [forgotStep, setForgotStep] = useState<1 | 2 | 3 | 4 | 5>(1);
+  const [recoveryPortal, setRecoveryPortal] = useState<"ADMIN" | "TEACHER" | "STUDENT">("ADMIN");
   const [forgotIdentifier, setForgotIdentifier] = useState("");
+  const [accountDetails, setAccountDetails] = useState<{
+    name: string;
+    role: "ADMIN" | "TEACHER" | "STUDENT";
+    maskedPhone: string;
+    identifier: string;
+  } | null>(null);
   const [resetSessionId, setResetSessionId] = useState("");
-  const [maskedEmail, setMaskedEmail] = useState("");
+  const [resetToken, setResetToken] = useState("");
+  const [maskedPhone, setMaskedPhone] = useState("");
   const [otpCode, setOtpCode] = useState("");
   const [simulatedOtp, setSimulatedOtp] = useState<string | null>(null);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showResetPassword, setShowResetPassword] = useState(false);
-  const [otpTimer, setOtpTimer] = useState(300); // 5 minutes (300 seconds)
+  const [otpTimer, setOtpTimer] = useState(300); // 5 minutes
   const [resendCooldown, setResendCooldown] = useState(0);
+  const [attemptsRemaining, setAttemptsRemaining] = useState(5);
   const [isSubmittingForgot, setIsSubmittingForgot] = useState(false);
+  const [forgotError, setForgotError] = useState<string | null>(null);
 
   const {
     register,
@@ -85,7 +95,7 @@ export const LoginPage: React.FC = () => {
   // Countdown timer for 5-minute OTP expiry
   useEffect(() => {
     let interval: any = null;
-    if (isForgotOpen && forgotStep === 2 && otpTimer > 0) {
+    if (isForgotOpen && forgotStep === 3 && otpTimer > 0) {
       interval = setInterval(() => {
         setOtpTimer((prev) => (prev > 0 ? prev - 1 : 0));
       }, 1000);
@@ -186,80 +196,132 @@ export const LoginPage: React.FC = () => {
     }
   };
 
-  // Step 1: Request OTP
-  const handleRequestOtp = async (e: React.FormEvent) => {
+  // Step 1: Account Lookup by Portal & Identifier
+  const handleLookupAccount = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!forgotIdentifier.trim()) {
-      toast.error("Please enter your registered school email, username, or admission number.");
+    setForgotError(null);
+    const cleanId = forgotIdentifier.trim();
+    if (!cleanId) {
+      toast.error("Please enter your registered email, username, or admission / employee ID.");
       return;
     }
     setIsSubmittingForgot(true);
     try {
-      const res = await api.auth.requestPasswordResetOtp(forgotIdentifier.trim());
-      if (res.sessionId) {
-        setResetSessionId(res.sessionId);
-        setMaskedEmail(res.maskedEmail || "registered address");
-        setSimulatedOtp(res.debugOtp || null);
-        setOtpTimer(res.expiresSeconds || 300);
-        setResendCooldown(res.cooldownSeconds || 60);
-      } else {
-        setMaskedEmail("registered address");
-        setOtpTimer(300);
-        setResendCooldown(60);
+      const res = await api.auth.lookupAccountForOtp(recoveryPortal, cleanId);
+      if (!res || !res.found) {
+        const errorMsg = res?.message || `No account found matching "${cleanId}" in the ${recoveryPortal === "ADMIN" ? "Admin" : recoveryPortal === "TEACHER" ? "Faculty" : "Student"} records.`;
+        setForgotError(errorMsg);
+        toast.error("Account not found in school records.");
+        return;
       }
+      setAccountDetails({
+        name: res.name || "School User",
+        role: res.role || recoveryPortal,
+        maskedPhone: res.maskedPhone || "+91 ••••••••••",
+        identifier: res.identifier || cleanId,
+      });
+      setMaskedPhone(res.maskedPhone || "+91 ••••••••••");
       setForgotStep(2);
-      toast.success(res.message || "If this account is registered with DMHS, a verification code has been dispatched.");
     } catch (err: any) {
-      toast.error(err.message || "Failed to process recovery request.");
+      const msg = err.message || "Failed to locate account in school records.";
+      setForgotError(msg);
+      toast.error(msg);
     } finally {
       setIsSubmittingForgot(false);
     }
   };
 
-  // Step 2: Verify OTP
+  // Step 2: Request SMS OTP via APITxT
+  const handleSendOtp = async () => {
+    setForgotError(null);
+    setIsSubmittingForgot(true);
+    try {
+      const res = await api.auth.requestPasswordResetOtp(forgotIdentifier.trim(), recoveryPortal);
+      if (res.sessionId) {
+        setResetSessionId(res.sessionId);
+        setMaskedPhone(res.maskedPhone || maskedPhone);
+        setSimulatedOtp(res.debugOtp || null);
+        setOtpTimer(res.expiresSeconds || 300);
+        setResendCooldown(res.cooldownSeconds || 60);
+        setAttemptsRemaining(res.attemptsLeft ?? 5);
+      }
+      setForgotStep(3);
+      toast.success(res.message || "Verification code dispatched via SMS.");
+    } catch (err: any) {
+      const msg = err.message || "Failed to dispatch verification code via SMS.";
+      setForgotError(msg);
+      toast.error(msg);
+    } finally {
+      setIsSubmittingForgot(false);
+    }
+  };
+
+  // Step 3: Verify 6-digit OTP
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
+    setForgotError(null);
     if (otpTimer === 0) {
-      toast.error("Verification code has expired. Please request a new code.");
+      toast.error("Verification code has expired. Please request a fresh code.");
       return;
     }
-    if (!otpCode.trim() || otpCode.trim().length < 6) {
+    const cleanOtp = otpCode.trim();
+    if (!cleanOtp || cleanOtp.length < 6) {
       toast.error("Please enter the complete 6-digit verification code.");
       return;
     }
 
     setIsSubmittingForgot(true);
     try {
-      await api.auth.verifyPasswordResetOtp(resetSessionId, otpCode.trim());
+      const res = await api.auth.verifyPasswordResetOtp(resetSessionId, cleanOtp);
+      if (res.resetToken) {
+        setResetToken(res.resetToken);
+      } else {
+        setResetToken(resetSessionId);
+      }
       toast.success("Identity verified successfully! Please enter your new password.");
-      setForgotStep(3);
+      setForgotStep(4);
     } catch (err: any) {
-      toast.error(err.message || "Invalid verification code.");
+      const msg = err.message || "Invalid verification code. Please check and try again.";
+      setForgotError(msg);
+      toast.error(msg);
+      if (typeof err.attemptsLeft === "number") {
+        setAttemptsRemaining(err.attemptsLeft);
+      } else {
+        setAttemptsRemaining((prev) => Math.max(0, prev - 1));
+      }
     } finally {
       setIsSubmittingForgot(false);
     }
   };
 
-  // Resend OTP
+  // Step 3 (Resend): Resend OTP respecting 60s cooldown
   const handleResendOtp = async () => {
     if (resendCooldown > 0) return;
+    setForgotError(null);
     setIsSubmittingForgot(true);
     try {
-      const res = await api.auth.resendPasswordResetOtp(resetSessionId);
+      const res = await api.auth.resendPasswordResetOtp(resetSessionId, recoveryPortal, forgotIdentifier);
+      if (res.sessionId) {
+        setResetSessionId(res.sessionId);
+      }
       setSimulatedOtp(res.debugOtp || null);
       setOtpTimer(res.expiresSeconds || 300);
       setResendCooldown(res.cooldownSeconds || 60);
-      toast.success("A fresh 6-digit verification code has been dispatched.");
+      setAttemptsRemaining(5);
+      toast.success("A fresh 6-digit verification code has been dispatched via SMS.");
     } catch (err: any) {
-      toast.error(err.message || "Failed to resend code.");
+      const msg = err.message || "Failed to resend verification code.";
+      setForgotError(msg);
+      toast.error(msg);
     } finally {
       setIsSubmittingForgot(false);
     }
   };
 
-  // Step 3: Reset Password
+  // Step 4: Reset Password
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
+    setForgotError(null);
     if (newPassword.length < 4) {
       toast.error("Password must be at least 4 characters long.");
       return;
@@ -271,20 +333,35 @@ export const LoginPage: React.FC = () => {
 
     setIsSubmittingForgot(true);
     try {
-      const res = await api.auth.resetPasswordWithOtp(resetSessionId, newPassword);
-      toast.success(res.message || "Password updated successfully! Please sign in.");
-      setIsForgotOpen(false);
-      setForgotStep(1);
-      setValue("username_or_email", forgotIdentifier);
-      setValue("password", newPassword);
-      setNewPassword("");
-      setConfirmPassword("");
-      setOtpCode("");
+      const tokenToUse = resetToken || resetSessionId;
+      const res = await api.auth.resetPasswordWithOtp(tokenToUse, newPassword);
+      toast.success(res.message || "Password updated successfully in school records.");
+      setForgotStep(5);
     } catch (err: any) {
-      toast.error(err.message || "Failed to reset password.");
+      const msg = err.message || "Failed to update password.";
+      setForgotError(msg);
+      toast.error(msg);
     } finally {
       setIsSubmittingForgot(false);
     }
+  };
+
+  // Step 5: Finish Reset & Auto-populate Login
+  const handleFinishReset = () => {
+    setIsForgotOpen(false);
+    setSelectedPortal(recoveryPortal);
+    setValue("username_or_email", forgotIdentifier);
+    setValue("password", newPassword);
+    setForgotStep(1);
+    setForgotIdentifier("");
+    setAccountDetails(null);
+    setResetSessionId("");
+    setResetToken("");
+    setOtpCode("");
+    setSimulatedOtp(null);
+    setNewPassword("");
+    setConfirmPassword("");
+    setForgotError(null);
   };
 
   return (
@@ -482,9 +559,15 @@ export const LoginPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => {
+                    setRecoveryPortal(selectedPortal);
                     setForgotStep(1);
+                    setForgotIdentifier("");
+                    setAccountDetails(null);
+                    setResetSessionId("");
+                    setResetToken("");
                     setOtpCode("");
                     setSimulatedOtp(null);
+                    setForgotError(null);
                     setIsForgotOpen(true);
                   }}
                   className="font-semibold text-brand-navy dark:text-brand-gold hover:underline"
@@ -521,64 +604,234 @@ export const LoginPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Forgot Password Modal (5-Step Recovery Workflow) */}
+      {/* Forgot Password Modal (5-Step APITxT SMS OTP Recovery Workflow) */}
       <Dialog
         isOpen={isForgotOpen}
         onClose={() => setIsForgotOpen(false)}
-        title="Account Recovery &amp; Gmail OTP Reset"
-        description="Recover portal access for Admin, Faculty, or Student accounts using your registered email."
+        title="Account Recovery &amp; SMS OTP Reset"
+        description="Recover portal access for Admin, Faculty, or Student accounts using APITxT SMS verification."
         maxWidth="md"
       >
-        {/* Step 1: Enter Email / Identifier */}
+        {/* Step Indicator Progress Bar */}
+        <div className="mb-4">
+          <div className="flex items-center justify-between text-[11px] font-bold text-light-secondary dark:text-dark-secondary mb-1.5 px-1">
+            <span className={forgotStep >= 1 ? "text-brand-blue dark:text-brand-gold" : ""}>1. Portal &amp; ID</span>
+            <span className={forgotStep >= 2 ? "text-brand-blue dark:text-brand-gold" : ""}>2. Mobile</span>
+            <span className={forgotStep >= 3 ? "text-brand-blue dark:text-brand-gold" : ""}>3. SMS Code</span>
+            <span className={forgotStep >= 4 ? "text-brand-blue dark:text-brand-gold" : ""}>4. New Password</span>
+            <span className={forgotStep >= 5 ? "text-brand-blue dark:text-brand-gold" : ""}>5. Done</span>
+          </div>
+          <div className="w-full bg-gray-200 dark:bg-dark-elevated h-1.5 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-brand-blue transition-all duration-300"
+              style={{ width: `${(forgotStep / 5) * 100}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Global Error Banner within modal */}
+        {forgotError && (
+          <div className="mb-4 p-3 rounded-xl bg-status-error/15 border border-status-error/30 text-status-error text-xs flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+            <span>{forgotError}</span>
+          </div>
+        )}
+
+        {/* Step 1: Select Portal & Enter Identifier */}
         {forgotStep === 1 && (
-          <form onSubmit={handleRequestOtp} className="space-y-4 py-2">
+          <form onSubmit={handleLookupAccount} className="space-y-4 py-1">
+            <div>
+              <label className="block text-xs font-semibold text-light-secondary dark:text-dark-secondary mb-1.5 uppercase tracking-wider">
+                Select Your School Portal
+              </label>
+              <div className="grid grid-cols-3 gap-2 p-1 bg-gray-100 dark:bg-dark-elevated rounded-xl border border-light-border dark:border-dark-border">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRecoveryPortal("ADMIN");
+                    setForgotError(null);
+                  }}
+                  className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-xs font-bold transition-all ${
+                    recoveryPortal === "ADMIN"
+                      ? "bg-brand-navy text-white shadow-sm"
+                      : "text-light-secondary dark:text-dark-secondary hover:text-light-primary"
+                  }`}
+                >
+                  <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+                  <span>Admin</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRecoveryPortal("TEACHER");
+                    setForgotError(null);
+                  }}
+                  className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-xs font-bold transition-all ${
+                    recoveryPortal === "TEACHER"
+                      ? "bg-brand-blue text-white shadow-sm"
+                      : "text-light-secondary dark:text-dark-secondary hover:text-light-primary"
+                  }`}
+                >
+                  <Briefcase className="w-3.5 h-3.5 shrink-0" />
+                  <span>Faculty</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRecoveryPortal("STUDENT");
+                    setForgotError(null);
+                  }}
+                  className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-xs font-bold transition-all ${
+                    recoveryPortal === "STUDENT"
+                      ? "bg-brand-gold text-brand-navy shadow-sm font-extrabold"
+                      : "text-light-secondary dark:text-dark-secondary hover:text-light-primary"
+                  }`}
+                >
+                  <GraduationCap className="w-3.5 h-3.5 shrink-0" />
+                  <span>Student</span>
+                </button>
+              </div>
+            </div>
+
             <Input
-              label="Registered Email, Username or Admission / Employee ID"
-              placeholder="Enter registered email, admission number, or employee ID"
+              label={
+                recoveryPortal === "STUDENT"
+                  ? "Student Admission Number or Registered Email *"
+                  : recoveryPortal === "TEACHER"
+                  ? "Faculty Email or Employee ID *"
+                  : "Administrator Email or Username *"
+              }
+              placeholder={
+                recoveryPortal === "STUDENT"
+                  ? "e.g. DMHS-1382 or student@dmhs.edu.in"
+                  : recoveryPortal === "TEACHER"
+                  ? "e.g. EMP-ATEEF or teacher@dmhs.edu.in"
+                  : "e.g. admin@dmhs.edu.in or sta khadri"
+              }
               value={forgotIdentifier}
               onChange={(e) => setForgotIdentifier(e.target.value)}
               required
               disabled={isSubmittingForgot}
+              autoFocus
             />
+
             <div className="p-3 rounded-xl bg-brand-blue/10 border border-brand-blue/20 text-xs text-light-primary dark:text-dark-primary flex items-start gap-2">
-              <Mail className="w-4 h-4 text-brand-blue shrink-0 mt-0.5" />
+              <Smartphone className="w-4 h-4 text-brand-blue shrink-0 mt-0.5" />
               <div>
-                <span className="font-bold block mb-0.5">Secure Identity Verification</span>
+                <span className="font-bold block mb-0.5">Secure SMS Authentication</span>
                 <p className="text-[11px] text-light-secondary dark:text-dark-secondary">
-                  A 6-digit one-time verification code (OTP) will be dispatched to the verified Gmail address registered with the school for this account.
+                  Your registered mobile number on record in the school database will be used to send an APITxT SMS verification code. No external email required.
                 </p>
               </div>
             </div>
+
             <div className="flex justify-end gap-2 pt-2 border-t border-light-border dark:border-dark-border">
               <Button type="button" variant="secondary" onClick={() => setIsForgotOpen(false)} disabled={isSubmittingForgot}>
                 Cancel
               </Button>
               <Button type="submit" variant="primary" isLoading={isSubmittingForgot}>
-                Send Verification Code
+                Find Account
               </Button>
             </div>
           </form>
         )}
 
-        {/* Step 2 & 3: Verify 6-digit OTP */}
+        {/* Step 2: Confirm Account Details & Send SMS OTP */}
         {forgotStep === 2 && (
-          <form onSubmit={handleVerifyOtp} className="space-y-4 py-2">
+          <div className="space-y-4 py-1">
+            <div className="p-4 rounded-xl bg-brand-navy/5 dark:bg-dark-elevated border border-brand-blue/20 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-light-secondary dark:text-dark-secondary uppercase tracking-wider">
+                  Verified Account Record
+                </span>
+                <span
+                  className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${
+                    accountDetails?.role === "ADMIN"
+                      ? "bg-brand-navy text-white"
+                      : accountDetails?.role === "TEACHER"
+                      ? "bg-brand-blue text-white"
+                      : "bg-brand-gold text-brand-navy"
+                  }`}
+                >
+                  {accountDetails?.role === "ADMIN"
+                    ? "Admin Portal"
+                    : accountDetails?.role === "TEACHER"
+                    ? "Faculty Portal"
+                    : "Student Portal"}
+                </span>
+              </div>
+              <div>
+                <h4 className="text-base font-extrabold text-light-primary dark:text-dark-primary">
+                  {accountDetails?.name}
+                </h4>
+                <p className="text-xs text-light-secondary dark:text-dark-secondary font-mono mt-0.5">
+                  ID: {accountDetails?.identifier}
+                </p>
+              </div>
+              <div className="pt-2 border-t border-light-border dark:border-dark-border flex items-center justify-between text-xs">
+                <span className="text-light-secondary dark:text-dark-secondary flex items-center gap-1.5 font-medium">
+                  <Smartphone className="w-3.5 h-3.5 text-brand-blue" />
+                  Registered Mobile:
+                </span>
+                <span className="font-mono font-bold text-light-primary dark:text-dark-primary bg-white dark:bg-dark-card px-2.5 py-1 rounded-md border border-light-border dark:border-dark-border shadow-xs">
+                  {accountDetails?.maskedPhone}
+                </span>
+              </div>
+            </div>
+
+            <div className="p-3 rounded-xl bg-brand-gold/15 border border-brand-gold/30 text-xs text-light-primary dark:text-dark-primary flex items-start gap-2">
+              <ShieldCheck className="w-4 h-4 text-brand-gold shrink-0 mt-0.5" />
+              <div>
+                <span className="font-bold block mb-0.5">APITxT Gateway Verification</span>
+                <p className="text-[11px] text-light-secondary dark:text-dark-secondary">
+                  Click below to dispatch a 6-digit one-time password to {accountDetails?.maskedPhone}. The OTP is valid for 5 minutes.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex justify-between items-center gap-2 pt-2 border-t border-light-border dark:border-dark-border">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setForgotStep(1)}
+                disabled={isSubmittingForgot}
+              >
+                <ArrowLeft className="w-3.5 h-3.5 mr-1" />
+                Change Account
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                onClick={handleSendOtp}
+                isLoading={isSubmittingForgot}
+              >
+                Send OTP via SMS
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 3: Verify 6-digit OTP */}
+        {forgotStep === 3 && (
+          <form onSubmit={handleVerifyOtp} className="space-y-4 py-1">
             <div className="p-3.5 rounded-xl bg-brand-gold/15 border border-brand-gold/30 text-xs text-light-primary dark:text-dark-primary space-y-1.5">
               <div className="flex items-center justify-between">
                 <span className="font-bold text-brand-navy dark:text-brand-gold flex items-center gap-1.5">
-                  <Mail className="w-3.5 h-3.5" />
-                  Code Dispatched to {maskedEmail}
+                  <Smartphone className="w-3.5 h-3.5" />
+                  SMS Sent to {maskedPhone}
                 </span>
-                <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-white dark:bg-dark-card border border-brand-gold/30">
+                <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-white dark:bg-dark-card border border-brand-gold/30 flex items-center gap-1">
+                  <Clock className="w-3 h-3 text-brand-gold" />
                   {Math.floor(otpTimer / 60)}:{(otpTimer % 60).toString().padStart(2, "0")}
                 </span>
               </div>
               <p className="text-[11px] text-light-secondary dark:text-dark-secondary">
-                The 6-digit verification code is valid for 5 minutes. Enter the code below to confirm identity.
+                Enter the 6-digit verification code delivered to your mobile phone.
               </p>
               {simulatedOtp && (
                 <div className="pt-1 mt-1 border-t border-brand-gold/20 font-mono text-[11px]">
-                  Testing code: <strong className="text-brand-navy dark:text-brand-gold tracking-widest">{simulatedOtp}</strong>
+                  Testing/Dev Code: <strong className="text-brand-navy dark:text-brand-gold tracking-widest">{simulatedOtp}</strong>
                 </div>
               )}
             </div>
@@ -610,16 +863,22 @@ export const LoginPage: React.FC = () => {
                   }`}
                 >
                   <RefreshCw className={`w-3 h-3 ${isSubmittingForgot ? "animate-spin" : ""}`} />
-                  {resendCooldown > 0 ? `Resend Code in ${resendCooldown}s` : "Resend Code"}
+                  {resendCooldown > 0 ? `Resend Code in ${resendCooldown}s` : "Resend Code via SMS"}
                 </button>
-                <span className="text-[11px] text-light-secondary dark:text-dark-secondary">
-                  Max 3 verification attempts
+                <span className="text-[11px] text-light-secondary dark:text-dark-secondary font-medium">
+                  {attemptsRemaining} {attemptsRemaining === 1 ? "attempt" : "attempts"} remaining
                 </span>
               </div>
             </div>
 
             <div className="flex justify-between items-center gap-2 pt-2 border-t border-light-border dark:border-dark-border">
-              <Button type="button" variant="ghost" size="sm" onClick={() => setForgotStep(1)} disabled={isSubmittingForgot}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setForgotStep(2)}
+                disabled={isSubmittingForgot}
+              >
                 <ArrowLeft className="w-3.5 h-3.5 mr-1" />
                 Back
               </Button>
@@ -630,12 +889,12 @@ export const LoginPage: React.FC = () => {
           </form>
         )}
 
-        {/* Step 4 & 5: Set New Password */}
-        {forgotStep === 3 && (
-          <form onSubmit={handleResetPassword} className="space-y-4 py-2">
+        {/* Step 4: Set New Password */}
+        {forgotStep === 4 && (
+          <form onSubmit={handleResetPassword} className="space-y-4 py-1">
             <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-700 dark:text-emerald-400 flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 shrink-0" />
-              <span>Identity verified. Please set your new secure password.</span>
+              <span>Identity verified via SMS OTP. Set your new password below.</span>
             </div>
 
             <div className="space-y-3">
@@ -648,30 +907,34 @@ export const LoginPage: React.FC = () => {
                   onChange={(e) => setNewPassword(e.target.value)}
                   required
                   disabled={isSubmittingForgot}
+                  autoFocus
                 />
                 <button
                   type="button"
                   onClick={() => setShowResetPassword(!showResetPassword)}
                   className="absolute right-3 top-[34px] text-light-muted hover:text-light-primary"
+                  title={showResetPassword ? "Hide password" : "Show password"}
                 >
                   {showResetPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                 </button>
               </div>
 
-              <Input
-                label="Confirm New Password"
-                type={showResetPassword ? "text" : "password"}
-                placeholder="Re-enter new password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
-                disabled={isSubmittingForgot}
-              />
+              <div className="relative">
+                <Input
+                  label="Confirm New Password"
+                  type={showResetPassword ? "text" : "password"}
+                  placeholder="Re-enter new password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  disabled={isSubmittingForgot}
+                />
+              </div>
 
               {/* Password strength indicator */}
               <div className="space-y-1">
                 <div className="flex items-center justify-between text-[11px]">
-                  <span className="text-light-secondary dark:text-dark-secondary">Strength</span>
+                  <span className="text-light-secondary dark:text-dark-secondary">Password Strength</span>
                   <span
                     className={`font-bold ${
                       newPassword.length >= 8
@@ -700,10 +963,54 @@ export const LoginPage: React.FC = () => {
 
             <div className="flex justify-end gap-2 pt-2 border-t border-light-border dark:border-dark-border">
               <Button type="submit" variant="primary" isLoading={isSubmittingForgot}>
-                Save New Password &amp; Sign In
+                Save New Password
               </Button>
             </div>
           </form>
+        )}
+
+        {/* Step 5: Success Screen */}
+        {forgotStep === 5 && (
+          <div className="space-y-4 py-3 text-center">
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-700 mx-auto">
+              <CheckCircle2 className="w-8 h-8" />
+            </div>
+            <div>
+              <h3 className="text-lg font-extrabold text-light-primary dark:text-dark-primary">
+                Password Reset Successfully!
+              </h3>
+              <p className="text-xs text-light-secondary dark:text-dark-secondary mt-1 max-w-sm mx-auto">
+                Your account password has been updated in the school database. You can now sign in to your portal.
+              </p>
+            </div>
+
+            <div className="p-3 rounded-xl bg-gray-50 dark:bg-dark-elevated border border-light-border dark:border-dark-border max-w-xs mx-auto text-xs text-left">
+              <div className="flex items-center justify-between">
+                <span className="text-light-secondary dark:text-dark-secondary">Portal:</span>
+                <span className="font-bold text-light-primary dark:text-dark-primary">
+                  {recoveryPortal === "ADMIN" ? "Admin" : recoveryPortal === "TEACHER" ? "Faculty" : "Student"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between mt-1">
+                <span className="text-light-secondary dark:text-dark-secondary">Account ID:</span>
+                <span className="font-mono font-bold text-brand-navy dark:text-brand-gold">
+                  {forgotIdentifier}
+                </span>
+              </div>
+            </div>
+
+            <div className="pt-2">
+              <Button
+                type="button"
+                variant="primary"
+                size="lg"
+                className="w-full"
+                onClick={handleFinishReset}
+              >
+                Sign In with New Password
+              </Button>
+            </div>
+          </div>
         )}
       </Dialog>
 

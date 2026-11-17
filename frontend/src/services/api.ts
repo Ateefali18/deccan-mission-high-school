@@ -1455,6 +1455,7 @@ export const api = {
       return { success: true, message: "Password updated successfully." };
     },
 
+    lookupAccountForOtp: authRecoveryService.lookupAccount,
     requestPasswordResetOtp: authRecoveryService.requestOtp,
     verifyPasswordResetOtp: authRecoveryService.verifyOtp,
     resetPasswordWithOtp: authRecoveryService.resetPasswordWithToken,
