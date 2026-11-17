@@ -173,9 +173,9 @@ async function runAdmissionWorkflowTest() {
 
     // 8. Controlled Cleanup of temporary test records
     console.log("\n--- Cleaning up temporary test records ---");
-    await adminClient.from("payments").delete().eq("id", newPayment.id);
-    await adminClient.from("invoices").delete().eq("id", newInvoice.id);
-    await adminClient.from("student_enrollments").delete().eq("id", enrollment.id);
+    await adminClient.from("payments").delete().eq("student_id", newStudent.id);
+    await adminClient.from("invoices").delete().eq("student_id", newStudent.id);
+    await adminClient.from("student_enrollments").delete().eq("student_id", newStudent.id);
     await adminClient.from("students").delete().eq("id", newStudent.id);
     await adminClient.from("teachers").delete().eq("id", newFaculty.id);
 
