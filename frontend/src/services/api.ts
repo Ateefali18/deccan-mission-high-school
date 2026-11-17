@@ -4873,10 +4873,24 @@ export const api = {
   },
 
   admin: {
-    listUsersForCredentials: authRecoveryService.listUsersForAdminCredentials,
+    listUsersForCredentials: async () => {
+      try {
+        return (await authRecoveryService.listUsersForAdminCredentials()) || [];
+      } catch (err) {
+        console.warn("[api.admin.listUsersForCredentials] Safe fallback:", err);
+        return [];
+      }
+    },
     initiatePasswordReset: authRecoveryService.adminInitiateReset,
     setUserPassword: authRecoveryService.adminSetUserPassword,
-    getPasswordResetAuditLogs: authRecoveryService.getAuditLogs,
+    getPasswordResetAuditLogs: async () => {
+      try {
+        return (await authRecoveryService.getAuditLogs()) || [];
+      } catch (err) {
+        console.warn("[api.admin.getPasswordResetAuditLogs] Safe fallback:", err);
+        return [];
+      }
+    },
 
     resetData: async (): Promise<{ success: boolean; message: string }> => {
       assertAdminRole();

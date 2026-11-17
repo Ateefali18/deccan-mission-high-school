@@ -1,5 +1,6 @@
 import type { UserCredentialItem, PasswordResetSession, PasswordResetLogItem } from "../types";
 import { hashPassword, verifyPassword } from "./authCrypto";
+import { isSupabaseConfigured, supabase } from "./supabaseClient";
 
 export interface CustomUserAccount {
   id?: number | string;
@@ -141,25 +142,30 @@ export function saveStoredOtpSessions(sessions: Record<string, PasswordResetSess
   } catch {}
 }
 
+let inMemoryPasswordResetLogs: PasswordResetLogItem[] = [];
+
 export function getPasswordResetLogs(): PasswordResetLogItem[] {
   try {
-    if (typeof localStorage === "undefined") return [];
-    const raw = localStorage.getItem("dmhs_password_reset_logs");
-    return raw ? JSON.parse(raw) : [];
+    if (typeof localStorage !== "undefined" && localStorage && typeof localStorage.getItem === "function") {
+      const raw = localStorage.getItem("dmhs_password_reset_logs");
+      if (raw) return JSON.parse(raw);
+    }
+    return inMemoryPasswordResetLogs;
   } catch {
-    return [];
+    return inMemoryPasswordResetLogs;
   }
 }
 
 export function appendPasswordResetLog(log: Omit<PasswordResetLogItem, "id">) {
   try {
-    const logs = getPasswordResetLogs();
+    const logs = [...getPasswordResetLogs()];
     const newLog: PasswordResetLogItem = {
       id: "log_" + Date.now() + "_" + Math.random().toString(36).substring(2, 6),
       ...log,
     };
     logs.unshift(newLog);
-    if (typeof localStorage !== "undefined") {
+    inMemoryPasswordResetLogs = logs.slice(0, 100);
+    if (typeof localStorage !== "undefined" && localStorage && typeof localStorage.setItem === "function") {
       localStorage.setItem("dmhs_password_reset_logs", JSON.stringify(logs.slice(0, 100)));
     }
   } catch {}
@@ -668,6 +674,212 @@ export const authRecoveryService = {
     return {
       success: true,
       message: "Your password has been successfully updated. Please sign in with your new password.",
+    };
+  },
+
+  /**
+   * Admin: List all registered profiles and accounts for credentials registry management
+   */
+  listUsersForAdminCredentials: async (): Promise<UserCredentialItem[]> => {
+    const users: UserCredentialItem[] = [];
+    const logs = getPasswordResetLogs();
+
+    const getLatestLog = (queryStr: string) => {
+      const q = (queryStr || "").toLowerCase().trim();
+      if (!q) return undefined;
+      return logs.find(
+        (l) =>
+          (l.email && l.email.toLowerCase() === q) ||
+          (l.user_name && l.user_name.toLowerCase() === q)
+      );
+    };
+
+    // 1. Try fetching live Supabase profiles if configured
+    try {
+      if (isSupabaseConfigured()) {
+        const { data: profiles, error } = await supabase
+          .from("profiles")
+          .select("*");
+
+        if (!error && Array.isArray(profiles) && profiles.length > 0) {
+          for (const p of profiles) {
+            const role = (p.role?.toUpperCase() || "ADMIN") as "ADMIN" | "TEACHER" | "STUDENT";
+            const latestLog = getLatestLog(p.email || p.id);
+            users.push({
+              id: p.id,
+              name: p.full_name || p.email?.split("@")[0] || "User",
+              identifier: p.email || p.phone_number || p.id,
+              email: p.email || "",
+              role: role,
+              status: p.is_active !== false ? "ACTIVE" : "INACTIVE",
+              last_reset_status: latestLog
+                ? latestLog.status === "Completed"
+                  ? "COMPLETED"
+                  : "PENDING_VERIFICATION"
+                : "NONE",
+              last_reset_at: latestLog?.timestamp || p.created_at,
+            });
+          }
+          return users;
+        }
+      }
+    } catch (err) {
+      console.warn("[authRecoveryService] Supabase profiles query safe fallback:", err);
+    }
+
+    // 2. Default verified admins (always accessible & safe)
+    const staLog = getLatestLog("sta.khadri@dmhs.edu.in");
+    users.push({
+      id: "adm_sta_khadri",
+      name: "STA Khadri",
+      identifier: "sta.khadri@dmhs.edu.in",
+      email: "sta.khadri@dmhs.edu.in",
+      role: "ADMIN",
+      status: "ACTIVE",
+      last_reset_status: staLog ? (staLog.status === "Completed" ? "COMPLETED" : "PENDING_VERIFICATION") : "NONE",
+      last_reset_at: staLog?.timestamp,
+    });
+
+    const ateefLog = getLatestLog("ateef@dmhs.edu.in");
+    users.push({
+      id: "adm_ateef",
+      name: "Ateef Ali",
+      identifier: "ateef@dmhs.edu.in",
+      email: "ateef@dmhs.edu.in",
+      role: "ADMIN",
+      status: "ACTIVE",
+      last_reset_status: ateefLog ? (ateefLog.status === "Completed" ? "COMPLETED" : "PENDING_VERIFICATION") : "NONE",
+      last_reset_at: ateefLog?.timestamp,
+    });
+
+    // 3. Include any local custom user accounts
+    try {
+      const customUsers = getStoredCustomUsers();
+      for (const u of customUsers) {
+        if (!users.some((x) => x.email === u.email || x.identifier === u.username)) {
+          const uLog = getLatestLog(u.email || u.username);
+          users.push({
+            id: String(u.id || u.username),
+            name: u.full_name || u.username,
+            identifier: u.admission_number || u.employee_id || u.username || u.email,
+            email: u.email,
+            role: u.role,
+            status: "ACTIVE",
+            last_reset_status: uLog ? (uLog.status === "Completed" ? "COMPLETED" : "PENDING_VERIFICATION") : "NONE",
+            last_reset_at: uLog?.timestamp,
+          });
+        }
+      }
+    } catch {}
+
+    return users;
+  },
+
+  /**
+   * Retrieve Password Reset Audit Logs
+   */
+  getAuditLogs: async (): Promise<PasswordResetLogItem[]> => {
+    const localLogs = getPasswordResetLogs();
+    try {
+      if (isSupabaseConfigured()) {
+        const { data: auditData, error } = await supabase
+          .from("audit_logs")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .limit(50);
+
+        if (!error && Array.isArray(auditData) && auditData.length > 0) {
+          const remoteLogs: PasswordResetLogItem[] = auditData.map((a: any) => ({
+            id: a.id,
+            user_name: a.user_name || a.details?.name || "User",
+            role: a.role || a.details?.role || "ADMIN",
+            email: a.email || a.details?.email || "",
+            action: (a.action?.toUpperCase() || "PASSWORD_RESET_SUCCESS") as any,
+            status: a.status === "Completed" || a.status === "success" ? "Completed" : "Pending Verification",
+            timestamp: a.created_at || new Date().toISOString(),
+          }));
+          return [...remoteLogs, ...localLogs];
+        }
+      }
+    } catch (e) {
+      console.warn("[authRecoveryService] Supabase audit_logs fallback:", e);
+    }
+    return localLogs;
+  },
+
+  getPasswordResetAuditLogs: async (): Promise<PasswordResetLogItem[]> => {
+    return authRecoveryService.getAuditLogs();
+  },
+
+  /**
+   * Admin: Initiate password reset OTP dispatch to user
+   */
+  adminInitiateReset: async (identifierOrEmail: string): Promise<{ success: boolean; message: string; maskedPhone?: string }> => {
+    const cleanId = (identifierOrEmail || "").trim();
+    const account = findAccountByIdentifier(cleanId);
+    const portal = account.role || "ADMIN";
+    const res = await authRecoveryService.requestOtp(cleanId, portal);
+    appendPasswordResetLog({
+      user_name: account.name || cleanId,
+      role: portal,
+      email: account.email || cleanId,
+      action: "OTP_DISPATCHED",
+      status: "Pending Verification",
+      timestamp: new Date().toISOString(),
+    });
+    return {
+      success: true,
+      message: `Password reset OTP dispatched to registered mobile/email ${res.maskedPhone || ""}.`,
+      maskedPhone: res.maskedPhone,
+    };
+  },
+
+  /**
+   * Admin: Directly set or generate new password for student, faculty, or admin
+   */
+  adminSetUserPassword: async (
+    identifierOrEmail: string,
+    newPassword?: string
+  ): Promise<{ success: boolean; message: string; generatedPassword?: string }> => {
+    const cleanId = (identifierOrEmail || "").trim();
+    if (!cleanId) {
+      throw new ApiError("User identifier is required.", 400);
+    }
+    const finalPass = newPassword?.trim() || `Dmhs@${Math.floor(1000 + Math.random() * 9000)}`;
+    if (finalPass.length < 4) {
+      throw new ApiError("Password must be at least 4 characters long.", 400);
+    }
+
+    const account = findAccountByIdentifier(cleanId);
+    const targetEmail = account.email || cleanId;
+    const targetRole = account.role || "ADMIN";
+
+    // Update local storage fallback credentials
+    if (targetRole === "ADMIN") {
+      setAdminPassword(finalPass);
+    } else if (targetRole === "TEACHER") {
+      if (typeof localStorage !== "undefined") {
+        localStorage.setItem(`dmhs_teacher_password_${account.targetId || cleanId}`, hashPassword(finalPass));
+      }
+    } else if (targetRole === "STUDENT") {
+      if (typeof localStorage !== "undefined") {
+        localStorage.setItem(`dmhs_student_password_${account.targetId || cleanId}`, hashPassword(finalPass));
+      }
+    }
+
+    appendPasswordResetLog({
+      user_name: account.name || cleanId,
+      role: targetRole,
+      email: targetEmail,
+      action: "ADMIN_FORCE_RESET",
+      status: "Completed",
+      timestamp: new Date().toISOString(),
+    });
+
+    return {
+      success: true,
+      message: `Credentials successfully updated for ${account.name || cleanId}.`,
+      generatedPassword: finalPass,
     };
   },
 };

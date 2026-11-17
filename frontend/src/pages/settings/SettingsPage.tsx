@@ -12,6 +12,44 @@ import { useToast } from "../../components/ui/Toast";
 import { ChangePasswordCard } from "../../components/shared/ChangePasswordCard";
 import { UserCredentialsManagementCard } from "../../components/shared/UserCredentialsManagementCard";
 
+class SafeUserCredentialsBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error: any) {
+    console.error("[SafeUserCredentialsBoundary] caught sub-component error:", error);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <Card className="p-6 border border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-950/20">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h4 className="text-sm font-bold text-amber-800 dark:text-amber-200">
+                User Credentials Registry
+              </h4>
+              <p className="text-xs text-amber-700 dark:text-amber-300">
+                User credentials registry is temporarily unavailable. Institution settings and profiles are unaffected.
+              </p>
+            </div>
+            <Button size="sm" variant="outline" onClick={() => this.setState({ hasError: false })}>
+              Reload Module
+            </Button>
+          </div>
+        </Card>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 interface SchoolConfig {
   id?: number | string;
   name: string;
@@ -557,8 +595,10 @@ export const SettingsPage: React.FC = () => {
           </div>
         </Card>
 
-        {/* User Credentials & Password Management (Admin Password Control) */}
-        <UserCredentialsManagementCard />
+        {/* User Credentials & Password Management (Admin Password Control) - Decoupled */}
+        <SafeUserCredentialsBoundary>
+          <UserCredentialsManagementCard />
+        </SafeUserCredentialsBoundary>
 
         {/* Administrator Change Password */}
         <ChangePasswordCard userRoleLabel="Administrator" />

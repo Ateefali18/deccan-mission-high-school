@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   KeyRound,
   Search,
@@ -38,26 +38,48 @@ export const UserCredentialsManagementCard: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
 
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const toast = useToast();
+  const inFlightRef = useRef(false);
+  const hasToastedErrorRef = useRef(false);
+  const isMountedRef = useRef(true);
 
-  const loadData = async () => {
+  const loadData = async (force: boolean = false) => {
+    if (inFlightRef.current && !force) return;
+    inFlightRef.current = true;
     setIsLoading(true);
     try {
       const [userList, auditLogs] = await Promise.all([
         api.admin.listUsersForCredentials(),
         api.admin.getPasswordResetAuditLogs(),
       ]);
-      setUsers(userList);
-      setLogs(auditLogs);
-    } catch {
-      toast.error("Failed to load user credentials registry.");
+      if (isMountedRef.current) {
+        setUsers(Array.isArray(userList) ? userList : []);
+        setLogs(Array.isArray(auditLogs) ? auditLogs : []);
+        setFetchError(null);
+      }
+    } catch (err: any) {
+      if (isMountedRef.current) {
+        setFetchError("Unable to load user credentials registry. Click Retry to reload.");
+        if (!hasToastedErrorRef.current) {
+          hasToastedErrorRef.current = true;
+          toast.error("Failed to load user credentials registry.");
+        }
+      }
     } finally {
-      setIsLoading(false);
+      inFlightRef.current = false;
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
     }
   };
 
   useEffect(() => {
+    isMountedRef.current = true;
     loadData();
+    return () => {
+      isMountedRef.current = false;
+    };
   }, []);
 
   const handleGenerateRandomPassword = () => {
@@ -151,6 +173,18 @@ export const UserCredentialsManagementCard: React.FC = () => {
           Refresh Users
         </Button>
       </div>
+
+      {fetchError && (
+        <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 flex items-center justify-between text-xs text-amber-800 dark:text-amber-200">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+            <span>{fetchError}</span>
+          </div>
+          <Button size="sm" variant="outline" onClick={() => loadData(true)}>
+            Retry
+          </Button>
+        </div>
+      )}
 
       {/* Search & Filter Toolbar */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
